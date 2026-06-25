@@ -50,7 +50,7 @@ function MisTickets() {
       console.log("ERROR CARGAR TICKETS:", error.response?.data || error);
 
       setError(
-        error.response?.data?.message || "No se pudieron cargar los tickets"
+        error.response?.data?.message || "No se pudieron cargar los tickets",
       );
     } finally {
       setLoading(false);
@@ -165,6 +165,13 @@ function MisTickets() {
 
   const nombrePrioridad = (ticket) =>
     ticket.priority?.nombre || ticket.prioridad?.nombre || "Sin prioridad";
+  const obtenerLogoSistema = (ticket) => {
+    const logo = ticket.system_logo || ticket.system?.logo;
+
+    if (!logo) return null;
+
+    return `https://api.thebusinessticket.com/storage/${logo}`;
+  };
 
   const nombreAgente = (ticket) => {
     if (!ticket.responsable) return "Sin asignar";
@@ -177,7 +184,8 @@ function MisTickets() {
   const colorEstado = (ticket) => {
     const estado = String(nombreEstado(ticket)).toLowerCase();
 
-    if (estado.includes("cerr") || estado.includes("resuelto")) return "success";
+    if (estado.includes("cerr") || estado.includes("resuelto"))
+      return "success";
     if (estado.includes("proceso")) return "warning";
     if (estado.includes("abiert")) return "primary";
 
@@ -249,7 +257,8 @@ function MisTickets() {
         </Typography>
 
         <Typography variant="body2" color="text.secondary">
-          Consulta tickets, estado actual, problema, prioridad y agente asignado.
+          Consulta tickets, estado actual, problema, prioridad y agente
+          asignado.
         </Typography>
       </Box>
 
@@ -260,12 +269,12 @@ function MisTickets() {
       )}
 
       <Paper
-      sx={{
-        p: { xs: 2, md: 3 },
-        borderRadius: 3,
-        boxShadow: 1,
-        border: "1px solid #e5e7eb",
-      }}
+        sx={{
+          p: { xs: 2, md: 3 },
+          borderRadius: 3,
+          boxShadow: 1,
+          border: "1px solid #e5e7eb",
+        }}
       >
         <Grid container spacing={2} mb={3}>
           <Grid item xs={12} md={8}>
@@ -298,25 +307,23 @@ function MisTickets() {
 
         {ticketsFiltrados.length > 0 ? (
           <TableContainer
-        sx={{
-          border: "1px solid #e5e7eb",
-          borderRadius: 2,
-          overflowX: "auto",
-        }}
+            sx={{
+              border: "1px solid #e5e7eb",
+              borderRadius: 2,
+              overflowX: "auto",
+            }}
           >
             <Table size="small">
               <TableHead
                 sx={{
-                bgcolor: "#f8fafc",
+                  bgcolor: "#f8fafc",
                 }}
               >
                 <TableRow>
                   <TableCell>Folio</TableCell>
-                  <TableCell>Título</TableCell>
-                  <TableCell>Sistema</TableCell>
                   <TableCell>Problema</TableCell>
-                  <TableCell>Prioridad</TableCell>
-                  <TableCell>Estado</TableCell>
+                  <TableCell>Sección</TableCell>
+                  <TableCell>Prioridad / Estado</TableCell>
                   <TableCell>Agente</TableCell>
                   <TableCell align="right">Acciones</TableCell>
                 </TableRow>
@@ -326,112 +333,77 @@ function MisTickets() {
                 {ticketsFiltrados.map((ticket) => (
                   <TableRow key={ticket.id} hover>
                     <TableCell>
-                  <Chip
-                    label={ticket.folio || `#${ticket.id}`}
-                    size="small"
-                    sx={{
-                      fontWeight: 800,
-                      borderRadius: 2,
-                      bgcolor: "#eff6ff",
-                      color: "#1d4ed8",
-                    }}
-                  />
+                      <Stack direction="row" spacing={1.5} alignItems="center">
+                        {obtenerLogoSistema(ticket) && (
+                          <Box
+                            component="img"
+                            src={obtenerLogoSistema(ticket)}
+                            sx={{
+                              width: 42,
+                              height: 42,
+                              borderRadius: 2,
+                              objectFit: "cover",
+                              border: "1px solid #e5e7eb",
+                            }}
+                          />
+                        )}
+
+                        <Box>
+                          <Typography fontWeight={800} color="primary">
+                            {ticket.folio_prefijo || "TCK"}
+                          </Typography>
+
+                          <Typography variant="caption">
+                            {ticket.folio_numero}
+                          </Typography>
+                        </Box>
+                      </Stack>
                     </TableCell>
 
                     <TableCell>
-                      <Typography
-                        variant="body2"
-                        sx={{
-                          maxWidth: 260,
-                          overflow: "hidden",
-                          whiteSpace: "nowrap",
-                          textOverflow: "ellipsis",
-                          }}
-                        >
-                        {ticket.titulo || "Sin título"}
-                      </Typography>
-                    </TableCell>
+                      <Typography fontWeight={600}>{ticket.titulo}</Typography>
 
-                    <TableCell>{nombreSistema(ticket)}</TableCell>
-
-                    <TableCell>{nombreProblema(ticket)}</TableCell>
-
-                    <TableCell>{nombrePrioridad(ticket)}</TableCell>
-
-                    <TableCell>
                       <Chip
                         size="small"
-                        label={nombreEstado(ticket)}
-                        color={colorEstado(ticket)}
+                        label={nombreSistema(ticket)}
+                        sx={{ mt: 0.5 }}
                       />
+                    </TableCell>
+
+                    <TableCell>
+                      {ticket.seccion_nombre || nombreProblema(ticket)}
+                    </TableCell>
+
+                    <TableCell>
+                      <Stack spacing={0.7}>
+                        <Typography variant="body2">
+                          {nombrePrioridad(ticket)}
+                        </Typography>
+
+                        <Chip
+                          size="small"
+                          label={nombreEstado(ticket)}
+                          color={colorEstado(ticket)}
+                          sx={{ width: "fit-content" }}
+                        />
+                      </Stack>
                     </TableCell>
 
                     <TableCell>{nombreAgente(ticket)}</TableCell>
 
                     <TableCell align="right">
-                      <Stack
-                        direction="row"
-                        spacing={1}
-                        justifyContent="flex-end"
-                        flexWrap="wrap"
-                        useFlexGap
+                      <Button
+                        size="small"
+                        variant="outlined"
+                        onClick={() => navigate(`/tickets/${ticket.id}`)}
+                        sx={{
+                          borderRadius: 2,
+                          textTransform: "none",
+                          fontWeight: 700,
+                        }}
                       >
-                        <Button
-                          size="small"
-                          variant="outlined"
-                          onClick={() => navigate(`/tickets/${ticket.id}`)}
-                          sx={{
-                            borderRadius: 2,
-                            textTransform: "none",
-                            fontWeight: 700,
-                          }}
-                        >
-                          Ver
-                        </Button>
-
-                        {puedeTomar(ticket) && (
-                          <Button
-                            size="small"
-                            variant="outlined"
-                            color="primary"
-                            onClick={() => tomarTicket(ticket)}
-                              sx={{
-                                borderRadius: 2,
-                                textTransform: "none",
-                                fontWeight: 700,
-                              }}
-                          >
-                            Tomar
-                          </Button>
-                        )}
-
-                        {puedeResolver(ticket) && (
-                          <Button
-                            size="small"
-                            variant="outlined"
-                            color="success"
-                            onClick={() => resolverTicket(ticket)}
-                              sx={{
-                              borderRadius: 2,
-                              textTransform: "none",
-                              fontWeight: 700,
-                            }}
-                          >
-                            Resolver
-                          </Button>
-                        )}
-
-                        {puedeEliminar(ticket) && (
-                          <Button
-                            size="small"
-                            color="error"
-                            variant="outlined"
-                            onClick={() => eliminarTicket(ticket)}
-                          >
-                            Eliminar
-                          </Button>
-                        )}
-                      </Stack>
+                        Ver
+                      </Button>
                     </TableCell>
                   </TableRow>
                 ))}

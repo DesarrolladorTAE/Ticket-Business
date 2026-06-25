@@ -36,10 +36,7 @@ export default function TicketDetalle() {
   const usuario = JSON.parse(localStorage.getItem("USUARIO") || "null");
 
   const roles = usuario?.roles || [];
-  const isAdmin      = roles.includes("Administrador");
-  const isAgent      = roles.includes("Agente");
-  const isSupervisor = roles.includes("Supervisor");
-  const isClient     = roles.includes("Cliente");
+  const puedeCambiarEstado = isAdmin || isSupervisor;
 
   // ✅ Puede mensajear
   const puedeMensajear = isAdmin || isAgent || isSupervisor || isClient;
@@ -55,6 +52,7 @@ export default function TicketDetalle() {
 
   const [ticket, setTicket] = useState(null);
   const [messages, setMessages] = useState([]);
+  const [estados, setEstados] = useState([]);
   const [text, setText] = useState("");
   const [archivo, setArchivo] = useState(null);
   const [visibility, setVisibility] = useState("external");
@@ -64,23 +62,45 @@ export default function TicketDetalle() {
 
   const chatRef = useRef(null);
 
-  useEffect(() => { cargarTodo(); }, [id]);
-  useEffect(() => { scrollBottom(); }, [messages]);
+  useEffect(() => {
+    cargarTodo();
+  }, [id]);
+  useEffect(() => {
+    scrollBottom();
+  }, [messages]);
 
   const cargarTodo = async () => {
     setLoading(true);
     setError("");
     try {
-      const ticketRes = await axiosCliente.get(`/tickets/${id}`);
-      setTicket(ticketRes.data.data || ticketRes.data);
+      const [ticketRes, msgRes, statusRes] = await Promise.all([
+        axiosCliente.get(`/tickets/${id}`),
+        axiosCliente.get(`/tickets/${id}/messages`),
+        axiosCliente.get("/ticket-statuses"),
+      ]);
 
-      const msgRes = await axiosCliente.get(`/tickets/${id}/messages`);
+      setTicket(ticketRes.data.data || ticketRes.data);
       setMessages(msgRes.data.data || []);
+      setEstados(statusRes.data.data || statusRes.data || []);
     } catch (error) {
       console.log(error);
       setError("No se pudo cargar la información del ticket");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const cambiarEstado = async (statusId) => {
+    try {
+      await axiosCliente.patch(`/tickets/${id}/status`, {
+        status_id: statusId,
+      });
+
+      cargarTodo();
+    } catch (error) {
+      console.log("ERROR CAMBIAR ESTADO:", error.response?.data || error);
+
+      alert(error.response?.data?.message || "No se pudo cambiar el estado.");
     }
   };
 
@@ -135,7 +155,9 @@ export default function TicketDetalle() {
       await axiosCliente.delete(`/tickets/${id}`);
       navigate("/mis-tickets");
     } catch (error) {
-      setError(error.response?.data?.message || "No se pudo eliminar el ticket");
+      setError(
+        error.response?.data?.message || "No se pudo eliminar el ticket",
+      );
     }
   };
 
@@ -156,6 +178,8 @@ export default function TicketDetalle() {
       setError(error.response?.data?.message || "No se pudo eliminar mensaje");
     }
   };
+  const puedeCambiarEstado =
+    roles.includes("Administrador") || roles.includes("Supervisor");
 
   const resolverTicket = async () => {
     const confirmar = await Swal.fire({
@@ -178,8 +202,14 @@ export default function TicketDetalle() {
 
   const esMio = (msg) => Number(msg.user_id) === Number(usuario?.id);
   const inicial = (msg) => (msg.user?.name || "U").charAt(0).toUpperCase();
-  const estadoNombre = ticket?.status?.nombre || ticket?.status?.name || ticket?.status || "Abierto";
-  const agenteAsignado = ticket?.responsable ? ticket.responsable.name : "Sin asignar";
+  const estadoNombre =
+    ticket?.status?.nombre ||
+    ticket?.status?.name ||
+    ticket?.status ||
+    "Abierto";
+  const agenteAsignado = ticket?.responsable
+    ? ticket.responsable.name
+    : "Sin asignar";
 
   // ✅ Solo Admin puede eliminar mensajes
   const puedeEliminarMensaje = (item) => {
@@ -197,49 +227,85 @@ export default function TicketDetalle() {
   }
 
   return (
-      <Box
-        sx={{
-         maxWidth: "1300px",
-         mx: "auto",
+    <Box
+      sx={{
+        maxWidth: "1300px",
+        mx: "auto",
       }}
     >
       <Box mb={3}>
-        <Typography variant="h5" fontWeight="bold">Detalle del ticket</Typography>
+        <Typography variant="h5" fontWeight="bold">
+          Detalle del ticket
+        </Typography>
         <Typography variant="body2" color="text.secondary">
           Información, seguimiento y conversación.
         </Typography>
       </Box>
 
-      {error && <Alert severity="error" sx={{ mb: 3 }}>{error}</Alert>}
+      {error && (
+        <Alert severity="error" sx={{ mb: 3 }}>
+          {error}
+        </Alert>
+      )}
 
       {/* Info del ticket */}
-      <Paper sx={{
-        p: { xs: 2, md: 3 },
-        borderRadius: 3,
-        boxShadow: 1,
-        border: "1px solid #e5e7eb",
-        mb: 3,
-      }}
+      <Paper
+        sx={{
+          p: { xs: 2, md: 3 },
+          borderRadius: 3,
+          boxShadow: 1,
+          border: "1px solid #e5e7eb",
+          mb: 3,
+        }}
       >
-        <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" spacing={2}>
+        <Stack
+          direction={{ xs: "column", md: "row" }}
+          justifyContent="space-between"
+          spacing={2}
+        >
           <Box>
             <Chip
               label={ticket?.folio}
-                sx={{
-                  fontWeight: 800,
-                  borderRadius: 2,
-                  bgcolor: "#eff6ff",
-                  color: "#1d4ed8",
-                }}
+              sx={{
+                fontWeight: 800,
+                borderRadius: 2,
+                bgcolor: "#eff6ff",
+                color: "#1d4ed8",
+              }}
             />
             <Typography>{ticket?.titulo}</Typography>
           </Box>
           <Stack direction="row" spacing={1}>
-            <Chip label={estadoNombre} color="primary" />
+            {puedeCambiarEstado ? (
+              <TextField
+                select
+                size="small"
+                label="Estado"
+                value={ticket?.status_id || ""}
+                onChange={(e) => cambiarEstado(e.target.value)}
+                sx={{ minWidth: 180 }}
+              >
+                {estados.map((estado) => (
+                  <MenuItem key={estado.id} value={estado.id}>
+                    {estado.nombre}
+                  </MenuItem>
+                ))}
+              </TextField>
+            ) : (
+              <Chip
+                label={ticket?.status?.nombre || "Sin estado"}
+                color="primary"
+                size="small"
+              />
+            )}
 
             {/* ✅ Solo Admin y Supervisor pueden resolver */}
             {puedeResolver && (
-              <Button variant="contained" color="success" onClick={resolverTicket}>
+              <Button
+                variant="contained"
+                color="success"
+                onClick={resolverTicket}
+              >
                 Resolver
               </Button>
             )}
@@ -263,7 +329,11 @@ export default function TicketDetalle() {
             <Info label="Agente asignado" value={agenteAsignado} />
           </Grid>
           <Grid item xs={12}>
-            <Info label="Detalle" value={ticket?.descripcion || "Sin descripción"} multiline />
+            <Info
+              label="Detalle"
+              value={ticket?.descripcion || "Sin descripción"}
+              multiline
+            />
           </Grid>
         </Grid>
       </Paper>
@@ -291,18 +361,15 @@ export default function TicketDetalle() {
               }}
             >
               <Box
-        sx={{
-          maxWidth: "75%",
-          p: 1.5,
-          borderRadius: 3,
-          bgcolor: esMio(msg)
-            ? "#dbeafe"
-            : "#ffffff",
-          border: "1px solid #e5e7eb",
-          boxShadow: 1,
-        }}
-      >
-              
+                sx={{
+                  maxWidth: "75%",
+                  p: 1.5,
+                  borderRadius: 3,
+                  bgcolor: esMio(msg) ? "#dbeafe" : "#ffffff",
+                  border: "1px solid #e5e7eb",
+                  boxShadow: 1,
+                }}
+              >
                 <Stack direction="row" spacing={1} alignItems="center" mb={0.5}>
                   <Avatar sx={{ width: 28, height: 28, fontSize: 14 }}>
                     {inicial(msg)}
@@ -337,7 +404,11 @@ export default function TicketDetalle() {
                         }}
                       >
                         <InsertDriveFileIcon fontSize="small" color="primary" />
-                        <Typography variant="body2" color="primary" fontWeight={500}>
+                        <Typography
+                          variant="body2"
+                          color="primary"
+                          fontWeight={500}
+                        >
                           📎 {file.nombre_archivo}
                         </Typography>
                       </Box>
@@ -381,7 +452,12 @@ export default function TicketDetalle() {
             >
               <InsertDriveFileIcon fontSize="small" />
               <Typography variant="body2">{archivo.name}</Typography>
-              <Button size="small" color="error" onClick={() => setArchivo(null)} sx={{ ml: "auto" }}>
+              <Button
+                size="small"
+                color="error"
+                onClick={() => setArchivo(null)}
+                sx={{ ml: "auto" }}
+              >
                 Quitar
               </Button>
             </Box>
@@ -415,7 +491,11 @@ export default function TicketDetalle() {
               onChange={(e) => setText(e.target.value)}
             />
 
-            <Button component="label" variant="outlined" startIcon={<AttachFileIcon />}>
+            <Button
+              component="label"
+              variant="outlined"
+              startIcon={<AttachFileIcon />}
+            >
               Archivo
               <input
                 hidden
