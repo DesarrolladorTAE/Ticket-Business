@@ -1,0 +1,62 @@
+/* =========================
+   RESET BASE
+========================= */
+
+* {
+  box-sizing: border-box;
+}
+
+html, body, #root {
+  height: 100%;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+/* =========================
+   BODY BASE
+========================= */
+
+body {
+  font-family: Inter, Arial, sans-serif;
+  background: #f1f5f9;
+  color: #111827;
+  overflow: hidden; /* evita scroll doble en dashboards */
+}
+
+/* =========================
+   ROOT APP CONTAINER
+========================= */
+
+#root {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+/* =========================
+   LINKS
+========================= */
+
+a {
+  text-decoration: none;
+  color: inherit;
+}
+
+/* =========================
+   SCROLL GLOBAL (opcional pero recomendado)
+========================= */
+
+*::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+*::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 8px;
+}
+
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
