@@ -75,6 +75,12 @@ export default function TicketDetalle() {
   const [previewOpen, setPreviewOpen] = useState(false);
   const [previewFile, setPreviewFile] = useState(null);
   const [mostrarHistorial, setMostrarHistorial] = useState(false);
+  const [isInternal, setIsInternal] = useState(false);
+
+  const canSendPrivate =
+  user?.roles?.includes("Administrador") ||
+  user?.roles?.includes("Supervisor") ||
+  user?.roles?.includes("Agente");
 
   const chatRef = useRef(null);
 
@@ -212,7 +218,7 @@ export default function TicketDetalle() {
     try {
       const res = await axiosCliente.post(`/tickets/${id}/messages`, {
         message: text.trim(),
-        visibility: puedeGestionar ? visibility : "external",
+        visibility: isInternal ? "private" : "public",
       });
 
       const messageId = res.data.data.id;
@@ -754,7 +760,7 @@ export default function TicketDetalle() {
                       right: 8,
                     }}
                   >
-                   <DeleteIcon fontSize="small" />
+                    <DeleteIcon fontSize="small" />
                   </IconButton>
                 )}
               </Box>
