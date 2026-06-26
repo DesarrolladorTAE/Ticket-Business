@@ -6,13 +6,18 @@ import {
   Alert,
   Box,
   Button,
+  Chip,
   CircularProgress,
   Grid,
   MenuItem,
   Paper,
+  Stack,
   TextField,
   Typography,
 } from "@mui/material";
+
+import InsertDriveFileIcon from "@mui/icons-material/InsertDriveFile";
+import DeleteIcon from "@mui/icons-material/Delete";
 
 function NuevoTicket() {
   const navigate = useNavigate();
@@ -24,6 +29,9 @@ function NuevoTicket() {
     category_id: "",
     priority_id: "",
   });
+
+  const [archivos, setArchivos] = useState([]);
+  const [dragActivo, setDragActivo] = useState(false);
 
   const [sistemas, setSistemas] = useState([]);
   const [categorias, setCategorias] = useState([]);
@@ -71,6 +79,42 @@ function NuevoTicket() {
     }));
   };
 
+  const agregarArchivos = (listaArchivos) => {
+    const nuevos = Array.from(listaArchivos || []);
+
+    if (!nuevos.length) return;
+
+    setArchivos((prev) => [...prev, ...nuevos]);
+  };
+
+  const cambiarArchivos = (e) => {
+    agregarArchivos(e.target.files);
+    e.target.value = "";
+  };
+
+  const eliminarArchivo = (index) => {
+    setArchivos((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const onDragOver = (e) => {
+    e.preventDefault();
+    setDragActivo(true);
+  };
+
+  const onDragLeave = (e) => {
+    e.preventDefault();
+    setDragActivo(false);
+  };
+
+  const onDrop = (e) => {
+    e.preventDefault();
+    setDragActivo(false);
+    agregarArchivos(e.dataTransfer.files);
+  };
+
+  const esImagen = (archivo) => archivo.type?.startsWith("image/");
+  const esVideo = (archivo) => archivo.type?.startsWith("video/");
+
   const categoriasFiltradas = categorias.filter(
     (categoria) => String(categoria.system_id) === String(formulario.system_id)
   );
@@ -82,7 +126,24 @@ function NuevoTicket() {
     setCargando(true);
 
     try {
-      await axiosCliente.post("/tickets", formulario);
+      const formData = new FormData();
+
+      formData.append("titulo", formulario.titulo);
+      formData.append("descripcion", formulario.descripcion);
+      formData.append("system_id", formulario.system_id);
+      formData.append("category_id", formulario.category_id);
+      formData.append("priority_id", formulario.priority_id);
+
+      archivos.forEach((archivo) => {
+        formData.append("archivos[]", archivo);
+      });
+
+      await axiosCliente.post("/tickets", formData, {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      });
+
       navigate("/paneladministrador");
     } catch (error) {
       console.log("ERROR CREAR TICKET:", error.response?.data || error);
@@ -174,9 +235,7 @@ function NuevoTicket() {
                   mt: 1,
                 }}
               >
-                <Typography fontWeight={800}>
-                  Clasificación
-                </Typography>
+                <Typography fontWeight={800}>Clasificación</Typography>
 
                 <Typography variant="body2" color="text.secondary">
                   Selecciona el sistema, tipo de problema y prioridad.
@@ -246,6 +305,160 @@ function NuevoTicket() {
                 ))}
               </TextField>
             </Grid>
+
+            <Grid item xs={12}>
+              <Box
+                sx={{
+                  borderTop: "1px solid #e5e7eb",
+                  pt: 2,
+                  mt: 1,
+                }}
+              >
+                <Typography fontWeight={800}>Evidencias</Typography>
+
+                <Typography variant="body2" color="text.secondary">
+                  Adjunta fotos, capturas, documentos o videos relacionados con el problema.
+                </Typography>
+              </Box>
+            </Grid>
+
+            <Grid item xs={12}>
+              <Box
+                onDragOver={onDragOver}
+                onDragLeave={onDragLeave}
+                onDrop={onDrop}
+                sx={{
+                  border: dragActivo
+                    ? "2px dashed #2563eb"
+                    : "2px dashed #cbd5e1",
+                  borderRadius: 3,
+                  p: 3,
+                  bgcolor: dragActivo ? "#eff6ff" : "#f8fafc",
+                  textAlign: "center",
+                  transition: "0.2s ease",
+                }}
+              >
+                <InsertDriveFileIcon color="primary" />
+
+                <Typography fontWeight={800} mt={1}>
+                  Arrastra archivos aquí
+                </Typography>
+
+                <Typography variant="body2" color="text.secondary" mb={2}>
+                  También puedes seleccionar múltiples archivos desde tu equipo.
+                </Typography>
+
+                <Button
+                  variant="outlined"
+                  component="label"
+                  sx={{
+                    borderRadius: 2,
+                    textTransform: "none",
+                    fontWeight: 700,
+                  }}
+                >
+                  Seleccionar archivos
+                  <input
+                    hidden
+                    multiple
+                    type="file"
+                    accept="image/*,video/*,.jfif,.pdf,.doc,.docx,.xls,.xlsx,.txt,.zip"
+                    onChange={cambiarArchivos}
+                  />
+                </Button>
+              </Box>
+            </Grid>
+
+            {archivos.length > 0 && (
+              <Grid item xs={12}>
+                <Stack spacing={1.5}>
+                  {archivos.map((archivo, index) => (
+                    <Paper
+                      key={`${archivo.name}-${index}`}
+                      sx={{
+                        p: 1.5,
+                        borderRadius: 2,
+                        border: "1px solid #e5e7eb",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 2,
+                      }}
+                    >
+                      {esImagen(archivo) ? (
+                        <Box
+                          component="img"
+                          src={URL.createObjectURL(archivo)}
+                          alt={archivo.name}
+                          sx={{
+                            width: 56,
+                            height: 56,
+                            objectFit: "cover",
+                            borderRadius: 2,
+                            border: "1px solid #e5e7eb",
+                            flexShrink: 0,
+                          }}
+                        />
+                      ) : esVideo(archivo) ? (
+                        <Box
+                          component="video"
+                          src={URL.createObjectURL(archivo)}
+                          sx={{
+                            width: 56,
+                            height: 56,
+                            objectFit: "cover",
+                            borderRadius: 2,
+                            border: "1px solid #e5e7eb",
+                            flexShrink: 0,
+                          }}
+                        />
+                      ) : (
+                        <Box
+                          sx={{
+                            width: 56,
+                            height: 56,
+                            borderRadius: 2,
+                            bgcolor: "#e5e7eb",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            flexShrink: 0,
+                          }}
+                        >
+                          <InsertDriveFileIcon />
+                        </Box>
+                      )}
+
+                      <Box sx={{ minWidth: 0, flex: 1 }}>
+                        <Typography fontWeight={700} noWrap>
+                          {archivo.name}
+                        </Typography>
+
+                        <Typography variant="caption" color="text.secondary">
+                          {(archivo.size / 1024 / 1024).toFixed(2)} MB
+                        </Typography>
+                      </Box>
+
+                      <Chip
+                        label={esImagen(archivo) ? "Imagen" : esVideo(archivo) ? "Video" : "Archivo"}
+                        size="small"
+                      />
+
+                      <Button
+                        color="error"
+                        size="small"
+                        onClick={() => eliminarArchivo(index)}
+                        sx={{
+                          minWidth: 40,
+                          borderRadius: 2,
+                        }}
+                      >
+                        <DeleteIcon fontSize="small" />
+                      </Button>
+                    </Paper>
+                  ))}
+                </Stack>
+              </Grid>
+            )}
           </Grid>
 
           <Box
