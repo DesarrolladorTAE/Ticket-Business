@@ -1,6 +1,10 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
+
 import axiosCliente from "../../../services/axiosCliente";
+import ChatMessages from "../components/chat/ChatMessages";
+import ChatInput from "../components/chat/ChatInput";
+
 import Swal from "sweetalert2";
 
 import {
@@ -311,15 +315,15 @@ export default function TicketDetalle() {
     ticket?.status ||
     "Abierto";
 
- const esMensajeSistema = (msg) => {
-  return (
-    msg.type === "system" ||
-    msg.tipo === "system" ||
-    msg.is_system === true ||
-    msg.message?.startsWith("Estado cambiado") ||
-    msg.message?.startsWith("El mensaje de")
-  );
-};
+  const esMensajeSistema = (msg) => {
+    return (
+      msg.type === "system" ||
+      msg.tipo === "system" ||
+      msg.is_system === true ||
+      msg.message?.startsWith("Estado cambiado") ||
+      msg.message?.startsWith("El mensaje de")
+    );
+  };
   const agenteAsignado = ticket?.responsable
     ? ticket.responsable.name
     : "Sin asignar";
@@ -469,9 +473,7 @@ export default function TicketDetalle() {
           </Grid>
         </Grid>
       </Paper>
-    
 
-    
       {/* Chat */}
       <Paper
         sx={{
@@ -485,253 +487,31 @@ export default function TicketDetalle() {
           boxShadow: 1,
         }}
       >
-        <Stack spacing={2}>
-          {(messages ?? []).map((msg) => (
-            <Box
-              key={msg.id}
-              sx={{
-                display: "flex",
-                justifyContent: esMensajeSistema(msg)
-                  ? "center"
-                  : esMio(msg)
-                    ? "flex-end"
-                    : "flex-start",
-                mb: 1,
-              }}
-            >
-              {esMensajeSistema(msg) ? (
-                <Box
-                  sx={{
-                    width: "100%",
-                    display: "flex",
-                    justifyContent: "center",
-                    my: 1,
-                  }}
-                >
-                  <Box
-                    sx={{
-                      px: 2,
-                      py: 0.8,
-                      bgcolor: "#e9edef",
-                      borderRadius: 3,
-                      textAlign: "center",
-                      maxWidth: "80%",
-                      color: "#54656f",
-                      fontSize: 12,
-                      boxShadow: "0 1px 2px rgba(0,0,0,.08)",
-                    }}
-                  >
-                    <Typography
-                      sx={{
-                        fontSize: 12,
-                        fontWeight: 500,
-                        lineHeight: 1.4,
-                      }}
-                    >
-                      {msg.message}
-                    </Typography>
-
-                    <Typography
-                      sx={{
-                        mt: 0.3,
-                        fontSize: 10.5,
-                        color: "#8696a0",
-                      }}
-                    >
-                      {new Date(msg.created_at).toLocaleString("es-MX", {
-                        day: "2-digit",
-                        month: "2-digit",
-                        year: "numeric",
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      })}
-                    </Typography>
-                  </Box>
-                </Box>
-              ) : (
-                <Box
-                  sx={{
-                    position: "relative",
-                    maxWidth: "75%",
-                    p: 1.5,
-                    borderRadius: 3,
-                    bgcolor: esMio(msg)
-                      ? "#dbeafe"
-                      : msg.visibility === "private"
-                        ? "#fef3c7"
-                        : "#ffffff",
-                    border: "1px solid #e5e7eb",
-                    boxShadow: 1,
-                  }}
-                >
-                  <Stack
-                    direction="row"
-                    spacing={1}
-                    alignItems="center"
-                    mb={0.5}
-                  >
-                    <Avatar sx={{ width: 28, height: 28, fontSize: 14 }}>
-                      {inicial(msg)}
-                    </Avatar>
-                    <Typography fontWeight="bold" variant="body2">
-                      {msg.user?.name || "Usuario"}
-                    </Typography>
-                    {msg.visibility === "private" && (
-                      <Chip
-                        label="Interno"
-                        size="small"
-                        color="warning"
-                        sx={{ ml: 1 }}
-                      />
-                    )}
-                  </Stack>
-
-                  <Divider sx={{ my: 0.5 }} />
-
-                  {msg.message && (
-                    <Typography sx={{ mt: 0.5 }}>{msg.message}</Typography>
-                  )}
-
-                  <Typography sx={{ fontSize: "10px", color: "#999", mt: 0.5 }}>
-                    {new Date(msg.created_at).toLocaleString()}
-                  </Typography>
-
-                  {msg.attachments?.length > 0 && (
-                    <Box mt={1}>
-                      {msg.attachments.map((file) => (
-                        <Box
-                          key={file.id}
-                          onClick={() => abrirArchivo(file)}
-                          sx={{
-                            display: "flex",
-                            alignItems: "center",
-                            gap: 1,
-                            mt: 0.5,
-                            p: 1,
-                            borderRadius: 1,
-                            bgcolor: "rgba(0,0,0,0.05)",
-                            cursor: "pointer",
-                            "&:hover": { bgcolor: "rgba(0,0,0,0.1)" },
-                          }}
-                        >
-                          <InsertDriveFileIcon
-                            fontSize="small"
-                            color="primary"
-                          />
-                          <Typography
-                            variant="body2"
-                            color="primary"
-                            fontWeight={500}
-                          >
-                            📎 {file.nombre_archivo}
-                          </Typography>
-                        </Box>
-                      ))}
-                    </Box>
-                  )}
-
-                  {puedeEliminarMensaje(msg) && (
-                    <IconButton
-                      className="delete-btn"
-                      size="small"
-                      color="error"
-                      onClick={() => eliminarMensaje(msg)}
-                      sx={{
-                        position: "absolute",
-                        top: 8,
-                        right: 8,
-                      }}
-                    >
-                      <DeleteIcon fontSize="small" />
-                    </IconButton>
-                  )}
-                </Box>
-              )}
-            </Box>
-          ))}
-          <div ref={chatRef} />
-        </Stack>
+        <ChatMessages
+          messages={messages}
+          chatRef={chatRef}
+          esMensajeSistema={esMensajeSistema}
+          esMio={esMio}
+          inicial={inicial}
+          abrirArchivo={abrirArchivo}
+          puedeEliminarMensaje={puedeEliminarMensaje}
+          eliminarMensaje={eliminarMensaje}
+        />
       </Paper>
 
       {/* Enviar mensaje */}
       {puedeMensajear && (
-        <Paper sx={{ p: 2, borderRadius: 3 }}>
-          {archivo && (
-            <Box
-              sx={{
-                display: "flex",
-                alignItems: "center",
-                gap: 1,
-                mb: 1,
-                p: 1,
-                bgcolor: "#f0f0f0",
-                borderRadius: 1,
-              }}
-            >
-              <InsertDriveFileIcon fontSize="small" />
-              <Typography variant="body2">{archivo.name}</Typography>
-              <Button
-                size="small"
-                color="error"
-                onClick={() => setArchivo(null)}
-                sx={{ ml: "auto" }}
-              >
-                Quitar
-              </Button>
-            </Box>
-          )}
-
-          <Stack direction={{ xs: "column", md: "row" }} spacing={2}>
-            {puedeGestionar && (
-              <TextField
-                select
-                label="Tipo"
-                value={visibility}
-                onChange={(e) => setVisibility(e.target.value)}
-                sx={{ minWidth: { xs: "100%", md: 190 } }}
-              >
-                <MenuItem value="external">Mensaje externo</MenuItem>
-                <MenuItem value="internal">Nota interna</MenuItem>
-              </TextField>
-            )}
-
-            <TextField
-              fullWidth
-              multiline
-              minRows={2}
-              maxRows={4}
-              placeholder={
-                visibility === "internal"
-                  ? "Escribe una nota interna..."
-                  : "Escribe un mensaje..."
-              }
-              value={text}
-              onChange={(e) => setText(e.target.value)}
-            />
-
-            <Button
-              component="label"
-              variant="outlined"
-              startIcon={<AttachFileIcon />}
-            >
-              Archivo
-              <input
-                hidden
-                type="file"
-                accept="*/*"
-                onChange={(e) => setArchivo(e.target.files[0] || null)}
-              />
-            </Button>
-
-            <Button
-              variant="contained"
-              disabled={enviando || (!text.trim() && !archivo)}
-              onClick={enviarMensaje}
-            >
-              {enviando ? "Enviando..." : "Enviar"}
-            </Button>
-          </Stack>
-        </Paper>
+        <ChatInput
+          text={text}
+          setText={setText}
+          archivo={archivo}
+          setArchivo={setArchivo}
+          visibility={visibility}
+          setVisibility={setVisibility}
+          puedeGestionar={puedeGestionar}
+          enviando={enviando}
+          enviarMensaje={enviarMensaje}
+        />
       )}
 
       <Dialog
