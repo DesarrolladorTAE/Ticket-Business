@@ -4,6 +4,9 @@ import { useNavigate, useParams } from "react-router-dom";
 import axiosCliente from "../../../services/axiosCliente";
 import ChatMessages from "../components/chat/ChatMessages";
 import ChatInput from "../components/chat/ChatInput";
+import TicketHeader from "../components/TicketHeader";
+import AttachmentPreview from "../components/AttachmentPreview";
+import TicketInfoItem from "../components/TicketInfoItem";
 
 import Swal from "sweetalert2";
 
@@ -135,9 +138,10 @@ export default function TicketDetalle() {
   };
 
   const abrirArchivo = (file) => {
-    const urlArchivo = `${STORAGE_URL}/${file.ruta}`;
-    window.open(urlArchivo, "_blank");
+    setPreviewFile(file);
+    setPreviewOpen(true);
   };
+
   const getArchivoUrl = (file) => {
     return `${STORAGE_URL}/${file.ruta}`;
   };
@@ -158,11 +162,6 @@ export default function TicketDetalle() {
 
   const esPdfArchivo = (file) => {
     return getFileExtension(file) === "pdf";
-  };
-
-  const abrirPreview = (file) => {
-    setPreviewFile(file);
-    setPreviewOpen(true);
   };
 
   const cerrarPreview = () => {
@@ -371,108 +370,20 @@ export default function TicketDetalle() {
         </Alert>
       )}
 
-      {/* Info del ticket */}
-      <Paper
-        sx={{
-          p: { xs: 2, md: 3 },
-          borderRadius: 3,
-          boxShadow: 1,
-          border: "1px solid #e5e7eb",
-          mb: 3,
-        }}
-      >
-        <Stack
-          direction={{ xs: "column", md: "row" }}
-          justifyContent="space-between"
-          spacing={2}
-        >
-          <Box>
-            <Chip
-              label={ticket?.folio}
-              sx={{
-                fontWeight: 800,
-                borderRadius: 2,
-                bgcolor: "#eff6ff",
-                color: "#1d4ed8",
-              }}
-            />
-            <Typography>{ticket?.titulo}</Typography>
-          </Box>
-          <Stack direction="row" spacing={1}>
-            {puedeCambiarEstado ? (
-              <TextField
-                select
-                size="small"
-                label="Estado"
-                value={ticket?.status_id || ""}
-                onChange={(e) => cambiarEstado(e.target.value)}
-                sx={{ minWidth: 180 }}
-              >
-                {estados.map((estado) => (
-                  <MenuItem key={estado.id} value={estado.id}>
-                    {estado.nombre}
-                  </MenuItem>
-                ))}
-              </TextField>
-            ) : (
-              <Chip
-                label={ticket?.status?.nombre || "Sin estado"}
-                color="primary"
-                size="small"
-              />
-            )}
-
-            {/* ✅ Solo Admin y Supervisor pueden resolver */}
-            {puedeResolver && (
-              <Button
-                variant="contained"
-                color="success"
-                onClick={resolverTicket}
-              >
-                Resolver
-              </Button>
-            )}
-
-            {/* ✅ Solo Admin puede eliminar */}
-            {puedeEliminar && (
-              <Button color="error" variant="outlined" onClick={eliminarTicket}>
-                Eliminar
-              </Button>
-            )}
-          </Stack>
-        </Stack>
-
-        <Divider sx={{ my: 2 }} />
-
-        <Grid container spacing={2}>
-          <Grid item xs={12} md={4}>
-            <Info label="Estado" value={estadoNombre} />
-          </Grid>
-          <Grid item xs={12} md={4}>
-            <Info label="Agente asignado" value={agenteAsignado} />
-            <Grid item xs={12} md={4}>
-              <Info
-                label="Resuelto por"
-                value={ticket?.resolved_by?.name || "No resuelto"}
-              />
-            </Grid>
-
-            <Grid item xs={12} md={4}>
-              <Info
-                label="Tiempo de resolución"
-                value={calcularTiempoResolucion()}
-              />
-            </Grid>
-          </Grid>
-          <Grid item xs={12}>
-            <Info
-              label="Detalle"
-              value={ticket?.descripcion || "Sin descripción"}
-              multiline
-            />
-          </Grid>
-        </Grid>
-      </Paper>
+      <TicketHeader
+        ticket={ticket}
+        estados={estados}
+        estadoNombre={estadoNombre}
+        agenteAsignado={agenteAsignado}
+        puedeCambiarEstado={puedeCambiarEstado}
+        puedeResolver={puedeResolver}
+        puedeEliminar={puedeEliminar}
+        cambiarEstado={cambiarEstado}
+        resolverTicket={resolverTicket}
+        eliminarTicket={eliminarTicket}
+        calcularTiempoResolucion={calcularTiempoResolucion}
+        Info={TicketInfoItem}
+      />
 
       {/* Chat */}
       <Paper
@@ -494,6 +405,7 @@ export default function TicketDetalle() {
           esMio={esMio}
           inicial={inicial}
           abrirArchivo={abrirArchivo}
+          getArchivoUrl={getArchivoUrl}
           puedeEliminarMensaje={puedeEliminarMensaje}
           eliminarMensaje={eliminarMensaje}
         />
@@ -514,120 +426,16 @@ export default function TicketDetalle() {
         />
       )}
 
-      <Dialog
-        open={previewOpen}
-        onClose={cerrarPreview}
-        maxWidth="md"
-        fullWidth
-      >
-        <DialogTitle
-          sx={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            gap: 2,
-          }}
-        >
-          <Typography fontWeight={800} noWrap>
-            {previewFile?.nombre_archivo || "Vista previa"}
-          </Typography>
-
-          <IconButton onClick={cerrarPreview}>
-            <CloseIcon />
-          </IconButton>
-        </DialogTitle>
-
-        <DialogContent dividers>
-          {previewFile && esImagenArchivo(previewFile) && (
-            <Box
-              component="img"
-              src={getArchivoUrl(previewFile)}
-              alt={previewFile.nombre_archivo}
-              sx={{
-                width: "100%",
-                maxHeight: "70vh",
-                objectFit: "contain",
-                borderRadius: 2,
-              }}
-            />
-          )}
-
-          {previewFile && esVideoArchivo(previewFile) && (
-            <Box
-              component="video"
-              src={getArchivoUrl(previewFile)}
-              controls
-              sx={{
-                width: "100%",
-                maxHeight: "70vh",
-                borderRadius: 2,
-              }}
-            />
-          )}
-
-          {previewFile && esPdfArchivo(previewFile) && (
-            <Box
-              component="iframe"
-              src={getArchivoUrl(previewFile)}
-              sx={{
-                width: "100%",
-                height: "70vh",
-                border: "none",
-                borderRadius: 2,
-              }}
-            />
-          )}
-
-          {previewFile &&
-            !esImagenArchivo(previewFile) &&
-            !esVideoArchivo(previewFile) &&
-            !esPdfArchivo(previewFile) && (
-              <Box textAlign="center" py={4}>
-                <InsertDriveFileIcon color="primary" sx={{ fontSize: 60 }} />
-
-                <Typography fontWeight={800} mt={2}>
-                  Este archivo no tiene vista previa.
-                </Typography>
-
-                <Button
-                  variant="contained"
-                  sx={{
-                    mt: 2,
-                    borderRadius: 2,
-                    textTransform: "none",
-                    fontWeight: 700,
-                  }}
-                  onClick={() => descargarArchivo(previewFile)}
-                >
-                  Descargar archivo
-                </Button>
-              </Box>
-            )}
-        </DialogContent>
-      </Dialog>
-    </Box>
-  );
-}
-
-function Info({ label, value, multiline = false }) {
-  return (
-    <Box
-      sx={{
-        border: "1px solid #e5e7eb",
-        p: 2,
-        borderRadius: 2,
-        minHeight: multiline ? 100 : 70,
-      }}
-    >
-      <Typography variant="caption" color="text.secondary">
-        {label}
-      </Typography>
-      <Typography
-        fontWeight={600}
-        sx={{ whiteSpace: multiline ? "pre-line" : "normal" }}
-      >
-        {value}
-      </Typography>
+      <AttachmentPreview
+        previewOpen={previewOpen}
+        previewFile={previewFile}
+        cerrarPreview={cerrarPreview}
+        esImagenArchivo={esImagenArchivo}
+        esVideoArchivo={esVideoArchivo}
+        esPdfArchivo={esPdfArchivo}
+        getArchivoUrl={getArchivoUrl}
+        descargarArchivo={descargarArchivo}
+      />
     </Box>
   );
 }

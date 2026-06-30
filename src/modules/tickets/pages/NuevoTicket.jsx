@@ -1,6 +1,9 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import axiosCliente from "../../../services/axiosCliente";
+import SystemCard from "../components/SystemCard";
+import CategoryCard from "../components/CategoryCard";
+import PriorityCard from "../components/PriorityCard";
 
 import {
   Alert,
@@ -9,7 +12,6 @@ import {
   Chip,
   CircularProgress,
   Grid,
-  MenuItem,
   Paper,
   Stack,
   TextField,
@@ -58,8 +60,15 @@ function NuevoTicket() {
         axiosCliente.get("/ticket-priorities"),
       ]);
 
-      setSistemas(normalizar(resS));
-      setCategorias(normalizar(resC));
+      setSistemas(
+        normalizar(resS)
+          .filter((sistema) => Number(sistema.estado) === 1)
+          .sort((a, b) => Number(a.orden || 999) - Number(b.orden || 999)),
+      );
+
+      setCategorias(
+        normalizar(resC).filter((categoria) => Number(categoria.estado) === 1),
+      );
       setPrioridades(normalizar(resP));
     } catch (error) {
       console.log("ERROR CATÁLOGOS:", error.response?.data || error);
@@ -75,7 +84,28 @@ function NuevoTicket() {
     setFormulario((prev) => ({
       ...prev,
       [name]: value,
-      ...(name === "system_id" ? { category_id: "" } : {}),
+    }));
+  };
+
+  const seleccionarSistema = (sistemaId) => {
+    setFormulario((prev) => ({
+      ...prev,
+      system_id: sistemaId,
+      category_id: "",
+    }));
+  };
+
+  const seleccionarCategoria = (categoriaId) => {
+    setFormulario((prev) => ({
+      ...prev,
+      category_id: categoriaId,
+    }));
+  };
+
+  const seleccionarPrioridad = (prioridadId) => {
+    setFormulario((prev) => ({
+      ...prev,
+      priority_id: prioridadId,
     }));
   };
 
@@ -116,8 +146,19 @@ function NuevoTicket() {
   const esVideo = (archivo) => archivo.type?.startsWith("video/");
 
   const categoriasFiltradas = categorias.filter(
-    (categoria) => String(categoria.system_id) === String(formulario.system_id)
+    (categoria) => String(categoria.system_id) === String(formulario.system_id),
   );
+
+  const categoriaSeleccionada = categorias.find(
+    (categoria) => String(categoria.id) === String(formulario.category_id),
+  );
+
+  const formularioCompleto =
+    formulario.system_id &&
+    formulario.category_id &&
+    formulario.priority_id &&
+    formulario.titulo.trim() &&
+    formulario.descripcion.trim();
 
   const crearTicket = async (e) => {
     e.preventDefault();
@@ -198,33 +239,84 @@ function NuevoTicket() {
         <Box component="form" onSubmit={crearTicket}>
           <Grid container spacing={2.5}>
             <Grid item xs={12}>
+              <Box>
+                <Typography fontWeight={800}>Clasificación</Typography>
+                <Typography variant="body2" color="text.secondary">
+                  Selecciona el sistema, tipo de problema y prioridad.
+                </Typography>
+              </Box>
+            </Grid>
+
+            <Grid item xs={12}>
               <Typography fontWeight={800} mb={1}>
-                Información del ticket
+                Sistema
               </Typography>
+
+              <Grid container spacing={2}>
+                {sistemas.map((sistema) => (
+                  <Grid item xs={12} sm={6} md={4} key={sistema.id}>
+                    <SystemCard
+                      sistema={sistema}
+                      selected={
+                        String(formulario.system_id) === String(sistema.id)
+                      }
+                      onClick={() => seleccionarSistema(sistema.id)}
+                    />
+                  </Grid>
+                ))}
+              </Grid>
             </Grid>
 
             <Grid item xs={12}>
-              <TextField
-                fullWidth
-                label="Título"
-                name="titulo"
-                value={formulario.titulo}
-                onChange={cambiarValor}
-                required
-              />
+              <Typography fontWeight={800} mb={1}>
+                Tipo de problema
+              </Typography>
+
+              {!formulario.system_id ? (
+                <Alert severity="info">
+                  Selecciona primero un sistema para ver los tipos de problema
+                  disponibles.
+                </Alert>
+              ) : categoriasFiltradas.length > 0 ? (
+                <Grid container spacing={2}>
+                  {categoriasFiltradas.map((categoria) => (
+                    <Grid item xs={12} sm={6} md={3} key={categoria.id}>
+                      <CategoryCard
+                        categoria={categoria}
+                        selected={
+                          String(formulario.category_id) ===
+                          String(categoria.id)
+                        }
+                        onClick={() => seleccionarCategoria(categoria.id)}
+                      />
+                    </Grid>
+                  ))}
+                </Grid>
+              ) : (
+                <Alert severity="warning">
+                  No hay tipos de problema disponibles para este sistema.
+                </Alert>
+              )}
             </Grid>
 
             <Grid item xs={12}>
-              <TextField
-                fullWidth
-                multiline
-                rows={5}
-                label="Descripción"
-                name="descripcion"
-                value={formulario.descripcion}
-                onChange={cambiarValor}
-                required
-              />
+              <Typography fontWeight={800} mb={1}>
+                Prioridad
+              </Typography>
+
+              <Grid container spacing={2}>
+                {prioridades.map((prioridad) => (
+                  <Grid item xs={12} sm={6} md={3} key={prioridad.id}>
+                    <PriorityCard
+                      prioridad={prioridad}
+                      selected={
+                        String(formulario.priority_id) === String(prioridad.id)
+                      }
+                      onClick={() => seleccionarPrioridad(prioridad.id)}
+                    />
+                  </Grid>
+                ))}
+              </Grid>
             </Grid>
 
             <Grid item xs={12}>
@@ -235,75 +327,40 @@ function NuevoTicket() {
                   mt: 1,
                 }}
               >
-                <Typography fontWeight={800}>Clasificación</Typography>
-
-                <Typography variant="body2" color="text.secondary">
-                  Selecciona el sistema, tipo de problema y prioridad.
-                </Typography>
+                <Typography fontWeight={800}>Información del ticket</Typography>
               </Box>
             </Grid>
 
-            <Grid item xs={12} md={4}>
+            <Grid item xs={12}>
               <TextField
-                select
                 fullWidth
-                label="Sistema"
-                name="system_id"
-                value={formulario.system_id}
+                label="¿Qué problema estás presentando?"
+                name="titulo"
+                value={formulario.titulo}
                 onChange={cambiarValor}
+                placeholder={
+                  categoriaSeleccionada?.titulo_ejemplo ||
+                  "Describe brevemente el problema"
+                }
                 required
-              >
-                {sistemas.map((sistema) => (
-                  <MenuItem key={sistema.id} value={sistema.id}>
-                    {sistema.nombre}
-                  </MenuItem>
-                ))}
-              </TextField>
+              />
             </Grid>
 
-            <Grid item xs={12} md={4}>
+            <Grid item xs={12}>
               <TextField
-                select
                 fullWidth
-                label="Tipo de problema"
-                name="category_id"
-                value={formulario.category_id}
+                multiline
+                rows={5}
+                label="Cuéntanos un poco más"
+                name="descripcion"
+                value={formulario.descripcion}
                 onChange={cambiarValor}
-                disabled={!formulario.system_id}
+                placeholder={
+                  categoriaSeleccionada?.descripcion_ejemplo ||
+                  "Describe con el mayor detalle posible el problema."
+                }
                 required
-              >
-                {categoriasFiltradas.length > 0 ? (
-                  categoriasFiltradas.map((categoria) => (
-                    <MenuItem key={categoria.id} value={categoria.id}>
-                      {categoria.nombre}
-                    </MenuItem>
-                  ))
-                ) : (
-                  <MenuItem disabled>
-                    {formulario.system_id
-                      ? "No hay tipos disponibles"
-                      : "Selecciona un sistema primero"}
-                  </MenuItem>
-                )}
-              </TextField>
-            </Grid>
-
-            <Grid item xs={12} md={4}>
-              <TextField
-                select
-                fullWidth
-                label="Prioridad"
-                name="priority_id"
-                value={formulario.priority_id}
-                onChange={cambiarValor}
-                required
-              >
-                {prioridades.map((prioridad) => (
-                  <MenuItem key={prioridad.id} value={prioridad.id}>
-                    {prioridad.nombre}
-                  </MenuItem>
-                ))}
-              </TextField>
+              />
             </Grid>
 
             <Grid item xs={12}>
@@ -317,7 +374,8 @@ function NuevoTicket() {
                 <Typography fontWeight={800}>Evidencias</Typography>
 
                 <Typography variant="body2" color="text.secondary">
-                  Adjunta fotos, capturas, documentos o videos relacionados con el problema.
+                  Adjunta fotos, capturas, documentos o videos relacionados con
+                  el problema.
                 </Typography>
               </Box>
             </Grid>
@@ -439,7 +497,13 @@ function NuevoTicket() {
                       </Box>
 
                       <Chip
-                        label={esImagen(archivo) ? "Imagen" : esVideo(archivo) ? "Video" : "Archivo"}
+                        label={
+                          esImagen(archivo)
+                            ? "Imagen"
+                            : esVideo(archivo)
+                              ? "Video"
+                              : "Archivo"
+                        }
                         size="small"
                       />
 
@@ -463,13 +527,18 @@ function NuevoTicket() {
 
           <Box
             mt={4}
-            pt={3}
             display="flex"
             gap={2}
             justifyContent="flex-end"
             flexDirection={{ xs: "column", sm: "row" }}
             sx={{
+              position: "sticky",
+              bottom: 0,
+              py: 2,
+              px: 1,
+              bgcolor: "#fff",
               borderTop: "1px solid #e5e7eb",
+              zIndex: 20,
             }}
           >
             <Button
@@ -489,7 +558,7 @@ function NuevoTicket() {
             <Button
               type="submit"
               variant="contained"
-              disabled={cargando}
+              disabled={cargando || !formularioCompleto}
               sx={{
                 borderRadius: 2,
                 textTransform: "none",

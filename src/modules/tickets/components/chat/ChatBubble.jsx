@@ -2,109 +2,161 @@ import {
   Avatar,
   Box,
   Chip,
-  Divider,
   IconButton,
   Stack,
   Typography,
 } from "@mui/material";
 import DeleteIcon from "@mui/icons-material/Delete";
-import InsertDriveFileIcon from "@mui/icons-material/InsertDriveFile";
+import AttachmentCard from "./AttachmentCard";
 
 export default function ChatBubble({
   msg,
   esMio,
   inicial,
   abrirArchivo,
+  getArchivoUrl,
   puedeEliminarMensaje,
   eliminarMensaje,
 }) {
+  const propio = esMio(msg);
+  const interno = msg.visibility === "private";
+
   return (
     <Box
       sx={{
-        position: "relative",
-        maxWidth: "75%",
-        p: 1.5,
-        borderRadius: 3,
-        bgcolor: esMio(msg)
-          ? "#dbeafe"
-          : msg.visibility === "private"
-            ? "#fef3c7"
-            : "#ffffff",
-        border: "1px solid #e5e7eb",
-        boxShadow: 1,
+        display: "flex",
+        alignItems: "flex-end",
+        gap: 1,
+        flexDirection: propio ? "row-reverse" : "row",
+        maxWidth: { xs: "92%", md: "78%" },
       }}
     >
-      <Stack direction="row" spacing={1} alignItems="center" mb={0.5}>
-        <Avatar sx={{ width: 28, height: 28, fontSize: 14 }}>
-          {inicial(msg)}
-        </Avatar>
+      <Avatar
+        sx={{
+          width: 30,
+          height: 30,
+          fontSize: 13,
+          fontWeight: 800,
+          bgcolor: propio ? "#93c5fd" : "#cbd5e1",
+          color: "#1f2937",
+        }}
+      >
+        {inicial(msg)}
+      </Avatar>
 
-        <Typography fontWeight="bold" variant="body2">
-          {msg.user?.name || "Usuario"}
-        </Typography>
+      <Box
+        sx={{
+          position: "relative",
+          px: 1.7,
+          py: 1.2,
+          minWidth: 120,
+          maxWidth: "100%",
+          borderRadius: propio ? "18px 18px 4px 18px" : "18px 18px 18px 4px",
+          bgcolor: propio ? "#dbeafe" : interno ? "#fef3c7" : "#ffffff",
+          border: interno ? "1px solid #facc15" : "1px solid #e5e7eb",
+          boxShadow: "0 1px 2px rgba(15, 23, 42, 0.12)",
+          wordBreak: "break-word",
+          "&:hover .delete-btn": {
+            opacity: 1,
+          },
+        }}
+      >
+        <Stack
+          direction="row"
+          alignItems="center"
+          spacing={1}
+          sx={{ mb: msg.message ? 0.6 : 0 }}
+        >
+          <Typography
+            sx={{
+              fontSize: 12,
+              fontWeight: 800,
+              color: propio ? "#1d4ed8" : "#334155",
+            }}
+          >
+            {msg.user?.name || "Usuario"}
+          </Typography>
 
-        {msg.visibility === "private" && (
-          <Chip label="Interno" size="small" color="warning" sx={{ ml: 1 }} />
-        )}
-      </Stack>
-
-      <Divider sx={{ my: 0.5 }} />
-
-      {msg.message && <Typography sx={{ mt: 0.5 }}>{msg.message}</Typography>}
-
-      <Typography sx={{ fontSize: "10px", color: "#999", mt: 0.5 }}>
-        {new Date(msg.created_at).toLocaleString("es-MX", {
-          day: "2-digit",
-          month: "2-digit",
-          year: "numeric",
-          hour: "2-digit",
-          minute: "2-digit",
-        })}
-      </Typography>
-
-      {msg.attachments?.length > 0 && (
-        <Box mt={1}>
-          {msg.attachments.map((file) => (
-            <Box
-              key={file.id}
-              onClick={() => abrirArchivo(file)}
+          {interno && (
+            <Chip
+              label="Interno"
+              size="small"
               sx={{
-                display: "flex",
-                alignItems: "center",
-                gap: 1,
-                mt: 0.5,
-                p: 1,
-                borderRadius: 1,
-                bgcolor: "rgba(0,0,0,0.05)",
-                cursor: "pointer",
-                "&:hover": { bgcolor: "rgba(0,0,0,0.1)" },
+                height: 18,
+                fontSize: 10,
+                fontWeight: 800,
+                bgcolor: "#fde68a",
+                color: "#92400e",
               }}
-            >
-              <InsertDriveFileIcon fontSize="small" color="primary" />
+            />
+          )}
+        </Stack>
 
-              <Typography variant="body2" color="primary" fontWeight={500}>
-                📎 {file.nombre_archivo}
-              </Typography>
-            </Box>
-          ))}
-        </Box>
-      )}
+        {msg.message && (
+          <Typography
+            sx={{
+              fontSize: 14,
+              lineHeight: 1.45,
+              color: "#111827",
+              whiteSpace: "pre-line",
+              pr: 1,
+            }}
+          >
+            {msg.message}
+          </Typography>
+        )}
 
-      {puedeEliminarMensaje(msg) && (
-        <IconButton
-          className="delete-btn"
-          size="small"
-          color="error"
-          onClick={() => eliminarMensaje(msg)}
+        {msg.attachments?.length > 0 && (
+          <Stack spacing={0.8} sx={{ mt: msg.message ? 1 : 0 }}>
+            {msg.attachments.map((file) => (
+              <AttachmentCard
+                key={file.id}
+                file={file}
+                abrirArchivo={abrirArchivo}
+                getArchivoUrl={getArchivoUrl}
+              />
+            ))}
+          </Stack>
+        )}
+
+        <Typography
           sx={{
-            position: "absolute",
-            top: 8,
-            right: 8,
+            mt: 0.7,
+            fontSize: 10.5,
+            color: "#64748b",
+            textAlign: "right",
+            fontWeight: 600,
           }}
         >
-          <DeleteIcon fontSize="small" />
-        </IconButton>
-      )}
+          {new Date(msg.created_at).toLocaleTimeString("es-MX", {
+            hour: "2-digit",
+            minute: "2-digit",
+          })}
+        </Typography>
+
+        {puedeEliminarMensaje(msg) && (
+          <IconButton
+            className="delete-btn"
+            size="small"
+            color="error"
+            onClick={() => eliminarMensaje(msg)}
+            sx={{
+              position: "absolute",
+              top: 4,
+              right: propio ? "auto" : 4,
+              left: propio ? 4 : "auto",
+              opacity: 0,
+              transition: "0.15s ease",
+              bgcolor: "rgba(255,255,255,0.85)",
+              "&:hover": {
+                bgcolor: "#fee2e2",
+              },
+            }}
+          >
+            <DeleteIcon fontSize="small" />
+          </IconButton>
+        )}
+      </Box>
     </Box>
   );
 }

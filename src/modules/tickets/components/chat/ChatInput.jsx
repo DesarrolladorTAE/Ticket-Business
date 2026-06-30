@@ -1,14 +1,18 @@
 import {
   Box,
   Button,
+  IconButton,
   MenuItem,
   Paper,
   Stack,
   TextField,
+  Tooltip,
   Typography,
 } from "@mui/material";
 import AttachFileIcon from "@mui/icons-material/AttachFile";
 import InsertDriveFileIcon from "@mui/icons-material/InsertDriveFile";
+import SendIcon from "@mui/icons-material/Send";
+import CloseIcon from "@mui/icons-material/Close";
 
 export default function ChatInput({
   text,
@@ -21,37 +25,91 @@ export default function ChatInput({
   enviando,
   enviarMensaje,
 }) {
+  const puedeEnviar = !enviando && (text.trim() || archivo);
+
+  const handleKeyDown = (e) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+
+      if (puedeEnviar) {
+        enviarMensaje();
+      }
+    }
+  };
+
   return (
-    <Paper sx={{ p: 2, borderRadius: 3 }}>
+    <Paper
+      sx={{
+        p: 2,
+        borderRadius: 3,
+        border: "1px solid #e5e7eb",
+        bgcolor: "#ffffff",
+      }}
+    >
       {archivo && (
         <Box
           sx={{
             display: "flex",
             alignItems: "center",
             gap: 1,
-            mb: 1,
+            mb: 1.5,
             p: 1,
-            bgcolor: "#f0f0f0",
-            borderRadius: 1,
+            bgcolor: "#f8fafc",
+            border: "1px solid #e5e7eb",
+            borderRadius: 2,
           }}
         >
-          <InsertDriveFileIcon fontSize="small" />
-          <Typography variant="body2">{archivo.name}</Typography>
-          <Button
+          <Box
+            sx={{
+              width: 34,
+              height: 34,
+              borderRadius: 2,
+              bgcolor: "#eff6ff",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              flexShrink: 0,
+            }}
+          >
+            <InsertDriveFileIcon fontSize="small" color="primary" />
+          </Box>
+
+          <Box sx={{ minWidth: 0 }}>
+            <Typography
+              sx={{
+                fontSize: 12,
+                fontWeight: 800,
+                color: "#1f2937",
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                whiteSpace: "nowrap",
+                maxWidth: 260,
+              }}
+            >
+              {archivo.name}
+            </Typography>
+
+            <Typography sx={{ fontSize: 10.5, color: "#64748b" }}>
+              Archivo listo para enviar
+            </Typography>
+          </Box>
+
+          <IconButton
             size="small"
             color="error"
             onClick={() => setArchivo(null)}
             sx={{ ml: "auto" }}
           >
-            Quitar
-          </Button>
+            <CloseIcon fontSize="small" />
+          </IconButton>
         </Box>
       )}
 
-      <Stack direction={{ xs: "column", md: "row" }} spacing={2}>
+      <Stack direction={{ xs: "column", md: "row" }} spacing={1.5}>
         {puedeGestionar && (
           <TextField
             select
+            size="small"
             label="Tipo"
             value={visibility}
             onChange={(e) => setVisibility(e.target.value)}
@@ -65,7 +123,7 @@ export default function ChatInput({
         <TextField
           fullWidth
           multiline
-          minRows={2}
+          minRows={1}
           maxRows={4}
           placeholder={
             visibility === "internal"
@@ -74,29 +132,37 @@ export default function ChatInput({
           }
           value={text}
           onChange={(e) => setText(e.target.value)}
+          onKeyDown={handleKeyDown}
         />
 
-        <Button
-          component="label"
-          variant="outlined"
-          startIcon={<AttachFileIcon />}
-        >
-          Archivo
-          <input
-            hidden
-            type="file"
-            accept="*/*"
-            onChange={(e) => setArchivo(e.target.files?.[0] || null)}
-          />
-        </Button>
+        <Tooltip title="Adjuntar archivo">
+          <Button component="label" variant="outlined" sx={{ minWidth: 52 }}>
+            <AttachFileIcon />
+            <input
+              hidden
+              type="file"
+              accept="*/*"
+              onChange={(e) => setArchivo(e.target.files?.[0] || null)}
+            />
+          </Button>
+        </Tooltip>
 
-        <Button
-          variant="contained"
-          disabled={enviando || (!text.trim() && !archivo)}
-          onClick={enviarMensaje}
-        >
-          {enviando ? "Enviando..." : "Enviar"}
-        </Button>
+        <Tooltip title="Enviar">
+          <span>
+            <Button
+              variant="contained"
+              disabled={!puedeEnviar}
+              onClick={enviarMensaje}
+              sx={{
+                minWidth: 52,
+                height: "100%",
+                borderRadius: 2,
+              }}
+            >
+              {enviando ? "..." : <SendIcon />}
+            </Button>
+          </span>
+        </Tooltip>
       </Stack>
     </Paper>
   );

@@ -27,7 +27,8 @@ function Sistemas() {
   const [cargando, setCargando] = useState(false);
   const [error, setError] = useState("");
 
-  const API_URL = import.meta.env.VITE_API_URL || "https://api.thebusinessticket.com";
+  const API_URL =
+    import.meta.env.VITE_API_URL || "https://api.thebusinessticket.com";
 
   useEffect(() => {
     obtenerSistemas();
@@ -38,7 +39,11 @@ function Sistemas() {
       setError("");
 
       const respuesta = await axiosCliente.get("/systems");
-      setSistemas(respuesta.data.data || respuesta.data || []);
+      setSistemas(
+        (respuesta.data.data || respuesta.data || [])
+          .filter((sistema) => Number(sistema.estado) === 1)
+          .sort((a, b) => Number(a.orden || 999) - Number(b.orden || 999)),
+      );
     } catch (error) {
       console.log("ERROR SISTEMAS:", error.response?.data || error);
       setError("No se pudieron cargar los sistemas");
@@ -110,7 +115,9 @@ function Sistemas() {
       if (errores) {
         setError(Object.values(errores).flat().join(" "));
       } else {
-        setError(error.response?.data?.message || "No se pudo crear el sistema");
+        setError(
+          error.response?.data?.message || "No se pudo crear el sistema",
+        );
       }
     } finally {
       setCargando(false);
@@ -124,7 +131,7 @@ function Sistemas() {
       return logo;
     }
 
-    return `${API_URL}/storage/${logo}`;
+    return `/${logo}`;
   };
 
   if (loading) {
@@ -377,8 +384,12 @@ function Sistemas() {
 
                     <Chip
                       size="small"
-                      label={Number(sistema.estado) === 1 ? "Activo" : "Inactivo"}
-                      color={Number(sistema.estado) === 1 ? "success" : "default"}
+                      label={
+                        Number(sistema.estado) === 1 ? "Activo" : "Inactivo"
+                      }
+                      color={
+                        Number(sistema.estado) === 1 ? "success" : "default"
+                      }
                     />
                   </Box>
 
@@ -397,15 +408,20 @@ function Sistemas() {
                   </Typography>
                 </Box>
 
-                <Box mt={2} display="flex" justifyContent="space-between" alignItems="center">
+                <Box
+                  mt={2}
+                  display="flex"
+                  justifyContent="space-between"
+                  alignItems="center"
+                >
                   <Chip
                     label={sistema.prefijo || "TCK"}
                     size="small"
                     sx={{
                       fontWeight: 800,
                       borderRadius: 2,
-                      bgcolor: "#eff6ff",
-                      color: "#1d4ed8",
+                      bgcolor: sistema.color_secundario || "#eff6ff",
+                      color: sistema.color || "#1d4ed8",
                     }}
                   />
 

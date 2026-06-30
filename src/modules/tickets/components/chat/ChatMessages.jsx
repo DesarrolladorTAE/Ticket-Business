@@ -9,6 +9,7 @@ export default function ChatMessages({
   esMio,
   inicial,
   abrirArchivo,
+  getArchivoUrl,
   puedeEliminarMensaje,
   eliminarMensaje,
 }) {
@@ -38,6 +39,7 @@ export default function ChatMessages({
                 esMio={esMio}
                 inicial={inicial}
                 abrirArchivo={abrirArchivo}
+                getArchivoUrl={getArchivoUrl}
                 puedeEliminarMensaje={puedeEliminarMensaje}
                 eliminarMensaje={eliminarMensaje}
               />
