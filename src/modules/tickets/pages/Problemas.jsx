@@ -48,8 +48,21 @@ function Problemas() {
         axiosCliente.get("/ticket-categories"),
       ]);
 
-      setSistemas(normalizar(resSistemas));
-      setProblemas(normalizar(resProblemas));
+      const sistemasActivos = normalizar(resSistemas)
+        .filter((sistema) => Number(sistema.estado) === 1)
+        .sort((a, b) => Number(a.orden || 999) - Number(b.orden || 999));
+
+      setSistemas(sistemasActivos);
+
+      setProblemas(
+        normalizar(resProblemas)
+          .filter((problema) => Number(problema.estado) === 1)
+          .filter((problema) =>
+            sistemasActivos.some(
+              (sistema) => String(sistema.id) === String(problema.system_id),
+            ),
+          ),
+      );
     } catch (error) {
       console.log("ERROR PROBLEMAS:", error.response?.data || error);
       setError("No se pudieron cargar los tipos de problema");
@@ -94,7 +107,7 @@ function Problemas() {
       } else {
         setError(
           error.response?.data?.message ||
-            "No se pudo crear el tipo de problema"
+            "No se pudo crear el tipo de problema",
         );
       }
     } finally {
@@ -104,7 +117,7 @@ function Problemas() {
 
   const eliminarProblema = async (id) => {
     const confirmar = window.confirm(
-      "¿Seguro que deseas eliminar este tipo de problema?"
+      "¿Seguro que deseas eliminar este tipo de problema?",
     );
 
     if (!confirmar) return;
@@ -117,14 +130,14 @@ function Problemas() {
       console.log("ERROR ELIMINAR PROBLEMA:", error.response?.data || error);
       setError(
         error.response?.data?.message ||
-          "No se pudo eliminar el tipo de problema"
+          "No se pudo eliminar el tipo de problema",
       );
     }
   };
 
   const obtenerNombreSistema = (systemId) => {
     const sistema = sistemas.find(
-      (item) => String(item.id) === String(systemId)
+      (item) => String(item.id) === String(systemId),
     );
 
     return sistema?.nombre || `Sistema ID: ${systemId}`;
@@ -132,7 +145,7 @@ function Problemas() {
 
   const obtenerPrefijoSistema = (systemId) => {
     const sistema = sistemas.find(
-      (item) => String(item.id) === String(systemId)
+      (item) => String(item.id) === String(systemId),
     );
 
     return sistema?.prefijo || "TCK";
@@ -154,7 +167,8 @@ function Problemas() {
         </Typography>
 
         <Typography variant="body2" color="text.secondary">
-          Administra las categorías de incidencias relacionadas con cada sistema.
+          Administra las categorías de incidencias relacionadas con cada
+          sistema.
         </Typography>
       </Box>
 
@@ -227,140 +241,111 @@ function Problemas() {
         </Box>
       </Paper>
 
-      
       <Paper
-  sx={{
-    p: { xs: 2, md: 3 },
-    borderRadius: 3,
-    boxShadow: 1,
-    border: "1px solid #e5e7eb",
-  }}
->
-  <Box mb={2}>
-    <Typography fontWeight={800}>
-      Problemas registrados
-    </Typography>
-
-    <Typography variant="body2" color="text.secondary">
-      Listado de categorías disponibles por sistema.
-    </Typography>
-  </Box>
-
-
-  <TableContainer
-    sx={{
-      border: "1px solid #e5e7eb",
-      borderRadius: 2,
-      overflowX: "auto",
-    }}
-  >
-    <Table size="small">
-
-      <TableHead
         sx={{
-          bgcolor: "#f8fafc",
+          p: { xs: 2, md: 3 },
+          borderRadius: 3,
+          boxShadow: 1,
+          border: "1px solid #e5e7eb",
         }}
       >
-        <TableRow>
-          <TableCell sx={headCell}>
-            Sistema
-          </TableCell>
+        <Box mb={2}>
+          <Typography fontWeight={800}>Problemas registrados</Typography>
 
-          <TableCell sx={headCell}>
-            Tipo de problema
-          </TableCell>
+          <Typography variant="body2" color="text.secondary">
+            Listado de categorías disponibles por sistema.
+          </Typography>
+        </Box>
 
-          <TableCell sx={headCell}>
-            Prefijo
-          </TableCell>
+        <TableContainer
+          sx={{
+            border: "1px solid #e5e7eb",
+            borderRadius: 2,
+            overflowX: "auto",
+          }}
+        >
+          <Table size="small">
+            <TableHead
+              sx={{
+                bgcolor: "#f8fafc",
+              }}
+            >
+              <TableRow>
+                <TableCell sx={headCell}>Sistema</TableCell>
 
-          <TableCell sx={headCell}>
-            Estado
-          </TableCell>
+                <TableCell sx={headCell}>Tipo de problema</TableCell>
 
-          <TableCell sx={headCell} align="right">
-            Acción
-          </TableCell>
-        </TableRow>
-      </TableHead>
+                <TableCell sx={headCell}>Prefijo</TableCell>
 
+                <TableCell sx={headCell}>Estado</TableCell>
 
-      <TableBody>
-        {problemas.map((problema) => (
-          <TableRow key={problema.id} hover>
+                <TableCell sx={headCell} align="right">
+                  Acción
+                </TableCell>
+              </TableRow>
+            </TableHead>
 
-            <TableCell>
-              {obtenerNombreSistema(problema.system_id)}
-            </TableCell>
+            <TableBody>
+              {problemas.map((problema) => (
+                <TableRow key={problema.id} hover>
+                  <TableCell>
+                    {obtenerNombreSistema(problema.system_id)}
+                  </TableCell>
 
+                  <TableCell>
+                    <Typography fontWeight={700}>{problema.nombre}</Typography>
+                  </TableCell>
 
-            <TableCell>
-              <Typography fontWeight={700}>
-                {problema.nombre}
-              </Typography>
-            </TableCell>
+                  <TableCell>
+                    <Chip
+                      size="small"
+                      label={obtenerPrefijoSistema(problema.system_id)}
+                      sx={{
+                        fontWeight: 800,
+                        borderRadius: 2,
+                        bgcolor: "#eff6ff",
+                        color: "#1d4ed8",
+                      }}
+                    />
+                  </TableCell>
 
+                  <TableCell>
+                    <Chip
+                      size="small"
+                      label={
+                        Number(problema.estado) === 1 ? "Activo" : "Inactivo"
+                      }
+                      color={
+                        Number(problema.estado) === 1 ? "success" : "default"
+                      }
+                    />
+                  </TableCell>
 
-            <TableCell>
-              <Chip
-                size="small"
-                label={obtenerPrefijoSistema(problema.system_id)}
-                sx={{
-                  fontWeight: 800,
-                  borderRadius: 2,
-                  bgcolor: "#eff6ff",
-                  color: "#1d4ed8",
-                }}
-              />
-            </TableCell>
-
-
-            <TableCell>
-              <Chip
-                size="small"
-                label={
-                  Number(problema.estado) === 1
-                    ? "Activo"
-                    : "Inactivo"
-                }
-                color={
-                  Number(problema.estado) === 1
-                    ? "success"
-                    : "default"
-                }
-              />
-            </TableCell>
-
-
-            <TableCell align="right">
-              <Button
-                variant="outlined"
-                color="error"
-                size="small"
-                onClick={() =>
-                  eliminarProblema(problema.id)
-                }
-                sx={{
-                  borderRadius: 2,
-                  textTransform: "none",
-                  fontWeight: 700,
-                }}
-              >
-                Eliminar
-              </Button>
-            </TableCell>
-
-          </TableRow>
-        ))}
-      </TableBody>
-
-    </Table>
-  </TableContainer>
-</Paper>
+                  <TableCell align="right">
+                    <Button
+                      variant="outlined"
+                      color="error"
+                      size="small"
+                      onClick={() => eliminarProblema(problema.id)}
+                      sx={{
+                        borderRadius: 2,
+                        textTransform: "none",
+                        fontWeight: 700,
+                      }}
+                    >
+                      Eliminar
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </TableContainer>
+      </Paper>
     </Box>
   );
 }
-  const headCell = {
+const headCell = {
   fontWeight: 800,
   color: "#334155",
 };

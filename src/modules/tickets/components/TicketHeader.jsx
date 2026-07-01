@@ -19,7 +19,9 @@ export default function TicketHeader({
   puedeCambiarEstado,
   puedeResolver,
   puedeEliminar,
+  puedeGestionar,
   cambiarEstado,
+  tomarTicket,
   resolverTicket,
   eliminarTicket,
   calcularTiempoResolucion,
@@ -78,8 +80,27 @@ export default function TicketHeader({
             />
           )}
 
+          {puedeGestionar && !ticket?.responsable && (
+            <Button
+              variant="contained"
+              color="primary"
+              onClick={tomarTicket}
+              sx={{
+                fontWeight: 700,
+                textTransform: "none",
+                borderRadius: 2,
+              }}
+            >
+              Tomar ticket
+            </Button>
+          )}
+
           {puedeResolver && (
-            <Button variant="contained" color="success" onClick={resolverTicket}>
+            <Button
+              variant="contained"
+              color="success"
+              onClick={resolverTicket}
+            >
               Resolver
             </Button>
           )}
@@ -100,7 +121,19 @@ export default function TicketHeader({
         </Grid>
 
         <Grid item xs={12} md={4}>
-          <Info label="Agente asignado" value={agenteAsignado} />
+          {ticket?.responsable ? (
+            <Chip
+              color="success"
+              label={`Asignado a ${ticket.responsable.name}`}
+              sx={{ fontWeight: 700 }}
+            />
+          ) : (
+            <Chip
+              color="warning"
+              label="Sin asignar"
+              sx={{ fontWeight: 700 }}
+            />
+          )}
         </Grid>
 
         <Grid item xs={12} md={4}>

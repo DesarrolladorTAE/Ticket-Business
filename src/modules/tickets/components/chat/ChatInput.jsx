@@ -2,13 +2,13 @@ import {
   Box,
   Button,
   IconButton,
-  MenuItem,
   Paper,
   Stack,
   TextField,
   Tooltip,
   Typography,
 } from "@mui/material";
+
 import AttachFileIcon from "@mui/icons-material/AttachFile";
 import InsertDriveFileIcon from "@mui/icons-material/InsertDriveFile";
 import SendIcon from "@mui/icons-material/Send";
@@ -19,8 +19,6 @@ export default function ChatInput({
   setText,
   archivo,
   setArchivo,
-  visibility,
-  setVisibility,
   puedeGestionar,
   enviando,
   enviarMensaje,
@@ -106,28 +104,14 @@ export default function ChatInput({
       )}
 
       <Stack direction={{ xs: "column", md: "row" }} spacing={1.5}>
-        {puedeGestionar && (
-          <TextField
-            select
-            size="small"
-            label="Tipo"
-            value={visibility}
-            onChange={(e) => setVisibility(e.target.value)}
-            sx={{ minWidth: { xs: "100%", md: 190 } }}
-          >
-            <MenuItem value="external">Mensaje externo</MenuItem>
-            <MenuItem value="internal">Nota interna</MenuItem>
-          </TextField>
-        )}
-
         <TextField
           fullWidth
           multiline
           minRows={1}
           maxRows={4}
           placeholder={
-            visibility === "internal"
-              ? "Escribe una nota interna..."
+            puedeGestionar
+              ? "Escribe una respuesta o nota interna..."
               : "Escribe un mensaje..."
           }
           value={text}
@@ -147,22 +131,53 @@ export default function ChatInput({
           </Button>
         </Tooltip>
 
-        <Tooltip title="Enviar">
-          <span>
+        {puedeGestionar ? (
+          <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
             <Button
               variant="contained"
               disabled={!puedeEnviar}
-              onClick={enviarMensaje}
+              onClick={() => enviarMensaje("public")}
               sx={{
-                minWidth: 52,
-                height: "100%",
+                minWidth: 170,
                 borderRadius: 2,
+                textTransform: "none",
+                fontWeight: 700,
               }}
             >
-              {enviando ? "..." : <SendIcon />}
+              Responder al cliente
             </Button>
-          </span>
-        </Tooltip>
+
+            <Button
+              variant="outlined"
+              disabled={!puedeEnviar}
+              onClick={() => enviarMensaje("private")}
+              sx={{
+                minWidth: 150,
+                borderRadius: 2,
+                textTransform: "none",
+                fontWeight: 700,
+              }}
+            >
+              Nota interna
+            </Button>
+          </Stack>
+        ) : (
+          <Tooltip title="Enviar">
+            <span>
+              <Button
+                variant="contained"
+                disabled={!puedeEnviar}
+                onClick={() => enviarMensaje("public")}
+                sx={{
+                  minWidth: 52,
+                  borderRadius: 2,
+                }}
+              >
+                {enviando ? "..." : <SendIcon />}
+              </Button>
+            </span>
+          </Tooltip>
+        )}
       </Stack>
     </Paper>
   );

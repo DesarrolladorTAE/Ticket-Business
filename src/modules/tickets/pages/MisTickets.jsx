@@ -170,7 +170,11 @@ function MisTickets() {
 
     if (!logo) return null;
 
-    return `https://api.thebusinessticket.com/storage/${logo}`;
+    if (logo.startsWith("http")) {
+      return logo;
+    }
+
+    return `/${logo}`;
   };
 
   const nombreAgente = (ticket) => {

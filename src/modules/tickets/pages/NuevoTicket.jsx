@@ -160,6 +160,12 @@ function NuevoTicket() {
     formulario.titulo.trim() &&
     formulario.descripcion.trim();
 
+  const mostrarCategorias = Boolean(formulario.system_id);
+  const mostrarPrioridades = Boolean(formulario.category_id);
+  const mostrarInformacion = Boolean(formulario.priority_id);
+  const mostrarEvidencias =
+    formulario.titulo.trim() && formulario.descripcion.trim();
+
   const crearTicket = async (e) => {
     e.preventDefault();
 
@@ -267,261 +273,251 @@ function NuevoTicket() {
               </Grid>
             </Grid>
 
-            <Grid item xs={12}>
-              <Typography fontWeight={800} mb={1}>
-                Tipo de problema
-              </Typography>
+            {mostrarCategorias && (
+              <Grid item xs={12}>
+                <Typography fontWeight={800} mb={1}>
+                  Tipo de problema
+                </Typography>
 
-              {!formulario.system_id ? (
-                <Alert severity="info">
-                  Selecciona primero un sistema para ver los tipos de problema
-                  disponibles.
-                </Alert>
-              ) : categoriasFiltradas.length > 0 ? (
+                {categoriasFiltradas.length > 0 ? (
+                  <Grid container spacing={2}>
+                    {categoriasFiltradas.map((categoria) => (
+                      <Grid item xs={12} sm={6} md={3} key={categoria.id}>
+                        <CategoryCard
+                          categoria={categoria}
+                          selected={
+                            String(formulario.category_id) ===
+                            String(categoria.id)
+                          }
+                          onClick={() => seleccionarCategoria(categoria.id)}
+                        />
+                      </Grid>
+                    ))}
+                  </Grid>
+                ) : (
+                  <Alert severity="warning">
+                    No hay tipos de problema disponibles para este sistema.
+                  </Alert>
+                )}
+              </Grid>
+            )}
+
+            {mostrarPrioridades && (
+              <Grid item xs={12}>
+                <Typography fontWeight={800} mb={1}>
+                  Prioridad
+                </Typography>
+
                 <Grid container spacing={2}>
-                  {categoriasFiltradas.map((categoria) => (
-                    <Grid item xs={12} sm={6} md={3} key={categoria.id}>
-                      <CategoryCard
-                        categoria={categoria}
+                  {prioridades.map((prioridad) => (
+                    <Grid item xs={12} sm={6} md={3} key={prioridad.id}>
+                      <PriorityCard
+                        prioridad={prioridad}
                         selected={
-                          String(formulario.category_id) ===
-                          String(categoria.id)
+                          String(formulario.priority_id) ===
+                          String(prioridad.id)
                         }
-                        onClick={() => seleccionarCategoria(categoria.id)}
+                        onClick={() => seleccionarPrioridad(prioridad.id)}
                       />
                     </Grid>
                   ))}
                 </Grid>
-              ) : (
-                <Alert severity="warning">
-                  No hay tipos de problema disponibles para este sistema.
-                </Alert>
-              )}
-            </Grid>
-
-            <Grid item xs={12}>
-              <Typography fontWeight={800} mb={1}>
-                Prioridad
-              </Typography>
-
-              <Grid container spacing={2}>
-                {prioridades.map((prioridad) => (
-                  <Grid item xs={12} sm={6} md={3} key={prioridad.id}>
-                    <PriorityCard
-                      prioridad={prioridad}
-                      selected={
-                        String(formulario.priority_id) === String(prioridad.id)
-                      }
-                      onClick={() => seleccionarPrioridad(prioridad.id)}
-                    />
-                  </Grid>
-                ))}
               </Grid>
-            </Grid>
+            )}
 
-            <Grid item xs={12}>
-              <Box
-                sx={{
-                  borderTop: "1px solid #e5e7eb",
-                  pt: 2,
-                  mt: 1,
-                }}
-              >
-                <Typography fontWeight={800}>Información del ticket</Typography>
-              </Box>
-            </Grid>
+            {mostrarInformacion && (
+              <>
+                <Grid item xs={12}>
+                  <Box sx={{ borderTop: "1px solid #e5e7eb", pt: 2, mt: 1 }}>
+                    <Typography fontWeight={800}>
+                      Información del ticket
+                    </Typography>
+                  </Box>
+                </Grid>
 
-            <Grid item xs={12}>
-              <TextField
-                fullWidth
-                label="¿Qué problema estás presentando?"
-                name="titulo"
-                value={formulario.titulo}
-                onChange={cambiarValor}
-                placeholder={
-                  categoriaSeleccionada?.titulo_ejemplo ||
-                  "Describe brevemente el problema"
-                }
-                required
-              />
-            </Grid>
-
-            <Grid item xs={12}>
-              <TextField
-                fullWidth
-                multiline
-                rows={5}
-                label="Cuéntanos un poco más"
-                name="descripcion"
-                value={formulario.descripcion}
-                onChange={cambiarValor}
-                placeholder={
-                  categoriaSeleccionada?.descripcion_ejemplo ||
-                  "Describe con el mayor detalle posible el problema."
-                }
-                required
-              />
-            </Grid>
-
-            <Grid item xs={12}>
-              <Box
-                sx={{
-                  borderTop: "1px solid #e5e7eb",
-                  pt: 2,
-                  mt: 1,
-                }}
-              >
-                <Typography fontWeight={800}>Evidencias</Typography>
-
-                <Typography variant="body2" color="text.secondary">
-                  Adjunta fotos, capturas, documentos o videos relacionados con
-                  el problema.
-                </Typography>
-              </Box>
-            </Grid>
-
-            <Grid item xs={12}>
-              <Box
-                onDragOver={onDragOver}
-                onDragLeave={onDragLeave}
-                onDrop={onDrop}
-                sx={{
-                  border: dragActivo
-                    ? "2px dashed #2563eb"
-                    : "2px dashed #cbd5e1",
-                  borderRadius: 3,
-                  p: 3,
-                  bgcolor: dragActivo ? "#eff6ff" : "#f8fafc",
-                  textAlign: "center",
-                  transition: "0.2s ease",
-                }}
-              >
-                <InsertDriveFileIcon color="primary" />
-
-                <Typography fontWeight={800} mt={1}>
-                  Arrastra archivos aquí
-                </Typography>
-
-                <Typography variant="body2" color="text.secondary" mb={2}>
-                  También puedes seleccionar múltiples archivos desde tu equipo.
-                </Typography>
-
-                <Button
-                  variant="outlined"
-                  component="label"
-                  sx={{
-                    borderRadius: 2,
-                    textTransform: "none",
-                    fontWeight: 700,
-                  }}
-                >
-                  Seleccionar archivos
-                  <input
-                    hidden
-                    multiple
-                    type="file"
-                    accept="image/*,video/*,.jfif,.pdf,.doc,.docx,.xls,.xlsx,.txt,.zip"
-                    onChange={cambiarArchivos}
+                <Grid item xs={12}>
+                  <TextField
+                    fullWidth
+                    label="¿Qué problema estás presentando?"
+                    name="titulo"
+                    value={formulario.titulo}
+                    onChange={cambiarValor}
+                    placeholder={
+                      categoriaSeleccionada?.titulo_ejemplo ||
+                      "Describe brevemente el problema"
+                    }
+                    required
                   />
-                </Button>
-              </Box>
-            </Grid>
+                </Grid>
 
-            {archivos.length > 0 && (
-              <Grid item xs={12}>
-                <Stack spacing={1.5}>
-                  {archivos.map((archivo, index) => (
-                    <Paper
-                      key={`${archivo.name}-${index}`}
-                      sx={{
-                        p: 1.5,
-                        borderRadius: 2,
-                        border: "1px solid #e5e7eb",
-                        display: "flex",
-                        alignItems: "center",
-                        gap: 2,
-                      }}
-                    >
-                      {esImagen(archivo) ? (
-                        <Box
-                          component="img"
-                          src={URL.createObjectURL(archivo)}
-                          alt={archivo.name}
+                <Grid item xs={12}>
+                  <TextField
+                    fullWidth
+                    multiline
+                    rows={5}
+                    label="Cuéntanos un poco más"
+                    name="descripcion"
+                    value={formulario.descripcion}
+                    onChange={cambiarValor}
+                    placeholder={
+                      categoriaSeleccionada?.descripcion_ejemplo ||
+                      "Describe con el mayor detalle posible el problema."
+                    }
+                    required
+                  />
+                </Grid>
+              </>
+            )}
+
+            {mostrarEvidencias && (
+              <>
+                <Grid item xs={12}>
+                  <Box sx={{ borderTop: "1px solid #e5e7eb", pt: 2, mt: 1 }}>
+                    <Typography fontWeight={800}>Evidencias</Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      Adjunta fotos, capturas, documentos o videos relacionados
+                      con el problema.
+                    </Typography>
+                  </Box>
+                </Grid>
+
+                <Grid item xs={12}>
+                  <Box
+                    onDragOver={onDragOver}
+                    onDragLeave={onDragLeave}
+                    onDrop={onDrop}
+                    sx={{
+                      border: dragActivo
+                        ? "2px dashed #2563eb"
+                        : "2px dashed #cbd5e1",
+                      borderRadius: 3,
+                      p: 3,
+                      bgcolor: dragActivo ? "#eff6ff" : "#f8fafc",
+                      textAlign: "center",
+                      transition: "0.2s ease",
+                    }}
+                  >
+                    <InsertDriveFileIcon color="primary" />
+
+                    <Typography fontWeight={800} mt={1}>
+                      Arrastra archivos aquí
+                    </Typography>
+
+                    <Typography variant="body2" color="text.secondary" mb={2}>
+                      También puedes seleccionar múltiples archivos desde tu
+                      equipo.
+                    </Typography>
+
+                    <Button variant="outlined" component="label">
+                      Seleccionar archivos
+                      <input
+                        hidden
+                        multiple
+                        type="file"
+                        accept="image/*,video/*,.jfif,.pdf,.doc,.docx,.xls,.xlsx,.txt,.zip"
+                        onChange={cambiarArchivos}
+                      />
+                    </Button>
+                  </Box>
+                </Grid>
+
+                {archivos.length > 0 && (
+                  <Grid item xs={12}>
+                    <Stack spacing={1.5}>
+                      {archivos.map((archivo, index) => (
+                        <Paper
+                          key={`${archivo.name}-${index}`}
                           sx={{
-                            width: 56,
-                            height: 56,
-                            objectFit: "cover",
+                            p: 1.5,
                             borderRadius: 2,
                             border: "1px solid #e5e7eb",
-                            flexShrink: 0,
-                          }}
-                        />
-                      ) : esVideo(archivo) ? (
-                        <Box
-                          component="video"
-                          src={URL.createObjectURL(archivo)}
-                          sx={{
-                            width: 56,
-                            height: 56,
-                            objectFit: "cover",
-                            borderRadius: 2,
-                            border: "1px solid #e5e7eb",
-                            flexShrink: 0,
-                          }}
-                        />
-                      ) : (
-                        <Box
-                          sx={{
-                            width: 56,
-                            height: 56,
-                            borderRadius: 2,
-                            bgcolor: "#e5e7eb",
                             display: "flex",
                             alignItems: "center",
-                            justifyContent: "center",
-                            flexShrink: 0,
+                            gap: 2,
                           }}
                         >
-                          <InsertDriveFileIcon />
-                        </Box>
-                      )}
+                          {esImagen(archivo) ? (
+                            <Box
+                              component="img"
+                              src={URL.createObjectURL(archivo)}
+                              alt={archivo.name}
+                              sx={{
+                                width: 56,
+                                height: 56,
+                                objectFit: "cover",
+                                borderRadius: 2,
+                                border: "1px solid #e5e7eb",
+                                flexShrink: 0,
+                              }}
+                            />
+                          ) : esVideo(archivo) ? (
+                            <Box
+                              component="video"
+                              src={URL.createObjectURL(archivo)}
+                              sx={{
+                                width: 56,
+                                height: 56,
+                                objectFit: "cover",
+                                borderRadius: 2,
+                                border: "1px solid #e5e7eb",
+                                flexShrink: 0,
+                              }}
+                            />
+                          ) : (
+                            <Box
+                              sx={{
+                                width: 56,
+                                height: 56,
+                                borderRadius: 2,
+                                bgcolor: "#e5e7eb",
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "center",
+                                flexShrink: 0,
+                              }}
+                            >
+                              <InsertDriveFileIcon />
+                            </Box>
+                          )}
 
-                      <Box sx={{ minWidth: 0, flex: 1 }}>
-                        <Typography fontWeight={700} noWrap>
-                          {archivo.name}
-                        </Typography>
+                          <Box sx={{ minWidth: 0, flex: 1 }}>
+                            <Typography fontWeight={700} noWrap>
+                              {archivo.name}
+                            </Typography>
 
-                        <Typography variant="caption" color="text.secondary">
-                          {(archivo.size / 1024 / 1024).toFixed(2)} MB
-                        </Typography>
-                      </Box>
+                            <Typography
+                              variant="caption"
+                              color="text.secondary"
+                            >
+                              {(archivo.size / 1024 / 1024).toFixed(2)} MB
+                            </Typography>
+                          </Box>
 
-                      <Chip
-                        label={
-                          esImagen(archivo)
-                            ? "Imagen"
-                            : esVideo(archivo)
-                              ? "Video"
-                              : "Archivo"
-                        }
-                        size="small"
-                      />
+                          <Chip
+                            label={
+                              esImagen(archivo)
+                                ? "Imagen"
+                                : esVideo(archivo)
+                                  ? "Video"
+                                  : "Archivo"
+                            }
+                            size="small"
+                          />
 
-                      <Button
-                        color="error"
-                        size="small"
-                        onClick={() => eliminarArchivo(index)}
-                        sx={{
-                          minWidth: 40,
-                          borderRadius: 2,
-                        }}
-                      >
-                        <DeleteIcon fontSize="small" />
-                      </Button>
-                    </Paper>
-                  ))}
-                </Stack>
-              </Grid>
+                          <Button
+                            color="error"
+                            size="small"
+                            onClick={() => eliminarArchivo(index)}
+                            sx={{ minWidth: 40, borderRadius: 2 }}
+                          >
+                            <DeleteIcon fontSize="small" />
+                          </Button>
+                        </Paper>
+                      ))}
+                    </Stack>
+                  </Grid>
+                )}
+              </>
             )}
           </Grid>
 

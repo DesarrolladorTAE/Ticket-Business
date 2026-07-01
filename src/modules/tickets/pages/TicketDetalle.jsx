@@ -77,14 +77,12 @@ export default function TicketDetalle() {
   const [estados, setEstados] = useState([]);
   const [text, setText] = useState("");
   const [archivo, setArchivo] = useState(null);
-  const [visibility, setVisibility] = useState("public"); // cambiar de "external"
   const [loading, setLoading] = useState(true);
   const [enviando, setEnviando] = useState(false);
   const [error, setError] = useState("");
   const [previewOpen, setPreviewOpen] = useState(false);
   const [previewFile, setPreviewFile] = useState(null);
   const [mostrarHistorial, setMostrarHistorial] = useState(false);
-  const [isInternal, setIsInternal] = useState(false);
 
   // ✅ Solo staff puede enviar mensajes internos
   const canSendPrivate =
@@ -217,37 +215,41 @@ export default function TicketDetalle() {
     return `${minutos} minuto(s)`;
   };
 
-  const enviarMensaje = async () => {
-    if (!text.trim() && !archivo) return;
-    setEnviando(true);
-    setError("");
-    try {
-      const res = await axiosCliente.post(`/tickets/${id}/messages`, {
-        message: text.trim(),
-        visibility: isInternal ? "private" : "public",
+const enviarMensaje = async (visibility = "public") => {
+  if (!text.trim() && !archivo) return;
+
+  setEnviando(true);
+  setError("");
+
+  try {
+    const res = await axiosCliente.post(`/tickets/${id}/messages`, {
+      message: text.trim(),
+      visibility,
+    });
+
+    const messageId = res.data.data.id;
+
+    if (archivo) {
+      const formData = new FormData();
+
+      formData.append("ticket_id", id);
+      formData.append("message_id", messageId);
+      formData.append("archivo", archivo);
+
+      await axiosCliente.post("/ticket-attachments", formData, {
+        headers: { "Content-Type": "multipart/form-data" },
       });
-
-      const messageId = res.data.data.id;
-
-      if (archivo) {
-        const formData = new FormData();
-        formData.append("ticket_id", id);
-        formData.append("message_id", messageId);
-        formData.append("archivo", archivo);
-        await axiosCliente.post("/ticket-attachments", formData, {
-          headers: { "Content-Type": "multipart/form-data" },
-        });
-      }
-
-      setText("");
-      setArchivo(null);
-      cargarTodo();
-    } catch (err) {
-      setError(err.response?.data?.message || "No se pudo enviar mensaje");
-    } finally {
-      setEnviando(false);
     }
-  };
+
+    setText("");
+    setArchivo(null);
+    cargarTodo();
+  } catch (err) {
+    setError(err.response?.data?.message || "No se pudo enviar mensaje");
+  } finally {
+    setEnviando(false);
+  }
+};
 
   const eliminarTicket = async () => {
     const confirmar = await Swal.fire({
@@ -287,6 +289,28 @@ export default function TicketDetalle() {
     }
   };
 
+  const tomarTicket = async () => {
+    try {
+      await axiosCliente.post(`/tickets/${id}/take`);
+      await cargarTodo();
+
+      Swal.fire({
+        icon: "success",
+        title: "Ticket tomado",
+        text: "El ticket fue asignado correctamente.",
+        timer: 1800,
+        showConfirmButton: false,
+      });
+    } catch (error) {
+      Swal.fire({
+        icon: "error",
+        title: "No fue posible tomar el ticket",
+        text:
+          error.response?.data?.message || "No fue posible tomar el ticket.",
+      });
+    }
+  };
+
   const resolverTicket = async () => {
     const confirmar = await Swal.fire({
       title: "Resolver ticket",
@@ -316,11 +340,13 @@ export default function TicketDetalle() {
 
   const esMensajeSistema = (msg) => {
     return (
-      msg.type === "system" ||
-      msg.tipo === "system" ||
-      msg.is_system === true ||
-      msg.message?.startsWith("Estado cambiado") ||
-      msg.message?.startsWith("El mensaje de")
+      msg?.type === "system" ||
+      msg?.tipo === "system" ||
+      msg?.is_system === true ||
+      msg?.message?.startsWith("Estado cambiado") ||
+      msg?.message?.includes("tomó el ticket") ||
+      msg?.message?.startsWith("Ticket creado") ||
+      msg?.message?.startsWith("El mensaje de")
     );
   };
   const agenteAsignado = ticket?.responsable
@@ -378,9 +404,11 @@ export default function TicketDetalle() {
         puedeCambiarEstado={puedeCambiarEstado}
         puedeResolver={puedeResolver}
         puedeEliminar={puedeEliminar}
+        puedeGestionar={puedeGestionar}
         cambiarEstado={cambiarEstado}
         resolverTicket={resolverTicket}
         eliminarTicket={eliminarTicket}
+        tomarTicket={tomarTicket}
         calcularTiempoResolucion={calcularTiempoResolucion}
         Info={TicketInfoItem}
       />
@@ -418,8 +446,6 @@ export default function TicketDetalle() {
           setText={setText}
           archivo={archivo}
           setArchivo={setArchivo}
-          visibility={visibility}
-          setVisibility={setVisibility}
           puedeGestionar={puedeGestionar}
           enviando={enviando}
           enviarMensaje={enviarMensaje}
