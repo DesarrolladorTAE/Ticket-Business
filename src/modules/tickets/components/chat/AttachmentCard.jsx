@@ -1,4 +1,5 @@
 import { Box, Typography } from "@mui/material";
+
 import ImageIcon from "@mui/icons-material/Image";
 import PictureAsPdfIcon from "@mui/icons-material/PictureAsPdf";
 import TableChartIcon from "@mui/icons-material/TableChart";
@@ -10,7 +11,6 @@ import InsertDriveFileIcon from "@mui/icons-material/InsertDriveFile";
 export default function AttachmentCard({ file, abrirArchivo, getArchivoUrl }) {
   const nombre = file?.nombre_archivo || "Archivo";
   const extension = nombre.split(".").pop()?.toLowerCase();
-
   const tipo = getTipoArchivo(extension);
   const esImagen = tipo.key === "imagen";
   const url = getArchivoUrl ? getArchivoUrl(file) : "";
@@ -20,19 +20,14 @@ export default function AttachmentCard({ file, abrirArchivo, getArchivoUrl }) {
       <Box
         onClick={() => abrirArchivo(file)}
         sx={{
-          width: 240,
+          width: { xs: 230, sm: 280 },
           maxWidth: "100%",
-          borderRadius: 2.5,
+          borderRadius: 2,
           overflow: "hidden",
           cursor: "pointer",
-          bgcolor: "#f8fafc",
-          border: "1px solid #dbeafe",
-          boxShadow: "0 1px 2px rgba(15, 23, 42, 0.12)",
-          transition: "0.15s ease",
-          "&:hover": {
-            transform: "translateY(-1px)",
-            boxShadow: "0 4px 10px rgba(15, 23, 42, 0.16)",
-          },
+          bgcolor: "#ffffff",
+          border: "1px solid rgba(15,23,42,0.08)",
+          boxShadow: "0 1px 2px rgba(15,23,42,0.12)",
         }}
       >
         <Box
@@ -41,17 +36,17 @@ export default function AttachmentCard({ file, abrirArchivo, getArchivoUrl }) {
           alt={nombre}
           sx={{
             width: "100%",
-            height: 170,
+            height: { xs: 180, sm: 220 },
             display: "block",
             objectFit: "cover",
             bgcolor: "#e5e7eb",
           }}
         />
 
-        <Box sx={{ px: 1, py: 0.8 }}>
+        <Box sx={{ px: 1, py: 0.7 }}>
           <Typography
             sx={{
-              fontSize: 12,
+              fontSize: 11.5,
               fontWeight: 800,
               color: "#1f2937",
               overflow: "hidden",
@@ -62,7 +57,7 @@ export default function AttachmentCard({ file, abrirArchivo, getArchivoUrl }) {
             {nombre}
           </Typography>
 
-          <Typography sx={{ fontSize: 10.5, color: "#64748b" }}>
+          <Typography sx={{ fontSize: 10, color: "#667781" }}>
             Tocar para ampliar
           </Typography>
         </Box>
@@ -77,22 +72,23 @@ export default function AttachmentCard({ file, abrirArchivo, getArchivoUrl }) {
         display: "flex",
         alignItems: "center",
         gap: 1,
-        p: 1,
+        p: 0.9,
         borderRadius: 2,
         bgcolor: tipo.bgcolor,
         border: `1px solid ${tipo.border}`,
         cursor: "pointer",
+        minWidth: 230,
+        maxWidth: 280,
         transition: "0.15s ease",
         "&:hover": {
           bgcolor: tipo.hover,
-          transform: "translateY(-1px)",
         },
       }}
     >
       <Box
         sx={{
-          width: 38,
-          height: 38,
+          width: 36,
+          height: 36,
           borderRadius: 2,
           bgcolor: tipo.iconBg,
           color: tipo.color,
@@ -108,11 +104,11 @@ export default function AttachmentCard({ file, abrirArchivo, getArchivoUrl }) {
       <Box sx={{ minWidth: 0 }}>
         <Typography
           sx={{
-            fontSize: 11,
-            fontWeight: 800,
+            fontSize: 10.5,
+            fontWeight: 900,
             color: tipo.color,
             textTransform: "uppercase",
-            letterSpacing: 0.4,
+            letterSpacing: 0.35,
           }}
         >
           {tipo.label}
@@ -126,13 +122,13 @@ export default function AttachmentCard({ file, abrirArchivo, getArchivoUrl }) {
             overflow: "hidden",
             textOverflow: "ellipsis",
             whiteSpace: "nowrap",
-            maxWidth: 230,
+            maxWidth: 205,
           }}
         >
           {nombre}
         </Typography>
 
-        <Typography sx={{ fontSize: 10.5, color: "#64748b" }}>
+        <Typography sx={{ fontSize: 10, color: "#667781" }}>
           Abrir archivo
         </Typography>
       </Box>

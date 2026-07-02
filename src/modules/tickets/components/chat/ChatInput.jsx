@@ -1,7 +1,10 @@
+import { useState } from "react";
+
 import {
   Box,
   Button,
   IconButton,
+  MenuItem,
   Paper,
   Stack,
   TextField,
@@ -23,14 +26,20 @@ export default function ChatInput({
   enviando,
   enviarMensaje,
 }) {
+  const [tipoMensaje, setTipoMensaje] = useState("private");
+
   const puedeEnviar = !enviando && (text.trim() || archivo);
+
+  const enviar = () => {
+    enviarMensaje(puedeGestionar ? tipoMensaje : "public");
+  };
 
   const handleKeyDown = (e) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
 
       if (puedeEnviar) {
-        enviarMensaje();
+        enviar();
       }
     }
   };
@@ -103,81 +112,78 @@ export default function ChatInput({
         </Box>
       )}
 
-      <Stack direction={{ xs: "column", md: "row" }} spacing={1.5}>
+      <Stack spacing={1.5}>
+        {puedeGestionar && (
+          <TextField
+            select
+            size="small"
+            label="Tipo de mensaje"
+            value={tipoMensaje}
+            onChange={(e) => setTipoMensaje(e.target.value)}
+            sx={{ maxWidth: 260 }}
+          >
+            <MenuItem value="private">Nota interna</MenuItem>
+            <MenuItem value="public">Responder al cliente</MenuItem>
+          </TextField>
+        )}
+
         <TextField
           fullWidth
           multiline
-          minRows={1}
-          maxRows={4}
-          placeholder={
-            puedeGestionar
-              ? "Escribe una respuesta o nota interna..."
-              : "Escribe un mensaje..."
-          }
+          minRows={3}
+          maxRows={3}
+          placeholder="Escribe el mensaje..."
           value={text}
           onChange={(e) => setText(e.target.value)}
           onKeyDown={handleKeyDown}
         />
 
-        <Tooltip title="Adjuntar archivo">
-          <Button component="label" variant="outlined" sx={{ minWidth: 52 }}>
-            <AttachFileIcon />
-            <input
-              hidden
-              type="file"
-              accept="*/*"
-              onChange={(e) => setArchivo(e.target.files?.[0] || null)}
-            />
-          </Button>
-        </Tooltip>
-
-        {puedeGestionar ? (
-          <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
+        <Stack
+          direction={{ xs: "column", sm: "row" }}
+          spacing={1.5}
+          justifyContent="space-between"
+          alignItems={{ xs: "stretch", sm: "center" }}
+        >
+          <Tooltip title="Adjuntar archivo">
             <Button
-              variant="contained"
-              disabled={!puedeEnviar}
-              onClick={() => enviarMensaje("public")}
-              sx={{
-                minWidth: 170,
-                borderRadius: 2,
-                textTransform: "none",
-                fontWeight: 700,
-              }}
-            >
-              Responder al cliente
-            </Button>
-
-            <Button
+              component="label"
               variant="outlined"
-              disabled={!puedeEnviar}
-              onClick={() => enviarMensaje("private")}
+              startIcon={<AttachFileIcon />}
               sx={{
-                minWidth: 150,
                 borderRadius: 2,
                 textTransform: "none",
                 fontWeight: 700,
               }}
             >
-              Nota interna
+              Adjuntar
+              <input
+                hidden
+                type="file"
+                accept="*/*"
+                onChange={(e) => setArchivo(e.target.files?.[0] || null)}
+              />
             </Button>
-          </Stack>
-        ) : (
+          </Tooltip>
+
           <Tooltip title="Enviar">
             <span>
               <Button
                 variant="contained"
                 disabled={!puedeEnviar}
-                onClick={() => enviarMensaje("public")}
+                onClick={enviar}
+                endIcon={!enviando ? <SendIcon /> : null}
                 sx={{
-                  minWidth: 52,
                   borderRadius: 2,
+                  textTransform: "none",
+                  fontWeight: 700,
+                  minWidth: 120,
                 }}
               >
-                {enviando ? "..." : <SendIcon />}
+                {enviando ? "Enviando..." : "Enviar"}
               </Button>
             </span>
           </Tooltip>
-        )}
+        </Stack>
       </Stack>
     </Paper>
   );

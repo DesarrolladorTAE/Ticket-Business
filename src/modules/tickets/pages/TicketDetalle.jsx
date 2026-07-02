@@ -83,6 +83,7 @@ export default function TicketDetalle() {
   const [previewOpen, setPreviewOpen] = useState(false);
   const [previewFile, setPreviewFile] = useState(null);
   const [mostrarHistorial, setMostrarHistorial] = useState(false);
+  const [mostrarInfoTicket, setMostrarInfoTicket] = useState(false);
 
   // ✅ Solo staff puede enviar mensajes internos
   const canSendPrivate =
@@ -98,6 +99,15 @@ export default function TicketDetalle() {
   useEffect(() => {
     scrollBottom();
   }, [messages]);
+
+  useEffect(() => {
+    if (!id || Number.isNaN(Number(id))) {
+      navigate("/mis-tickets", { replace: true });
+      return;
+    }
+
+    cargarTodo();
+  }, [id]);
 
   const cargarTodo = async () => {
     setLoading(true);
@@ -215,41 +225,41 @@ export default function TicketDetalle() {
     return `${minutos} minuto(s)`;
   };
 
-const enviarMensaje = async (visibility = "public") => {
-  if (!text.trim() && !archivo) return;
+  const enviarMensaje = async (visibility = "public") => {
+    if (!text.trim() && !archivo) return;
 
-  setEnviando(true);
-  setError("");
+    setEnviando(true);
+    setError("");
 
-  try {
-    const res = await axiosCliente.post(`/tickets/${id}/messages`, {
-      message: text.trim(),
-      visibility,
-    });
-
-    const messageId = res.data.data.id;
-
-    if (archivo) {
-      const formData = new FormData();
-
-      formData.append("ticket_id", id);
-      formData.append("message_id", messageId);
-      formData.append("archivo", archivo);
-
-      await axiosCliente.post("/ticket-attachments", formData, {
-        headers: { "Content-Type": "multipart/form-data" },
+    try {
+      const res = await axiosCliente.post(`/tickets/${id}/messages`, {
+        message: text.trim(),
+        visibility,
       });
-    }
 
-    setText("");
-    setArchivo(null);
-    cargarTodo();
-  } catch (err) {
-    setError(err.response?.data?.message || "No se pudo enviar mensaje");
-  } finally {
-    setEnviando(false);
-  }
-};
+      const messageId = res.data.data.id;
+
+      if (archivo) {
+        const formData = new FormData();
+
+        formData.append("ticket_id", id);
+        formData.append("message_id", messageId);
+        formData.append("archivo", archivo);
+
+        await axiosCliente.post("/ticket-attachments", formData, {
+          headers: { "Content-Type": "multipart/form-data" },
+        });
+      }
+
+      setText("");
+      setArchivo(null);
+      cargarTodo();
+    } catch (err) {
+      setError(err.response?.data?.message || "No se pudo enviar mensaje");
+    } finally {
+      setEnviando(false);
+    }
+  };
 
   const eliminarTicket = async () => {
     const confirmar = await Swal.fire({
@@ -338,17 +348,17 @@ const enviarMensaje = async (visibility = "public") => {
     ticket?.status ||
     "Abierto";
 
-  const esMensajeSistema = (msg) => {
-    return (
-      msg?.type === "system" ||
-      msg?.tipo === "system" ||
-      msg?.is_system === true ||
-      msg?.message?.startsWith("Estado cambiado") ||
-      msg?.message?.includes("tomó el ticket") ||
-      msg?.message?.startsWith("Ticket creado") ||
-      msg?.message?.startsWith("El mensaje de")
-    );
-  };
+const esMensajeSistema = (msg) => {
+  return (
+    msg?.type === "system" ||
+    msg?.tipo === "system" ||
+    msg?.is_system === true ||
+    msg?.message?.startsWith("Ticket creado") ||
+    msg?.message?.includes("tomó el ticket") ||
+    msg?.message?.startsWith("Estado cambiado") ||
+    msg?.message?.includes("fue eliminado por")
+  );
+};
   const agenteAsignado = ticket?.responsable
     ? ticket.responsable.name
     : "Sin asignar";
@@ -405,10 +415,12 @@ const enviarMensaje = async (visibility = "public") => {
         puedeResolver={puedeResolver}
         puedeEliminar={puedeEliminar}
         puedeGestionar={puedeGestionar}
+        mostrarInfoTicket={mostrarInfoTicket}
+        setMostrarInfoTicket={setMostrarInfoTicket}
         cambiarEstado={cambiarEstado}
+        tomarTicket={tomarTicket}
         resolverTicket={resolverTicket}
         eliminarTicket={eliminarTicket}
-        tomarTicket={tomarTicket}
         calcularTiempoResolucion={calcularTiempoResolucion}
         Info={TicketInfoItem}
       />
@@ -416,14 +428,17 @@ const enviarMensaje = async (visibility = "public") => {
       {/* Chat */}
       <Paper
         sx={{
-          height: { xs: 420, md: 520 },
+          height: { xs: 420, md: 560 },
           overflowY: "auto",
           p: 2,
           mb: 2,
-          bgcolor: "#f8fafc",
           borderRadius: 3,
           border: "1px solid #e5e7eb",
           boxShadow: 1,
+          bgcolor: "#efeae2",
+          backgroundImage:
+            "radial-gradient(rgba(17, 24, 39, 0.06) 1px, transparent 1px)",
+          backgroundSize: "18px 18px",
         }}
       >
         <ChatMessages

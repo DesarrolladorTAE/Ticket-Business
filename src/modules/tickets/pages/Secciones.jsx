@@ -10,19 +10,24 @@ import {
   Grid,
   MenuItem,
   Paper,
-  TextField,
-  Typography,
   Table,
   TableBody,
   TableCell,
   TableContainer,
   TableHead,
   TableRow,
+  TextField,
+  Typography,
 } from "@mui/material";
 
-function Problemas() {
+const headCell = {
+  fontWeight: 800,
+  color: "#334155",
+};
+
+function Secciones() {
   const [sistemas, setSistemas] = useState([]);
-  const [problemas, setProblemas] = useState([]);
+  const [secciones, setSecciones] = useState([]);
 
   const [formulario, setFormulario] = useState({
     nombre: "",
@@ -41,9 +46,10 @@ function Problemas() {
 
   const obtenerDatos = async () => {
     try {
+      setLoading(true);
       setError("");
 
-      const [resSistemas, resProblemas] = await Promise.all([
+      const [resSistemas, resSecciones] = await Promise.all([
         axiosCliente.get("/systems"),
         axiosCliente.get("/ticket-categories"),
       ]);
@@ -54,31 +60,32 @@ function Problemas() {
 
       setSistemas(sistemasActivos);
 
-      setProblemas(
-        normalizar(resProblemas)
-          .filter((problema) => Number(problema.estado) === 1)
-          .filter((problema) =>
+      setSecciones(
+        normalizar(resSecciones)
+          .filter((seccion) => Number(seccion.estado) === 1)
+          .filter((seccion) =>
             sistemasActivos.some(
-              (sistema) => String(sistema.id) === String(problema.system_id),
-            ),
-          ),
+              (sistema) =>
+                String(sistema.id) === String(seccion.system_id)
+            )
+          )
       );
-    } catch (error) {
-      console.log("ERROR PROBLEMAS:", error.response?.data || error);
-      setError("No se pudieron cargar los tipos de problema");
+    } catch (err) {
+      console.error("ERROR SECCIONES:", err.response?.data || err);
+      setError("No se pudieron cargar las secciones.");
     } finally {
       setLoading(false);
     }
   };
 
   const cambiarValor = (e) => {
-    setFormulario({
-      ...formulario,
+    setFormulario((prev) => ({
+      ...prev,
       [e.target.name]: e.target.value,
-    });
+    }));
   };
 
-  const crearProblema = async (e) => {
+  const crearSeccion = async (e) => {
     e.preventDefault();
 
     setError("");
@@ -86,7 +93,7 @@ function Problemas() {
 
     try {
       await axiosCliente.post("/ticket-categories", {
-        nombre: formulario.nombre,
+        nombre: formulario.nombre.trim(),
         system_id: formulario.system_id,
         estado: 1,
       });
@@ -97,17 +104,17 @@ function Problemas() {
       });
 
       obtenerDatos();
-    } catch (error) {
-      console.log("ERROR CREAR PROBLEMA:", error.response?.data || error);
+    } catch (err) {
+      console.error("ERROR CREAR SECCIÓN:", err.response?.data || err);
 
-      const errores = error.response?.data?.errors;
+      const errores = err.response?.data?.errors;
 
       if (errores) {
         setError(Object.values(errores).flat().join(" "));
       } else {
         setError(
-          error.response?.data?.message ||
-            "No se pudo crear el tipo de problema",
+          err.response?.data?.message ||
+            "No se pudo crear la sección."
         );
       }
     } finally {
@@ -115,60 +122,63 @@ function Problemas() {
     }
   };
 
-  const eliminarProblema = async (id) => {
+  const eliminarSeccion = async (id) => {
     const confirmar = window.confirm(
-      "¿Seguro que deseas eliminar este tipo de problema?",
+      "¿Seguro que deseas eliminar esta sección?"
     );
 
     if (!confirmar) return;
 
     try {
-      setError("");
       await axiosCliente.delete(`/ticket-categories/${id}`);
       obtenerDatos();
-    } catch (error) {
-      console.log("ERROR ELIMINAR PROBLEMA:", error.response?.data || error);
+    } catch (err) {
+      console.error("ERROR ELIMINAR SECCIÓN:", err.response?.data || err);
+
       setError(
-        error.response?.data?.message ||
-          "No se pudo eliminar el tipo de problema",
+        err.response?.data?.message ||
+          "No se pudo eliminar la sección."
       );
     }
   };
 
   const obtenerNombreSistema = (systemId) => {
     const sistema = sistemas.find(
-      (item) => String(item.id) === String(systemId),
+      (item) => String(item.id) === String(systemId)
     );
 
-    return sistema?.nombre || `Sistema ID: ${systemId}`;
+    return sistema?.nombre ?? "Sin sistema";
   };
 
   const obtenerPrefijoSistema = (systemId) => {
     const sistema = sistemas.find(
-      (item) => String(item.id) === String(systemId),
+      (item) => String(item.id) === String(systemId)
     );
 
-    return sistema?.prefijo || "TCK";
+    return sistema?.prefijo ?? "TCK";
   };
 
   if (loading) {
     return (
-      <Box display="flex" justifyContent="center" mt={6}>
+      <Box
+        display="flex"
+        justifyContent="center"
+        mt={6}
+      >
         <CircularProgress />
       </Box>
     );
   }
 
-  return (
+    return (
     <Box>
       <Box mb={3}>
         <Typography variant="h5" fontWeight={800}>
-          Tipos de problema
+          Secciones
         </Typography>
 
         <Typography variant="body2" color="text.secondary">
-          Administra las categorías de incidencias relacionadas con cada
-          sistema.
+          Administra las secciones disponibles para cada sistema.
         </Typography>
       </Box>
 
@@ -182,7 +192,7 @@ function Problemas() {
         }}
       >
         <Typography fontWeight={800} mb={2}>
-          Crear tipo de problema
+          Crear sección
         </Typography>
 
         {error && (
@@ -191,7 +201,7 @@ function Problemas() {
           </Alert>
         )}
 
-        <Box component="form" onSubmit={crearProblema}>
+        <Box component="form" onSubmit={crearSeccion}>
           <Grid container spacing={2.5}>
             <Grid item xs={12} md={5}>
               <TextField
@@ -214,7 +224,7 @@ function Problemas() {
             <Grid item xs={12} md={7}>
               <TextField
                 fullWidth
-                label="Tipo de problema"
+                label="Nombre de la sección"
                 name="nombre"
                 value={formulario.nombre}
                 onChange={cambiarValor}
@@ -235,7 +245,7 @@ function Problemas() {
                 px: 3,
               }}
             >
-              {cargando ? "Creando..." : "Crear problema"}
+              {cargando ? "Creando..." : "Crear sección"}
             </Button>
           </Box>
         </Box>
@@ -250,10 +260,10 @@ function Problemas() {
         }}
       >
         <Box mb={2}>
-          <Typography fontWeight={800}>Problemas registrados</Typography>
+          <Typography fontWeight={800}>Secciones registradas</Typography>
 
           <Typography variant="body2" color="text.secondary">
-            Listado de categorías disponibles por sistema.
+            Listado de secciones disponibles por sistema.
           </Typography>
         </Box>
 
@@ -265,20 +275,12 @@ function Problemas() {
           }}
         >
           <Table size="small">
-            <TableHead
-              sx={{
-                bgcolor: "#f8fafc",
-              }}
-            >
+            <TableHead sx={{ bgcolor: "#f8fafc" }}>
               <TableRow>
                 <TableCell sx={headCell}>Sistema</TableCell>
-
-                <TableCell sx={headCell}>Tipo de problema</TableCell>
-
+                <TableCell sx={headCell}>Sección</TableCell>
                 <TableCell sx={headCell}>Prefijo</TableCell>
-
                 <TableCell sx={headCell}>Estado</TableCell>
-
                 <TableCell sx={headCell} align="right">
                   Acción
                 </TableCell>
@@ -286,20 +288,22 @@ function Problemas() {
             </TableHead>
 
             <TableBody>
-              {problemas.map((problema) => (
-                <TableRow key={problema.id} hover>
+              {secciones.map((seccion) => (
+                <TableRow key={seccion.id} hover>
                   <TableCell>
-                    {obtenerNombreSistema(problema.system_id)}
+                    {obtenerNombreSistema(seccion.system_id)}
                   </TableCell>
 
                   <TableCell>
-                    <Typography fontWeight={700}>{problema.nombre}</Typography>
+                    <Typography fontWeight={700}>
+                      {seccion.nombre}
+                    </Typography>
                   </TableCell>
 
                   <TableCell>
                     <Chip
                       size="small"
-                      label={obtenerPrefijoSistema(problema.system_id)}
+                      label={obtenerPrefijoSistema(seccion.system_id)}
                       sx={{
                         fontWeight: 800,
                         borderRadius: 2,
@@ -313,10 +317,14 @@ function Problemas() {
                     <Chip
                       size="small"
                       label={
-                        Number(problema.estado) === 1 ? "Activo" : "Inactivo"
+                        Number(seccion.estado) === 1
+                          ? "Activo"
+                          : "Inactivo"
                       }
                       color={
-                        Number(problema.estado) === 1 ? "success" : "default"
+                        Number(seccion.estado) === 1
+                          ? "success"
+                          : "default"
                       }
                     />
                   </TableCell>
@@ -326,7 +334,7 @@ function Problemas() {
                       variant="outlined"
                       color="error"
                       size="small"
-                      onClick={() => eliminarProblema(problema.id)}
+                      onClick={() => eliminarSeccion(seccion.id)}
                       sx={{
                         borderRadius: 2,
                         textTransform: "none",
@@ -338,6 +346,22 @@ function Problemas() {
                   </TableCell>
                 </TableRow>
               ))}
+
+              {secciones.length === 0 && (
+                <TableRow>
+                  <TableCell colSpan={5}>
+                    <Box
+                      sx={{
+                        py: 4,
+                        textAlign: "center",
+                        color: "text.secondary",
+                      }}
+                    >
+                      No hay secciones registradas.
+                    </Box>
+                  </TableCell>
+                </TableRow>
+              )}
             </TableBody>
           </Table>
         </TableContainer>
@@ -345,9 +369,5 @@ function Problemas() {
     </Box>
   );
 }
-const headCell = {
-  fontWeight: 800,
-  color: "#334155",
-};
 
-export default Problemas;
+export default Secciones;

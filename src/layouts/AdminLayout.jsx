@@ -39,11 +39,10 @@ function AdminLayout() {
 
   const menuItems = [
     { label: "Dashboard", path: "/paneladministrador", roles: ["Administrador", "Agente", "Supervisor"] },
-    { label: "Nuevo ticket", path: "/tickets/nuevo", roles: ["Administrador", "Agente", "Supervisor", "Cliente"] },
     { label: "Mis tickets", path: "/mis-tickets", roles: ["Administrador", "Agente", "Supervisor", "Cliente"] },
     { label: "Crear agente", path: "/agents/nuevo", roles: ["Administrador", "Supervisor"] },
     { label: "Sistemas", path: "/sistemas", roles: ["Administrador"] },
-    { label: "Tipos de problema", path: "/problemas", roles: ["Administrador"] },
+    { label: "Secciones", path: "/secciones", roles: ["Administrador"] },
     { label: "Grupos de soporte", path: "/grupos-soporte", roles: ["Administrador"] },
   ];
 

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import axiosCliente from "../../../services/axiosCliente";
 import Swal from "sweetalert2";
+import NuevoTicketModal from "../components/NuevoTicketModal";
 
 import {
   Alert,
@@ -33,6 +34,7 @@ function MisTickets() {
   const [estadoFiltro, setEstadoFiltro] = useState("todos");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [openNuevoTicket, setOpenNuevoTicket] = useState(false);
 
   useEffect(() => {
     cargarTickets();
@@ -255,15 +257,27 @@ function MisTickets() {
 
   return (
     <Box>
-      <Box mb={3}>
-        <Typography variant="h5" fontWeight={800}>
-          Tickets
-        </Typography>
+      <Box
+        mb={3}
+        display="flex"
+        justifyContent="space-between"
+        alignItems="center"
+        gap={2}
+      >
+        <Box>
+          <Typography variant="h5" fontWeight={800}>
+            Tickets
+          </Typography>
 
-        <Typography variant="body2" color="text.secondary">
-          Consulta tickets, estado actual, problema, prioridad y agente
-          asignado.
-        </Typography>
+          <Typography variant="body2" color="text.secondary">
+            Consulta tickets, estado actual, problema, prioridad y agente
+            asignado.
+          </Typography>
+        </Box>
+
+        <Button variant="contained" onClick={() => setOpenNuevoTicket(true)}>
+          Nuevo ticket
+        </Button>
       </Box>
 
       {error && (
@@ -431,6 +445,11 @@ function MisTickets() {
           </Box>
         )}
       </Paper>
+      <NuevoTicketModal
+        open={openNuevoTicket}
+        onClose={() => setOpenNuevoTicket(false)}
+        onCreated={cargarTickets}
+      />
     </Box>
   );
 }

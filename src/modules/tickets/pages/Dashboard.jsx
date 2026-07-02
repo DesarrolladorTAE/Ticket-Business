@@ -111,18 +111,7 @@ function Dashboard() {
           </Typography>
         </Box>
 
-        <Button
-          variant="contained"
-          onClick={() => navigate("/tickets/nuevo")}
-          sx={{
-            borderRadius: 2,
-            textTransform: "none",
-            fontWeight: 700,
-            px: 3,
-          }}
-        >
-          Nuevo ticket
-        </Button>
+
       </Box>
 
       {error && (

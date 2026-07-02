@@ -4,14 +4,14 @@ import IniciarSesion from "../auth/pages/IniciarSesion";
 import Registro from "../auth/pages/Registro";
 
 import Dashboard from "../modules/tickets/pages/Dashboard";
-import NuevoTicket from "../modules/tickets/pages/NuevoTicket";
+
 import TicketDetalle from "../modules/tickets/pages/TicketDetalle";
 import MisTickets from "../modules/tickets/pages/MisTickets";
 
 import CrearAgente from "../modules/agents/pages/CrearAgente";
 
 import Sistemas from "../modules/tickets/pages/Sistemas";
-import Problemas from "../modules/tickets/pages/Problemas";
+import Secciones from "../modules/tickets/pages/Secciones";
 
 import GruposSoporte from "../modules/support-groups/pages/GruposSoporte";
 
@@ -30,8 +30,7 @@ function RutaPorRol({ roles, children }) {
   const userRoles = usuario?.roles || [];
 
   const permitido =
-    Array.isArray(userRoles) &&
-    roles.some((r) => userRoles.includes(r));
+    Array.isArray(userRoles) && roles.some((r) => userRoles.includes(r));
 
   if (!usuario || !permitido) {
     return <Navigate to="/login" replace />;
@@ -43,7 +42,6 @@ function RutaPorRol({ roles, children }) {
 function AppRouter() {
   return (
     <Routes>
-
       {/* PUBLIC */}
       <Route path="/" element={<Navigate to="/login" replace />} />
       <Route path="/login" element={<IniciarSesion />} />
@@ -57,7 +55,6 @@ function AppRouter() {
           </RutaProtegida>
         }
       >
-
         {/* DASHBOARD */}
         <Route
           path="/paneladministrador"
@@ -68,21 +65,14 @@ function AppRouter() {
           }
         />
 
-        {/* NUEVO TICKET */}
-        <Route
-          path="/tickets/nuevo"
-          element={
-            <RutaPorRol roles={["Administrador", "Agente", "Supervisor", "Cliente"]}>
-              <NuevoTicket />
-            </RutaPorRol>
-          }
-        />
 
         {/* MIS TICKETS */}
         <Route
           path="/mis-tickets"
           element={
-            <RutaPorRol roles={["Administrador", "Agente", "Supervisor", "Cliente"]}>
+            <RutaPorRol
+              roles={["Administrador", "Agente", "Supervisor", "Cliente"]}
+            >
               <MisTickets />
             </RutaPorRol>
           }
@@ -92,7 +82,9 @@ function AppRouter() {
         <Route
           path="/tickets/:id"
           element={
-            <RutaPorRol roles={["Administrador", "Agente", "Supervisor", "Cliente"]}>
+            <RutaPorRol
+              roles={["Administrador", "Agente", "Supervisor", "Cliente"]}
+            >
               <TicketDetalle />
             </RutaPorRol>
           }
@@ -118,12 +110,12 @@ function AppRouter() {
           }
         />
 
-        {/* PROBLEMAS */}
+        {/* SECCIONES */}
         <Route
-          path="/problemas"
+          path="/secciones"
           element={
             <RutaPorRol roles={["Administrador"]}>
-              <Problemas />
+              <Secciones />
             </RutaPorRol>
           }
         />
@@ -137,12 +129,10 @@ function AppRouter() {
             </RutaPorRol>
           }
         />
-
       </Route>
 
       {/* CATCH ALL */}
       <Route path="*" element={<Navigate to="/login" replace />} />
-
     </Routes>
   );
 }
