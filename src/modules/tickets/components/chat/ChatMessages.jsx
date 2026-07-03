@@ -18,10 +18,17 @@ export default function ChatMessages({
   const mismaFecha = (a, b) => {
     if (!a || !b) return false;
 
-    const fechaA = new Date(a.created_at).toDateString();
-    const fechaB = new Date(b.created_at).toDateString();
+    return (
+      new Date(a.created_at).toDateString() ===
+      new Date(b.created_at).toDateString()
+    );
+  };
 
-    return fechaA === fechaB;
+  const mismoUsuario = (a, b) => {
+    if (!a || !b) return false;
+    if (esMensajeSistema(a) || esMensajeSistema(b)) return false;
+
+    return String(a.user_id) === String(b.user_id);
   };
 
   const formatoFecha = (fecha) => {
@@ -35,13 +42,18 @@ export default function ChatMessages({
   };
 
   return (
-    <Stack spacing={1.2}>
+    <Stack spacing={0.4}>
       {lista.map((msg, index) => {
         const sistema = esMensajeSistema(msg);
         const propio = esMio(msg);
 
-        const mensajeAnterior = lista[index - 1];
-        const mostrarFecha = !mismaFecha(mensajeAnterior, msg);
+        const anterior = lista[index - 1];
+        const siguiente = lista[index + 1];
+
+        const mostrarFecha = !mismaFecha(anterior, msg);
+
+        const esPrimeroGrupo = !mismoUsuario(anterior, msg);
+        const esUltimoGrupo = !mismoUsuario(msg, siguiente);
 
         return (
           <Box key={msg.id}>
@@ -58,7 +70,7 @@ export default function ChatMessages({
                     px: 2,
                     py: 0.6,
                     borderRadius: 999,
-                    bgcolor: "rgba(255,255,255,0.85)",
+                    bgcolor: "rgba(255,255,255,0.88)",
                     color: "#475569",
                     fontSize: 12,
                     fontWeight: 800,
@@ -78,7 +90,7 @@ export default function ChatMessages({
                   : propio
                     ? "flex-end"
                     : "flex-start",
-                mb: 0.8,
+                mb: esUltimoGrupo ? 1 : 0.25,
               }}
             >
               {sistema ? (
@@ -92,6 +104,8 @@ export default function ChatMessages({
                   getArchivoUrl={getArchivoUrl}
                   puedeEliminarMensaje={puedeEliminarMensaje}
                   eliminarMensaje={eliminarMensaje}
+                  esPrimeroGrupo={esPrimeroGrupo}
+                  esUltimoGrupo={esUltimoGrupo}
                 />
               )}
             </Box>

@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import axiosCliente from "../../../services/axiosCliente";
+import SystemPublicAccessPanel from "../components/SystemPublicAccessPanel";
 
 import {
   Alert,
@@ -27,9 +28,6 @@ function Sistemas() {
   const [cargando, setCargando] = useState(false);
   const [error, setError] = useState("");
 
-  const API_URL =
-    import.meta.env.VITE_API_URL || "https://api.thebusinessticket.com";
-
   useEffect(() => {
     obtenerSistemas();
   }, []);
@@ -39,6 +37,7 @@ function Sistemas() {
       setError("");
 
       const respuesta = await axiosCliente.get("/systems");
+
       setSistemas(
         (respuesta.data.data || respuesta.data || [])
           .filter((sistema) => Number(sistema.estado) === 1)
@@ -313,7 +312,7 @@ function Sistemas() {
           const logoUrl = obtenerLogoUrl(sistema.logo);
 
           return (
-            <Grid item xs={12} sm={6} lg={4} key={sistema.id}>
+            <Grid item xs={12} lg={6} key={sistema.id}>
               <Paper
                 sx={{
                   height: "100%",
@@ -323,7 +322,7 @@ function Sistemas() {
                   boxShadow: 1,
                   display: "flex",
                   flexDirection: "column",
-                  justifyContent: "space-between",
+                  gap: 2,
                   border: "1px solid #e5e7eb",
                   transition: "0.2s ease",
                   "&:hover": {
@@ -406,29 +405,31 @@ function Sistemas() {
                   >
                     {sistema.descripcion || "Sin descripción"}
                   </Typography>
+
+                  <Box
+                    mt={2}
+                    display="flex"
+                    justifyContent="space-between"
+                    alignItems="center"
+                  >
+                    <Chip
+                      label={sistema.prefijo || "TCK"}
+                      size="small"
+                      sx={{
+                        fontWeight: 800,
+                        borderRadius: 2,
+                        bgcolor: sistema.color_secundario || "#eff6ff",
+                        color: sistema.color || "#1d4ed8",
+                      }}
+                    />
+
+                    <Typography variant="caption" color="text.secondary">
+                      Prefijo de ticket
+                    </Typography>
+                  </Box>
                 </Box>
 
-                <Box
-                  mt={2}
-                  display="flex"
-                  justifyContent="space-between"
-                  alignItems="center"
-                >
-                  <Chip
-                    label={sistema.prefijo || "TCK"}
-                    size="small"
-                    sx={{
-                      fontWeight: 800,
-                      borderRadius: 2,
-                      bgcolor: sistema.color_secundario || "#eff6ff",
-                      color: sistema.color || "#1d4ed8",
-                    }}
-                  />
-
-                  <Typography variant="caption" color="text.secondary">
-                    Prefijo de ticket
-                  </Typography>
-                </Box>
+                <SystemPublicAccessPanel system={sistema} />
               </Paper>
             </Grid>
           );

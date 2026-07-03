@@ -18,6 +18,8 @@ export default function ChatBubble({
   getArchivoUrl,
   puedeEliminarMensaje,
   eliminarMensaje,
+  esPrimeroGrupo = true,
+  esUltimoGrupo = true,
 }) {
   const propio = esMio(msg);
   const interno = msg.visibility === "private";
@@ -46,21 +48,25 @@ export default function ChatBubble({
         maxWidth: { xs: "96%", md: "76%" },
       }}
     >
-      <Avatar
-        src={avatarUrl || undefined}
-        sx={{
-          width: 32,
-          height: 32,
-          fontSize: 12,
-          fontWeight: 900,
-          bgcolor: propio ? "#128c7e" : "#64748b",
-          color: "#ffffff",
-          border: "2px solid rgba(255,255,255,0.95)",
-          boxShadow: "0 1px 3px rgba(15,23,42,0.18)",
-        }}
-      >
-        {!avatarUrl ? inicial(msg) : null}
-      </Avatar>
+      {esUltimoGrupo ? (
+        <Avatar
+          src={avatarUrl || undefined}
+          sx={{
+            width: 32,
+            height: 32,
+            fontSize: 12,
+            fontWeight: 900,
+            bgcolor: propio ? "#128c7e" : "#64748b",
+            color: "#ffffff",
+            border: "2px solid rgba(255,255,255,0.95)",
+            boxShadow: "0 1px 3px rgba(15,23,42,0.18)",
+          }}
+        >
+          {!avatarUrl ? inicial(msg) : null}
+        </Avatar>
+      ) : (
+        <Box sx={{ width: 32, flexShrink: 0 }} />
+      )}
 
       <Box
         sx={{
@@ -70,70 +76,98 @@ export default function ChatBubble({
           minWidth: 120,
           maxWidth: "100%",
           borderRadius: propio
-            ? "14px 14px 3px 14px"
-            : "14px 14px 14px 3px",
+            ? esUltimoGrupo
+              ? "14px 14px 3px 14px"
+              : "14px 14px 14px 14px"
+            : esUltimoGrupo
+              ? "14px 14px 14px 3px"
+              : "14px 14px 14px 14px",
           bgcolor: interno ? "#fff4bf" : propio ? "#d9fdd3" : "#ffffff",
-          border: interno ? "1px solid #facc15" : "1px solid rgba(15,23,42,0.06)",
+          border: interno
+            ? "1px solid #facc15"
+            : "1px solid rgba(15,23,42,0.06)",
           boxShadow: "0 1px 1.5px rgba(15,23,42,0.14)",
           wordBreak: "break-word",
-          "&:before": {
-            content: '""',
-            position: "absolute",
-            bottom: 0,
-            ...(propio
-              ? {
-                  right: -6,
-                  borderLeft: `8px solid ${
-                    interno ? "#fff4bf" : "#d9fdd3"
-                  }`,
-                  borderTop: "8px solid transparent",
-                }
-              : {
-                  left: -6,
-                  borderRight: `8px solid ${
-                    interno ? "#fff4bf" : "#ffffff"
-                  }`,
-                  borderTop: "8px solid transparent",
-                }),
-          },
+          "&:before": esUltimoGrupo
+            ? {
+                content: '""',
+                position: "absolute",
+                bottom: 0,
+                ...(propio
+                  ? {
+                      right: -6,
+                      borderLeft: `8px solid ${
+                        interno ? "#fff4bf" : "#d9fdd3"
+                      }`,
+                      borderTop: "8px solid transparent",
+                    }
+                  : {
+                      left: -6,
+                      borderRight: `8px solid ${
+                        interno ? "#fff4bf" : "#ffffff"
+                      }`,
+                      borderTop: "8px solid transparent",
+                    }),
+              }
+            : {},
           "&:hover .delete-btn": {
             opacity: 1,
           },
         }}
       >
-        <Stack
-          direction="row"
-          alignItems="center"
-          spacing={0.8}
-          sx={{ mb: msg.message || msg.attachments?.length ? 0.45 : 0 }}
-        >
-          <Typography
-            sx={{
-              fontSize: 11.5,
-              fontWeight: 900,
-              color: propio ? "#075e54" : "#334155",
-            }}
+        {esPrimeroGrupo && (
+          <Stack
+            direction="row"
+            alignItems="center"
+            spacing={0.8}
+            sx={{ mb: msg.message || msg.attachments?.length ? 0.45 : 0 }}
           >
-            {msg.user?.name || "Usuario"}
-          </Typography>
-
-          {interno && (
-            <Chip
-              label="Interna"
-              size="small"
+            <Typography
               sx={{
-                height: 17,
-                fontSize: 9.5,
+                fontSize: 11.5,
                 fontWeight: 900,
-                bgcolor: "#fde68a",
-                color: "#92400e",
-                "& .MuiChip-label": {
-                  px: 0.75,
-                },
+                color: propio ? "#075e54" : "#334155",
               }}
-            />
-          )}
-        </Stack>
+            >
+              {msg.user?.name || "Usuario"}
+            </Typography>
+
+            {interno && (
+              <Chip
+                label="Interna"
+                size="small"
+                sx={{
+                  height: 17,
+                  fontSize: 9.5,
+                  fontWeight: 900,
+                  bgcolor: "#fde68a",
+                  color: "#92400e",
+                  "& .MuiChip-label": {
+                    px: 0.75,
+                  },
+                }}
+              />
+            )}
+          </Stack>
+        )}
+
+        {!esPrimeroGrupo && interno && (
+          <Chip
+            label="Interna"
+            size="small"
+            sx={{
+              height: 17,
+              fontSize: 9.5,
+              fontWeight: 900,
+              mb: 0.45,
+              bgcolor: "#fde68a",
+              color: "#92400e",
+              "& .MuiChip-label": {
+                px: 0.75,
+              },
+            }}
+          />
+        )}
 
         {msg.message && (
           <Typography

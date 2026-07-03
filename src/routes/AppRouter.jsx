@@ -12,6 +12,8 @@ import CrearAgente from "../modules/agents/pages/CrearAgente";
 
 import Sistemas from "../modules/tickets/pages/Sistemas";
 import Secciones from "../modules/tickets/pages/Secciones";
+import TicketPublicoCrear from "../modules/tickets/pages/TicketPublicoCrear";
+import TicketPublicoHistorial from "../modules/tickets/pages/TicketPublicoHistorial";
 
 import GruposSoporte from "../modules/support-groups/pages/GruposSoporte";
 
@@ -46,6 +48,14 @@ function AppRouter() {
       <Route path="/" element={<Navigate to="/login" replace />} />
       <Route path="/login" element={<IniciarSesion />} />
       <Route path="/registro" element={<Registro />} />
+      <Route
+        path="/public/s/:systemId/:prefix"
+        element={<TicketPublicoCrear />}
+      />
+      <Route
+        path="/public/tickets/:trackingCode"
+        element={<TicketPublicoHistorial />}
+      />
 
       {/* PROTEGIDO */}
       <Route
@@ -64,7 +74,6 @@ function AppRouter() {
             </RutaPorRol>
           }
         />
-
 
         {/* MIS TICKETS */}
         <Route

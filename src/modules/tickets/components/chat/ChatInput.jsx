@@ -2,7 +2,6 @@ import { useState } from "react";
 
 import {
   Box,
-  Button,
   IconButton,
   MenuItem,
   Paper,
@@ -31,26 +30,24 @@ export default function ChatInput({
   const puedeEnviar = !enviando && (text.trim() || archivo);
 
   const enviar = () => {
+    if (!puedeEnviar) return;
     enviarMensaje(puedeGestionar ? tipoMensaje : "public");
   };
 
   const handleKeyDown = (e) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
-
-      if (puedeEnviar) {
-        enviar();
-      }
+      enviar();
     }
   };
 
   return (
     <Paper
       sx={{
-        p: 2,
+        p: 1.5,
         borderRadius: 3,
         border: "1px solid #e5e7eb",
-        bgcolor: "#ffffff",
+        bgcolor: "#f8fafc",
       }}
     >
       {archivo && (
@@ -59,17 +56,17 @@ export default function ChatInput({
             display: "flex",
             alignItems: "center",
             gap: 1,
-            mb: 1.5,
+            mb: 1,
             p: 1,
-            bgcolor: "#f8fafc",
+            bgcolor: "#ffffff",
             border: "1px solid #e5e7eb",
             borderRadius: 2,
           }}
         >
           <Box
             sx={{
-              width: 34,
-              height: 34,
+              width: 32,
+              height: 32,
               borderRadius: 2,
               bgcolor: "#eff6ff",
               display: "flex",
@@ -112,78 +109,103 @@ export default function ChatInput({
         </Box>
       )}
 
-      <Stack spacing={1.5}>
-        {puedeGestionar && (
-          <TextField
-            select
-            size="small"
-            label="Tipo de mensaje"
-            value={tipoMensaje}
-            onChange={(e) => setTipoMensaje(e.target.value)}
-            sx={{ maxWidth: 260 }}
+      {puedeGestionar && (
+        <TextField
+          select
+          size="small"
+          label="Tipo de mensaje"
+          value={tipoMensaje}
+          onChange={(e) => setTipoMensaje(e.target.value)}
+          sx={{
+            mb: 1,
+            width: { xs: "100%", sm: 260 },
+            bgcolor: "#ffffff",
+            borderRadius: 2,
+          }}
+        >
+          <MenuItem value="private">Nota interna</MenuItem>
+          <MenuItem value="public">Responder al cliente</MenuItem>
+        </TextField>
+      )}
+
+      <Stack
+        direction="row"
+        spacing={1}
+        alignItems="flex-end"
+        sx={{
+          p: 0.7,
+          borderRadius: 999,
+          bgcolor: "#ffffff",
+          border: "1px solid #e5e7eb",
+        }}
+      >
+        <Tooltip title="Adjuntar archivo">
+          <IconButton
+            component="label"
+            sx={{
+              width: 40,
+              height: 40,
+              color: "#64748b",
+              flexShrink: 0,
+            }}
           >
-            <MenuItem value="private">Nota interna</MenuItem>
-            <MenuItem value="public">Responder al cliente</MenuItem>
-          </TextField>
-        )}
+            <AttachFileIcon />
+            <input
+              hidden
+              type="file"
+              accept="*/*"
+              onChange={(e) => setArchivo(e.target.files?.[0] || null)}
+            />
+          </IconButton>
+        </Tooltip>
 
         <TextField
           fullWidth
           multiline
-          minRows={3}
+          minRows={1}
           maxRows={3}
           placeholder="Escribe el mensaje..."
           value={text}
           onChange={(e) => setText(e.target.value)}
           onKeyDown={handleKeyDown}
+          variant="standard"
+          InputProps={{
+            disableUnderline: true,
+            sx: {
+              fontSize: 14,
+              py: 1,
+              maxHeight: 88,
+              overflowY: "auto",
+            },
+          }}
         />
 
-        <Stack
-          direction={{ xs: "column", sm: "row" }}
-          spacing={1.5}
-          justifyContent="space-between"
-          alignItems={{ xs: "stretch", sm: "center" }}
-        >
-          <Tooltip title="Adjuntar archivo">
-            <Button
-              component="label"
-              variant="outlined"
-              startIcon={<AttachFileIcon />}
+        <Tooltip title="Enviar">
+          <span>
+            <IconButton
+              disabled={!puedeEnviar}
+              onClick={enviar}
               sx={{
-                borderRadius: 2,
-                textTransform: "none",
-                fontWeight: 700,
+                width: 42,
+                height: 42,
+                bgcolor: puedeEnviar ? "#128c7e" : "#e5e7eb",
+                color: puedeEnviar ? "#ffffff" : "#94a3b8",
+                flexShrink: 0,
+                "&:hover": {
+                  bgcolor: puedeEnviar ? "#075e54" : "#e5e7eb",
+                },
               }}
             >
-              Adjuntar
-              <input
-                hidden
-                type="file"
-                accept="*/*"
-                onChange={(e) => setArchivo(e.target.files?.[0] || null)}
-              />
-            </Button>
-          </Tooltip>
-
-          <Tooltip title="Enviar">
-            <span>
-              <Button
-                variant="contained"
-                disabled={!puedeEnviar}
-                onClick={enviar}
-                endIcon={!enviando ? <SendIcon /> : null}
-                sx={{
-                  borderRadius: 2,
-                  textTransform: "none",
-                  fontWeight: 700,
-                  minWidth: 120,
-                }}
-              >
-                {enviando ? "Enviando..." : "Enviar"}
-              </Button>
-            </span>
-          </Tooltip>
-        </Stack>
+              {enviando ? (
+                <Typography sx={{ fontSize: 11, fontWeight: 800 }}>
+                  ...
+                </Typography>
+              ) : (
+                <SendIcon fontSize="small" />
+              )}
+            </IconButton>
+          </span>
+        </Tooltip>
       </Stack>
     </Paper>
   );
