@@ -121,8 +121,14 @@ function TicketPublicoCrear() {
       const formData = new FormData();
 
       formData.append("cliente[name]", form.name.trim());
-      formData.append("cliente[apellido_paterno]", form.apellido_paterno.trim());
-      formData.append("cliente[apellido_materno]", form.apellido_materno.trim());
+      formData.append(
+        "cliente[apellido_paterno]",
+        form.apellido_paterno.trim(),
+      );
+      formData.append(
+        "cliente[apellido_materno]",
+        form.apellido_materno.trim(),
+      );
       formData.append("cliente[email]", form.email.trim());
       formData.append("cliente[telefono]", form.telefono.trim());
       formData.append("cliente[direccion]", form.direccion.trim());
@@ -151,8 +157,7 @@ function TicketPublicoCrear() {
       );
     } catch (error) {
       setError(
-        error.response?.data?.message ||
-          "No se pudo crear el ticket público.",
+        error.response?.data?.message || "No se pudo crear el ticket público.",
       );
     } finally {
       setEnviando(false);
@@ -205,20 +210,27 @@ function TicketPublicoCrear() {
 
   return (
     <Box
-      minHeight="100vh"
-      bgcolor="#f8fafc"
-      display="flex"
-      justifyContent="center"
-      alignItems="center"
-      p={2}
+      sx={{
+        minHeight: "100vh",
+        width: "100%",
+        bgcolor: "#f8fafc",
+        py: { xs: 2, md: 5 },
+        px: { xs: 2, md: 3 },
+        display: "flex",
+        justifyContent: "center",
+        alignItems: "flex-start",
+        boxSizing: "border-box",
+      }}
     >
       <Paper
         sx={{
           width: "100%",
-          maxWidth: 720,
+          maxWidth: 920,
           borderRadius: 4,
           overflow: "hidden",
+          boxShadow: 4,
           border: "1px solid #e5e7eb",
+          bgcolor: "#ffffff",
         }}
       >
         <Box
@@ -228,24 +240,50 @@ function TicketPublicoCrear() {
             p: { xs: 3, md: 4 },
           }}
         >
-          <Typography variant="h4" fontWeight={900}>
-            {portada.titulo || "Soporte"}
-          </Typography>
+          <Stack
+            direction={{ xs: "column", sm: "row" }}
+            spacing={2}
+            alignItems={{ xs: "flex-start", sm: "center" }}
+          >
+            {system?.logo_url && (
+              <Box
+                component="img"
+                src={system.logo_url}
+                alt={system?.nombre || "Logo del sistema"}
+                sx={{
+                  width: 72,
+                  height: 72,
+                  objectFit: "contain",
+                  borderRadius: 2,
+                  bgcolor: "#ffffff",
+                  p: 1,
+                  border: "1px solid rgba(255,255,255,0.35)",
+                }}
+              />
+            )}
 
-          <Typography mt={1} fontWeight={600}>
-            {portada.subtitulo || "Levanta tu solicitud de soporte"}
-          </Typography>
+            <Box>
+              <Typography variant="h4" fontWeight={900}>
+                {portada.titulo || system?.nombre || "Soporte"}
+              </Typography>
 
-          <Typography mt={1} sx={{ opacity: 0.9 }}>
-            {portada.descripcion ||
-              "Describe el problema para darte seguimiento."}
-          </Typography>
+              <Typography mt={1} fontWeight={600}>
+                {portada.subtitulo || "Levanta tu solicitud de soporte"}
+              </Typography>
+
+              <Typography mt={1} sx={{ opacity: 0.9 }}>
+                {portada.descripcion ||
+                  "Describe el problema para darte seguimiento."}
+              </Typography>
+            </Box>
+          </Stack>
         </Box>
 
         <Box component="form" onSubmit={crearTicket} p={{ xs: 2.5, md: 4 }}>
           <Stack spacing={2}>
             {error && <Alert severity="error">{error}</Alert>}
 
+            <Box sx={{ p: { xs: 2, md: 3 } }}></Box>
             <Typography variant="h6" fontWeight={800}>
               Datos del cliente
             </Typography>
@@ -387,11 +425,7 @@ function TicketPublicoCrear() {
                       <InsertDriveFileIcon color="action" />
 
                       <Box sx={{ minWidth: 0 }}>
-                        <Typography
-                          variant="body2"
-                          fontWeight={700}
-                          noWrap
-                        >
+                        <Typography variant="body2" fontWeight={700} noWrap>
                           {archivo.name}
                         </Typography>
 

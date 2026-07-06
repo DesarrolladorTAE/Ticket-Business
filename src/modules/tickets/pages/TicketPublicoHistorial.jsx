@@ -25,7 +25,7 @@ import RefreshIcon from "@mui/icons-material/Refresh";
 import AttachFileIcon from "@mui/icons-material/AttachFile";
 import CloseIcon from "@mui/icons-material/Close";
 import InsertDriveFileIcon from "@mui/icons-material/InsertDriveFile";
-import OpenInNewIcon from "@mui/icons-material/OpenInNew";
+import ImageIcon from "@mui/icons-material/Image";
 
 function TicketPublicoHistorial() {
   const { trackingCode } = useParams();
@@ -40,10 +40,12 @@ function TicketPublicoHistorial() {
   const [error, setError] = useState("");
   const [ok, setOk] = useState("");
   const [ticket, setTicket] = useState(null);
+  const [system, setSystem] = useState(null);
   const [messages, setMessages] = useState([]);
   const [message, setMessage] = useState("");
   const [archivos, setArchivos] = useState([]);
   const [archivoPreview, setArchivoPreview] = useState(null);
+  const [refrescando, setRefrescando] = useState(false);
 
   useEffect(() => {
     cargarHistorial();
@@ -65,6 +67,7 @@ function TicketPublicoHistorial() {
       );
 
       setTicket(res.data.ticket);
+      setSystem(res.data.system || null);
       setMessages(res.data.messages || []);
     } catch (error) {
       setError(
@@ -77,6 +80,7 @@ function TicketPublicoHistorial() {
   };
 
   const recargarHistorial = async () => {
+    setRefrescando(true);
     setError("");
     setOk("");
 
@@ -86,11 +90,14 @@ function TicketPublicoHistorial() {
       );
 
       setTicket(res.data.ticket);
+      setSystem(res.data.system || null);
       setMessages(res.data.messages || []);
     } catch (error) {
       setError(
         error.response?.data?.message || "No se pudo actualizar el historial.",
       );
+    } finally {
+      setRefrescando(false);
     }
   };
 
@@ -278,6 +285,15 @@ function TicketPublicoHistorial() {
   }
 
   const estado = obtenerEstado(ticket?.status_id);
+  const color = system?.color_hex || "#23388B";
+  const portada = system?.dato_portada || {};
+
+  const tituloPortada = portada.titulo || system?.nombre || "Soporte";
+  const subtituloPortada =
+    portada.subtitulo || "Historial público del ticket";
+  const descripcionPortada =
+    portada.descripcion ||
+    "Consulta el seguimiento de tu solicitud y responde al equipo de soporte.";
 
   return (
     <Box
@@ -309,7 +325,7 @@ function TicketPublicoHistorial() {
       >
         <Box
           sx={{
-            bgcolor: "#23388B",
+            bgcolor: color,
             color: "#fff",
             p: { xs: 2, md: 3 },
           }}
@@ -320,25 +336,78 @@ function TicketPublicoHistorial() {
             alignItems={{ xs: "flex-start", md: "center" }}
             spacing={2}
           >
-            <Box sx={{ minWidth: 0 }}>
-              <Typography
-                variant="h5"
-                fontWeight={900}
-                sx={{
-                  wordBreak: "break-word",
-                }}
-              >
-                {ticket?.titulo}
-              </Typography>
+            <Stack
+              direction={{ xs: "column", sm: "row" }}
+              spacing={2}
+              alignItems={{ xs: "flex-start", sm: "center" }}
+              sx={{ minWidth: 0 }}
+            >
+              {system?.logo_url ? (
+                <Box
+                  component="img"
+                  src={system.logo_url}
+                  alt={system?.nombre || "Logo del sistema"}
+                  sx={{
+                    width: 72,
+                    height: 72,
+                    objectFit: "contain",
+                    borderRadius: 2,
+                    bgcolor: "#ffffff",
+                    p: 1,
+                    border: "1px solid rgba(255,255,255,0.35)",
+                    flexShrink: 0,
+                  }}
+                />
+              ) : (
+                <Box
+                  sx={{
+                    width: 72,
+                    height: 72,
+                    borderRadius: 2,
+                    bgcolor: "rgba(255,255,255,0.18)",
+                    border: "1px solid rgba(255,255,255,0.35)",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    flexShrink: 0,
+                  }}
+                >
+                  <ImageIcon />
+                </Box>
+              )}
 
-              <Typography mt={0.8} sx={{ opacity: 0.9 }}>
-                Folio: {ticket?.folio}
-              </Typography>
+              <Box sx={{ minWidth: 0 }}>
+                <Typography
+                  variant="h5"
+                  fontWeight={900}
+                  sx={{
+                    wordBreak: "break-word",
+                  }}
+                >
+                  {tituloPortada}
+                </Typography>
 
-              <Typography sx={{ opacity: 0.9, wordBreak: "break-word" }}>
-                Código público: {ticket?.public_tracking_code}
-              </Typography>
-            </Box>
+                <Typography
+                  variant="body2"
+                  mt={0.5}
+                  sx={{ opacity: 0.92, fontWeight: 700 }}
+                >
+                  {subtituloPortada}
+                </Typography>
+
+                <Typography
+                  variant="body2"
+                  mt={0.6}
+                  sx={{
+                    opacity: 0.9,
+                    maxWidth: 620,
+                    lineHeight: 1.45,
+                  }}
+                >
+                  {descripcionPortada}
+                </Typography>
+              </Box>
+            </Stack>
 
             <Stack direction="row" spacing={1} alignItems="center">
               <Chip
@@ -347,7 +416,7 @@ function TicketPublicoHistorial() {
                 sx={{
                   fontWeight: 900,
                   bgcolor: "#ffffff",
-                  color: "#23388B",
+                  color,
                   border: "1px solid rgba(255,255,255,0.7)",
                   "& .MuiChip-label": {
                     px: 1.5,
@@ -370,9 +439,11 @@ function TicketPublicoHistorial() {
               <Tooltip title="Actualizar historial">
                 <IconButton
                   onClick={recargarHistorial}
+                  disabled={refrescando}
                   sx={{
                     color: "#fff",
                     border: "1px solid rgba(255,255,255,0.35)",
+                    opacity: refrescando ? 0.6 : 1,
                   }}
                 >
                   <RefreshIcon fontSize="small" />
@@ -380,6 +451,24 @@ function TicketPublicoHistorial() {
               </Tooltip>
             </Stack>
           </Stack>
+
+          <Divider sx={{ my: 2, borderColor: "rgba(255,255,255,0.25)" }} />
+
+          <Box>
+            <Typography
+              variant="h6"
+              fontWeight={900}
+              sx={{
+                wordBreak: "break-word",
+              }}
+            >
+              {ticket?.titulo}
+            </Typography>
+
+            <Typography variant="body2" mt={0.5} sx={{ opacity: 0.9 }}>
+              Folio: {ticket?.folio}
+            </Typography>
+          </Box>
         </Box>
 
         <Box
@@ -440,9 +529,61 @@ function TicketPublicoHistorial() {
 
             {messages.map((msg) => {
               const esCliente = msg.user?.role === "client";
+              const esEvento = msg.type === "event";
               const adjuntos = Array.isArray(msg.attachments)
                 ? msg.attachments
                 : [];
+
+              if (esEvento) {
+                return (
+                  <Box
+                    key={msg.id}
+                    sx={{
+                      display: "flex",
+                      justifyContent: "center",
+                    }}
+                  >
+                    <Box
+                      sx={{
+                        px: 2,
+                        py: 1.2,
+                        borderRadius: 3,
+                        bgcolor: "#e2e8f0",
+                        border: "1px solid #cbd5e1",
+                        textAlign: "center",
+                        maxWidth: 360,
+                      }}
+                    >
+                      <Typography
+                        variant="caption"
+                        fontWeight={900}
+                        color="text.secondary"
+                        display="block"
+                      >
+                        Evento del sistema
+                      </Typography>
+
+                      <Typography
+                        variant="body2"
+                        fontWeight={700}
+                        color="#334155"
+                        mt={0.3}
+                      >
+                        {msg.message}
+                      </Typography>
+
+                      <Typography
+                        variant="caption"
+                        color="text.secondary"
+                        display="block"
+                        mt={0.5}
+                      >
+                        {formatearFecha(msg.created_at)}
+                      </Typography>
+                    </Box>
+                  </Box>
+                );
+              }
 
               return (
                 <Box
@@ -535,7 +676,8 @@ function TicketPublicoHistorial() {
                                     noWrap
                                     display="block"
                                   >
-                                    {archivo.nombre_archivo || "Imagen adjunta"}
+                                    {archivo.nombre_archivo ||
+                                      "Imagen adjunta"}
                                   </Typography>
                                 </Box>
                               </Box>
@@ -706,9 +848,9 @@ function TicketPublicoHistorial() {
                 height: 42,
                 borderRadius: 4,
                 fontWeight: 900,
-                bgcolor: "#23388B",
+                bgcolor: color,
                 "&:hover": {
-                  bgcolor: "#23388B",
+                  bgcolor: color,
                   opacity: 0.92,
                 },
               }}

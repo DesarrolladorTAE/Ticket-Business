@@ -123,14 +123,24 @@ function Sistemas() {
     }
   };
 
+  const API_ORIGIN = "https://api.thebusinessticket.com";
+
   const obtenerLogoUrl = (logo) => {
     if (!logo) return null;
 
-    if (logo.startsWith("http")) {
+    if (logo.startsWith("http://") || logo.startsWith("https://")) {
       return logo;
     }
 
-    return `/${logo}`;
+    if (logo.startsWith("storage/")) {
+      return `${API_ORIGIN}/${logo}`;
+    }
+
+    if (logo.startsWith("systems/")) {
+      return `${API_ORIGIN}/storage/${logo}`;
+    }
+
+    return `${API_ORIGIN}/${logo}`;
   };
 
   if (loading) {

@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import axiosCliente from "../../../services/axiosCliente";
+import { useDropzone } from "react-dropzone";
+import { HexColorPicker } from "react-colorful";
 
 import {
   Alert,
@@ -7,6 +9,7 @@ import {
   Button,
   Chip,
   Divider,
+  IconButton,
   Paper,
   Stack,
   TextField,
@@ -18,6 +21,9 @@ import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 import AutorenewIcon from "@mui/icons-material/Autorenew";
 import PublicIcon from "@mui/icons-material/Public";
 import BlockIcon from "@mui/icons-material/Block";
+import CloudUploadIcon from "@mui/icons-material/CloudUpload";
+import ImageIcon from "@mui/icons-material/Image";
+import CloseIcon from "@mui/icons-material/Close";
 
 function SystemPublicAccessPanel({ system }) {
   const [loading, setLoading] = useState(false);
@@ -27,6 +33,10 @@ function SystemPublicAccessPanel({ system }) {
 
   const [publicEnabled, setPublicEnabled] = useState(false);
   const [publicToken, setPublicToken] = useState(null);
+
+  const [logoUrl, setLogoUrl] = useState("");
+  const [logoFile, setLogoFile] = useState(null);
+  const [logoPreview, setLogoPreview] = useState("");
 
   const [form, setForm] = useState({
     titulo: "",
@@ -45,13 +55,18 @@ function SystemPublicAccessPanel({ system }) {
     if (system?.id) {
       cargarAccesoPublico();
     }
+
+    return () => {
+      if (logoPreview) {
+        URL.revokeObjectURL(logoPreview);
+      }
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [system?.id]);
 
   const cargarAccesoPublico = async () => {
     setLoading(true);
     setError("");
-    setOk("");
 
     try {
       const res = await axiosCliente.get(`/systems/${system.id}/public-access`);
@@ -61,6 +76,10 @@ function SystemPublicAccessPanel({ system }) {
 
       setPublicEnabled(Boolean(sistema?.public_enabled));
       setPublicToken(token);
+
+      setLogoUrl(sistema?.logo_url || "");
+      setLogoFile(null);
+      setLogoPreview("");
 
       setForm({
         titulo: sistema?.dato_portada?.titulo || "",
@@ -85,32 +104,103 @@ function SystemPublicAccessPanel({ system }) {
     });
   };
 
-  const activarPublico = async () => {
+  const cambiarColor = (color) => {
+    setForm({
+      ...form,
+      color_hex: color,
+    });
+  };
+
+  const cambiarColorManual = (e) => {
+    let color = e.target.value || "";
+
+    if (!color.startsWith("#")) {
+      color = `#${color}`;
+    }
+
+    setForm({
+      ...form,
+      color_hex: color,
+    });
+  };
+
+  const onDrop = (acceptedFiles) => {
+    const archivo = acceptedFiles?.[0];
+
+    if (!archivo) return;
+
+    if (logoPreview) {
+      URL.revokeObjectURL(logoPreview);
+    }
+
+    setLogoFile(archivo);
+    setLogoPreview(URL.createObjectURL(archivo));
+    setOk("");
+    setError("");
+  };
+
+  const quitarLogoSeleccionado = () => {
+    if (logoPreview) {
+      URL.revokeObjectURL(logoPreview);
+    }
+
+    setLogoFile(null);
+    setLogoPreview("");
+  };
+
+  const { getRootProps, getInputProps, isDragActive } = useDropzone({
+    onDrop,
+    multiple: false,
+    disabled: loading || guardando,
+    accept: {
+      "image/jpeg": [".jpg", ".jpeg"],
+      "image/png": [".png"],
+      "image/webp": [".webp"],
+    },
+    maxSize: 2 * 1024 * 1024,
+    onDropRejected: () => {
+      setError("El logo debe ser JPG, PNG o WEBP y pesar máximo 2 MB.");
+      setOk("");
+    },
+  });
+
+  const guardarPublico = async () => {
     setGuardando(true);
     setError("");
     setOk("");
 
     try {
+      const formData = new FormData();
+
+      formData.append("dato_portada[titulo]", form.titulo || "");
+      formData.append("dato_portada[subtitulo]", form.subtitulo || "");
+      formData.append("dato_portada[descripcion]", form.descripcion || "");
+      formData.append("color_hex", form.color_hex || "#23388B");
+
+      if (logoFile) {
+        formData.append("logo", logoFile);
+      }
+
       const res = await axiosCliente.post(
         `/systems/${system.id}/public-access/enable`,
+        formData,
         {
-          dato_portada: {
-            titulo: form.titulo,
-            subtitulo: form.subtitulo,
-            descripcion: form.descripcion,
+          headers: {
+            "Content-Type": "multipart/form-data",
           },
-          color_hex: form.color_hex,
         },
       );
 
       setPublicEnabled(true);
       setPublicToken(res.data.public_token);
 
-      setOk("Acceso público activado correctamente.");
+      await cargarAccesoPublico();
+
+      setOk("Portada pública guardada correctamente.");
     } catch (error) {
       setError(
         error.response?.data?.message ||
-          "No se pudo activar el acceso público.",
+          "No se pudo guardar la portada pública.",
       );
     } finally {
       setGuardando(false);
@@ -175,6 +265,8 @@ function SystemPublicAccessPanel({ system }) {
     }
   };
 
+  const logoMostrar = logoPreview || logoUrl;
+
   return (
     <Paper
       sx={{
@@ -192,9 +284,7 @@ function SystemPublicAccessPanel({ system }) {
           spacing={1}
         >
           <Box>
-            <Typography fontWeight={900}>
-              Acceso público
-            </Typography>
+            <Typography fontWeight={900}>Acceso público</Typography>
 
             <Typography variant="body2" color="text.secondary">
               Formulario externo para crear tickets sin iniciar sesión.
@@ -213,6 +303,108 @@ function SystemPublicAccessPanel({ system }) {
 
         {error && <Alert severity="error">{error}</Alert>}
         {ok && <Alert severity="success">{ok}</Alert>}
+
+        <Box>
+          <Typography fontWeight={900} mb={1}>
+            Logo del portal
+          </Typography>
+
+          <Stack direction={{ xs: "column", md: "row" }} spacing={2}>
+            <Box
+              {...getRootProps()}
+              sx={{
+                flex: 1,
+                minHeight: 132,
+                border: "2px dashed",
+                borderColor: isDragActive ? form.color_hex : "#cbd5e1",
+                borderRadius: 3,
+                bgcolor: isDragActive ? "#f8fafc" : "#ffffff",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                cursor: loading || guardando ? "not-allowed" : "pointer",
+                px: 2,
+                textAlign: "center",
+                transition: "0.2s ease",
+              }}
+            >
+              <input {...getInputProps()} />
+
+              <Stack alignItems="center" spacing={1}>
+                <CloudUploadIcon sx={{ color: "#64748b" }} />
+
+                <Typography fontWeight={800}>
+                  {isDragActive
+                    ? "Suelta el logo aquí"
+                    : "Arrastra el logo o haz clic para seleccionar"}
+                </Typography>
+
+                <Typography variant="caption" color="text.secondary">
+                  JPG, PNG o WEBP. Máximo 2 MB.
+                </Typography>
+              </Stack>
+            </Box>
+
+            <Box
+              sx={{
+                width: { xs: "100%", md: 160 },
+                minHeight: 132,
+                borderRadius: 3,
+                border: "1px solid #e5e7eb",
+                bgcolor: "#f8fafc",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                position: "relative",
+                overflow: "hidden",
+              }}
+            >
+              {logoMostrar ? (
+                <>
+                  <Box
+                    component="img"
+                    src={logoMostrar}
+                    alt="Logo del sistema"
+                    sx={{
+                      width: "100%",
+                      height: "100%",
+                      maxHeight: 132,
+                      objectFit: "contain",
+                      p: 1.5,
+                    }}
+                  />
+
+                  {logoPreview && (
+                    <Tooltip title="Quitar logo seleccionado">
+                      <IconButton
+                        size="small"
+                        onClick={quitarLogoSeleccionado}
+                        sx={{
+                          position: "absolute",
+                          top: 6,
+                          right: 6,
+                          bgcolor: "rgba(255,255,255,0.9)",
+                          "&:hover": {
+                            bgcolor: "#ffffff",
+                          },
+                        }}
+                      >
+                        <CloseIcon fontSize="small" />
+                      </IconButton>
+                    </Tooltip>
+                  )}
+                </>
+              ) : (
+                <Stack alignItems="center" spacing={1}>
+                  <ImageIcon color="disabled" />
+                  <Typography variant="caption" color="text.secondary">
+                    Sin logo
+                  </Typography>
+                </Stack>
+              )}
+            </Box>
+          </Stack>
+        </Box>
 
         <Stack spacing={2}>
           <TextField
@@ -247,16 +439,118 @@ function SystemPublicAccessPanel({ system }) {
             placeholder="Describe el problema para que el equipo pueda darte seguimiento."
           />
 
-          <TextField
-            label="Color hexadecimal"
-            name="color_hex"
-            value={form.color_hex}
-            onChange={cambiarValor}
-            fullWidth
-            disabled={loading || guardando}
-            placeholder="#23388B"
-            helperText="Ejemplo: #23388B, #ED6C02, #16A34A"
-          />
+          <Box>
+            <Typography fontWeight={900} mb={1}>
+              Color principal del portal
+            </Typography>
+
+            <Stack
+              direction={{ xs: "column", md: "row" }}
+              spacing={2}
+              alignItems="stretch"
+            >
+              <Paper
+                variant="outlined"
+                sx={{
+                  p: 2,
+                  borderRadius: 3,
+                  width: { xs: "100%", md: 260 },
+                  bgcolor: "#ffffff",
+                }}
+              >
+                <HexColorPicker
+                  color={form.color_hex || "#23388B"}
+                  onChange={cambiarColor}
+                  style={{
+                    width: "100%",
+                  }}
+                />
+
+                <TextField
+                  label="Código hexadecimal"
+                  value={form.color_hex || "#23388B"}
+                  onChange={cambiarColorManual}
+                  fullWidth
+                  size="small"
+                  disabled={loading || guardando}
+                  sx={{ mt: 2 }}
+                  helperText="Ejemplo: #23388B"
+                />
+              </Paper>
+
+              <Paper
+                variant="outlined"
+                sx={{
+                  flex: 1,
+                  borderRadius: 3,
+                  overflow: "hidden",
+                  bgcolor: "#ffffff",
+                }}
+              >
+                <Box
+                  sx={{
+                    bgcolor: form.color_hex || "#23388B",
+                    color: "#ffffff",
+                    p: 2.5,
+                  }}
+                >
+                  <Stack direction="row" spacing={2} alignItems="center">
+                    {logoMostrar ? (
+                      <Box
+                        component="img"
+                        src={logoMostrar}
+                        alt="Vista previa del logo"
+                        sx={{
+                          width: 56,
+                          height: 56,
+                          objectFit: "contain",
+                          borderRadius: 2,
+                          bgcolor: "#ffffff",
+                          p: 1,
+                        }}
+                      />
+                    ) : (
+                      <Box
+                        sx={{
+                          width: 56,
+                          height: 56,
+                          borderRadius: 2,
+                          bgcolor: "rgba(255,255,255,0.25)",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                        }}
+                      >
+                        <ImageIcon />
+                      </Box>
+                    )}
+
+                    <Box sx={{ minWidth: 0 }}>
+                      <Typography fontWeight={900} noWrap>
+                        {form.titulo || `Soporte ${system?.nombre || ""}`}
+                      </Typography>
+
+                      <Typography variant="body2" sx={{ opacity: 0.9 }} noWrap>
+                        {form.subtitulo || "Levanta tu solicitud de soporte"}
+                      </Typography>
+                    </Box>
+                  </Stack>
+
+                  <Typography variant="body2" mt={2} sx={{ opacity: 0.9 }}>
+                    {form.descripcion ||
+                      "Describe el problema para que el equipo pueda darte seguimiento."}
+                  </Typography>
+                </Box>
+
+                <Box sx={{ p: 2, bgcolor: "#f8fafc" }}>
+                  <Typography variant="caption" color="text.secondary">
+                    Vista previa de cómo se verá la portada pública con este
+                    color.
+                  </Typography>
+                </Box>
+              </Paper>
+            </Stack>
+          </Box>
         </Stack>
 
         {frontendUrl && (
@@ -292,11 +586,11 @@ function SystemPublicAccessPanel({ system }) {
         <Stack direction={{ xs: "column", md: "row" }} spacing={1}>
           <Button
             variant="contained"
-            onClick={activarPublico}
+            onClick={guardarPublico}
             disabled={guardando}
             startIcon={<PublicIcon />}
           >
-            {publicEnabled ? "Guardar cambios" : "Activar público"}
+            {publicEnabled ? "Guardar portada" : "Activar público"}
           </Button>
 
           <Button

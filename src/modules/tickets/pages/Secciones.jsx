@@ -10,6 +10,7 @@ import {
   Grid,
   MenuItem,
   Paper,
+  Stack,
   Table,
   TableBody,
   TableCell,
@@ -34,9 +35,13 @@ function Secciones() {
     system_id: "",
   });
 
+  const [modoEdicion, setModoEdicion] = useState(false);
+  const [seccionEditandoId, setSeccionEditandoId] = useState(null);
+
   const [loading, setLoading] = useState(true);
   const [cargando, setCargando] = useState(false);
   const [error, setError] = useState("");
+  const [ok, setOk] = useState("");
 
   useEffect(() => {
     obtenerDatos();
@@ -65,10 +70,9 @@ function Secciones() {
           .filter((seccion) => Number(seccion.estado) === 1)
           .filter((seccion) =>
             sistemasActivos.some(
-              (sistema) =>
-                String(sistema.id) === String(seccion.system_id)
-            )
-          )
+              (sistema) => String(sistema.id) === String(seccion.system_id),
+            ),
+          ),
       );
     } catch (err) {
       console.error("ERROR SECCIONES:", err.response?.data || err);
@@ -85,27 +89,46 @@ function Secciones() {
     }));
   };
 
-  const crearSeccion = async (e) => {
+  const limpiarFormulario = () => {
+    setFormulario({
+      nombre: "",
+      system_id: "",
+    });
+
+    setModoEdicion(false);
+    setSeccionEditandoId(null);
+    setError("");
+    setOk("");
+  };
+
+  const guardarSeccion = async (e) => {
     e.preventDefault();
 
     setError("");
+    setOk("");
     setCargando(true);
 
     try {
-      await axiosCliente.post("/ticket-categories", {
+      const payload = {
         nombre: formulario.nombre.trim(),
         system_id: formulario.system_id,
         estado: 1,
-      });
+      };
 
-      setFormulario({
-        nombre: "",
-        system_id: "",
-      });
+      if (modoEdicion && seccionEditandoId) {
+        await axiosCliente.put(`/ticket-categories/${seccionEditandoId}`, payload);
 
+        setOk("Sección actualizada correctamente.");
+      } else {
+        await axiosCliente.post("/ticket-categories", payload);
+
+        setOk("Sección creada correctamente.");
+      }
+
+      limpiarFormulario();
       obtenerDatos();
     } catch (err) {
-      console.error("ERROR CREAR SECCIÓN:", err.response?.data || err);
+      console.error("ERROR GUARDAR SECCIÓN:", err.response?.data || err);
 
       const errores = err.response?.data?.errors;
 
@@ -114,7 +137,7 @@ function Secciones() {
       } else {
         setError(
           err.response?.data?.message ||
-            "No se pudo crear la sección."
+            "No se pudo guardar la sección.",
         );
       }
     } finally {
@@ -122,29 +145,51 @@ function Secciones() {
     }
   };
 
+  const prepararEdicion = (seccion) => {
+    setModoEdicion(true);
+    setSeccionEditandoId(seccion.id);
+    setError("");
+    setOk("");
+
+    setFormulario({
+      nombre: seccion.nombre || "",
+      system_id: seccion.system_id || "",
+    });
+
+    window.scrollTo({
+      top: 0,
+      behavior: "smooth",
+    });
+  };
+
   const eliminarSeccion = async (id) => {
     const confirmar = window.confirm(
-      "¿Seguro que deseas eliminar esta sección?"
+      "¿Seguro que deseas eliminar esta sección?",
     );
 
     if (!confirmar) return;
 
     try {
+      setError("");
+      setOk("");
+
       await axiosCliente.delete(`/ticket-categories/${id}`);
+
+      setOk("Sección eliminada correctamente.");
       obtenerDatos();
     } catch (err) {
       console.error("ERROR ELIMINAR SECCIÓN:", err.response?.data || err);
 
       setError(
         err.response?.data?.message ||
-          "No se pudo eliminar la sección."
+          "No se pudo eliminar la sección.",
       );
     }
   };
 
   const obtenerNombreSistema = (systemId) => {
     const sistema = sistemas.find(
-      (item) => String(item.id) === String(systemId)
+      (item) => String(item.id) === String(systemId),
     );
 
     return sistema?.nombre ?? "Sin sistema";
@@ -152,7 +197,7 @@ function Secciones() {
 
   const obtenerPrefijoSistema = (systemId) => {
     const sistema = sistemas.find(
-      (item) => String(item.id) === String(systemId)
+      (item) => String(item.id) === String(systemId),
     );
 
     return sistema?.prefijo ?? "TCK";
@@ -160,17 +205,13 @@ function Secciones() {
 
   if (loading) {
     return (
-      <Box
-        display="flex"
-        justifyContent="center"
-        mt={6}
-      >
+      <Box display="flex" justifyContent="center" mt={6}>
         <CircularProgress />
       </Box>
     );
   }
 
-    return (
+  return (
     <Box>
       <Box mb={3}>
         <Typography variant="h5" fontWeight={800}>
@@ -192,7 +233,7 @@ function Secciones() {
         }}
       >
         <Typography fontWeight={800} mb={2}>
-          Crear sección
+          {modoEdicion ? "Editar sección" : "Crear sección"}
         </Typography>
 
         {error && (
@@ -201,7 +242,13 @@ function Secciones() {
           </Alert>
         )}
 
-        <Box component="form" onSubmit={crearSeccion}>
+        {ok && (
+          <Alert severity="success" sx={{ mb: 3 }}>
+            {ok}
+          </Alert>
+        )}
+
+        <Box component="form" onSubmit={guardarSeccion}>
           <Grid container spacing={2.5}>
             <Grid item xs={12} md={5}>
               <TextField
@@ -212,6 +259,7 @@ function Secciones() {
                 value={formulario.system_id}
                 onChange={cambiarValor}
                 required
+                disabled={cargando}
               >
                 {sistemas.map((sistema) => (
                   <MenuItem key={sistema.id} value={sistema.id}>
@@ -229,11 +277,35 @@ function Secciones() {
                 value={formulario.nombre}
                 onChange={cambiarValor}
                 required
+                disabled={cargando}
               />
             </Grid>
           </Grid>
 
-          <Box mt={3} display="flex" justifyContent="flex-end">
+          <Box
+            mt={3}
+            display="flex"
+            justifyContent="flex-end"
+            gap={1}
+            flexWrap="wrap"
+          >
+            {modoEdicion && (
+              <Button
+                type="button"
+                variant="outlined"
+                onClick={limpiarFormulario}
+                disabled={cargando}
+                sx={{
+                  borderRadius: 2,
+                  textTransform: "none",
+                  fontWeight: 700,
+                  px: 3,
+                }}
+              >
+                Cancelar edición
+              </Button>
+            )}
+
             <Button
               type="submit"
               variant="contained"
@@ -245,7 +317,13 @@ function Secciones() {
                 px: 3,
               }}
             >
-              {cargando ? "Creando..." : "Crear sección"}
+              {cargando
+                ? modoEdicion
+                  ? "Guardando..."
+                  : "Creando..."
+                : modoEdicion
+                  ? "Guardar cambios"
+                  : "Crear sección"}
             </Button>
           </Box>
         </Box>
@@ -282,7 +360,7 @@ function Secciones() {
                 <TableCell sx={headCell}>Prefijo</TableCell>
                 <TableCell sx={headCell}>Estado</TableCell>
                 <TableCell sx={headCell} align="right">
-                  Acción
+                  Acciones
                 </TableCell>
               </TableRow>
             </TableHead>
@@ -317,32 +395,47 @@ function Secciones() {
                     <Chip
                       size="small"
                       label={
-                        Number(seccion.estado) === 1
-                          ? "Activo"
-                          : "Inactivo"
+                        Number(seccion.estado) === 1 ? "Activo" : "Inactivo"
                       }
                       color={
-                        Number(seccion.estado) === 1
-                          ? "success"
-                          : "default"
+                        Number(seccion.estado) === 1 ? "success" : "default"
                       }
                     />
                   </TableCell>
 
                   <TableCell align="right">
-                    <Button
-                      variant="outlined"
-                      color="error"
-                      size="small"
-                      onClick={() => eliminarSeccion(seccion.id)}
-                      sx={{
-                        borderRadius: 2,
-                        textTransform: "none",
-                        fontWeight: 700,
-                      }}
+                    <Stack
+                      direction={{ xs: "column", sm: "row" }}
+                      spacing={1}
+                      justifyContent="flex-end"
                     >
-                      Eliminar
-                    </Button>
+                      <Button
+                        variant="outlined"
+                        size="small"
+                        onClick={() => prepararEdicion(seccion)}
+                        sx={{
+                          borderRadius: 2,
+                          textTransform: "none",
+                          fontWeight: 700,
+                        }}
+                      >
+                        Editar
+                      </Button>
+
+                      <Button
+                        variant="outlined"
+                        color="error"
+                        size="small"
+                        onClick={() => eliminarSeccion(seccion.id)}
+                        sx={{
+                          borderRadius: 2,
+                          textTransform: "none",
+                          fontWeight: 700,
+                        }}
+                      >
+                        Eliminar
+                      </Button>
+                    </Stack>
                   </TableCell>
                 </TableRow>
               ))}

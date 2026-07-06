@@ -167,16 +167,33 @@ function MisTickets() {
 
   const nombrePrioridad = (ticket) =>
     ticket.priority?.nombre || ticket.prioridad?.nombre || "Sin prioridad";
+  const API_ORIGIN = "https://api.thebusinessticket.com";
+
   const obtenerLogoSistema = (ticket) => {
-    const logo = ticket.system_logo || ticket.system?.logo;
+    const logo =
+      ticket.system?.logo_url ||
+      ticket.sistema?.logo_url ||
+      ticket.system_logo_url ||
+      ticket.logo_url ||
+      ticket.system_logo ||
+      ticket.system?.logo ||
+      ticket.sistema?.logo;
 
     if (!logo) return null;
 
-    if (logo.startsWith("http")) {
+    if (logo.startsWith("http://") || logo.startsWith("https://")) {
       return logo;
     }
 
-    return `/${logo}`;
+    if (logo.startsWith("storage/")) {
+      return `${API_ORIGIN}/${logo}`;
+    }
+
+    if (logo.startsWith("systems/")) {
+      return `${API_ORIGIN}/storage/${logo}`;
+    }
+
+    return `${API_ORIGIN}/${logo}`;
   };
 
   const nombreAgente = (ticket) => {
@@ -356,12 +373,18 @@ function MisTickets() {
                           <Box
                             component="img"
                             src={obtenerLogoSistema(ticket)}
+                            alt={nombreSistema(ticket)}
+                            onError={(e) => {
+                              e.currentTarget.style.display = "none";
+                            }}
                             sx={{
                               width: 42,
                               height: 42,
                               borderRadius: 2,
-                              objectFit: "cover",
+                              objectFit: "contain",
                               border: "1px solid #e5e7eb",
+                              bgcolor: "#ffffff",
+                              p: 0.5,
                             }}
                           />
                         )}
