@@ -1,15 +1,24 @@
 import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link as RouterLink, useNavigate } from "react-router-dom";
 import axiosCliente from "../../services/axiosCliente";
 
 import {
   Alert,
   Box,
   Button,
+  Chip,
+  CircularProgress,
+  InputAdornment,
   Paper,
+  Stack,
   TextField,
   Typography,
 } from "@mui/material";
+
+import EmailOutlinedIcon from "@mui/icons-material/EmailOutlined";
+import LockOutlinedIcon from "@mui/icons-material/LockOutlined";
+import SupportAgentIcon from "@mui/icons-material/SupportAgent";
+import LoginIcon from "@mui/icons-material/Login";
 
 function IniciarSesion() {
   const navigate = useNavigate();
@@ -31,6 +40,7 @@ function IniciarSesion() {
 
   const iniciarSesion = async (e) => {
     e.preventDefault();
+
     setError("");
     setCargando(true);
 
@@ -40,9 +50,7 @@ function IniciarSesion() {
       const user = respuesta.data.user;
       const company = respuesta.data.company;
 
-      // ✅ OPCIÓN A: Si Spatie no devuelve roles, usar company.role como fallback
       let roles = Array.isArray(user.roles) ? [...user.roles] : [];
-      console.log("roles:", roles);
 
       if (roles.length === 0 && company?.role) {
         const mapaRoles = {
@@ -51,23 +59,24 @@ function IniciarSesion() {
           supervisor: "Supervisor",
           client: "Cliente",
         };
+
         const rolTraducido = mapaRoles[company.role];
-        if (rolTraducido) roles = [rolTraducido];
+
+        if (rolTraducido) {
+          roles = [rolTraducido];
+        }
       }
 
-      // Guardamos los roles resueltos en el usuario
       user.roles = roles;
 
       localStorage.setItem("TOKEN", respuesta.data.token);
       localStorage.setItem("USUARIO", JSON.stringify(user));
 
-      // Routing por rol
       if (
         roles.includes("Administrador") ||
         roles.includes("Agente") ||
         roles.includes("Supervisor")
       ) {
-        console.log("entrando al paneladministrador");
         navigate("/paneladministrador");
         return;
       }
@@ -77,12 +86,10 @@ function IniciarSesion() {
         return;
       }
 
-      // Sin rol reconocido
       setError("Tu usuario no tiene un rol asignado. Contacta al administrador.");
-
     } catch (error) {
       setError(
-        error.response?.data?.message || "Correo o contraseña incorrectos"
+        error.response?.data?.message || "Correo o contraseña incorrectos",
       );
     } finally {
       setCargando(false);
@@ -92,71 +99,255 @@ function IniciarSesion() {
   return (
     <Box
       sx={{
-        minHeight: "100vh",
-        bgcolor: "#f5f6fa",
+        minHeight: "100dvh",
+        bgcolor: "#f1f5f9",
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        p: 2,
+        px: { xs: 2, sm: 3 },
+        py: { xs: 3, md: 5 },
       }}
     >
-      <Paper sx={{ width: "100%", maxWidth: 420, p: 4, borderRadius: 3 }}>
-        <Box mb={3}>
-          <Typography variant="h5" fontWeight="bold">
-            Iniciar sesión
-          </Typography>
-          <Typography variant="body2" color="text.secondary">
-            Accede al panel de soporte.
-          </Typography>
+      <Paper
+        elevation={0}
+        sx={{
+          width: "100%",
+          maxWidth: 460,
+          borderRadius: 4,
+          overflow: "hidden",
+          border: "1px solid #e2e8f0",
+          boxShadow: "0 18px 45px rgba(15, 23, 42, 0.10)",
+          bgcolor: "#ffffff",
+        }}
+      >
+        <Box
+          sx={{
+            px: { xs: 2.5, sm: 4 },
+            pt: { xs: 3, sm: 4 },
+            pb: 2,
+          }}
+        >
+          <Stack spacing={2} alignItems="center" textAlign="center">
+            <Box
+              sx={{
+                width: 58,
+                height: 58,
+                borderRadius: 4,
+                bgcolor: "#eff6ff",
+                color: "#1d4ed8",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                border: "1px solid #bfdbfe",
+              }}
+            >
+              <SupportAgentIcon sx={{ fontSize: 32 }} />
+            </Box>
+
+            <Box>
+              <Typography
+                fontWeight={900}
+                sx={{
+                  fontSize: { xs: 24, sm: 27 },
+                  color: "#0f172a",
+                  lineHeight: 1.15,
+                }}
+              >
+                The Business Ticket
+              </Typography>
+
+              <Typography
+                variant="body2"
+                sx={{
+                  color: "#64748b",
+                  mt: 0.7,
+                  fontWeight: 600,
+                }}
+              >
+                Panel de soporte y seguimiento de tickets
+              </Typography>
+            </Box>
+
+            <Chip
+              label="Acceso seguro"
+              size="small"
+              sx={{
+                bgcolor: "#ecfdf5",
+                color: "#047857",
+                fontWeight: 900,
+                borderRadius: 2,
+                border: "1px solid #bbf7d0",
+              }}
+            />
+          </Stack>
         </Box>
 
-        {error && (
-          <Alert severity="error" sx={{ mb: 3 }}>
-            {error}
-          </Alert>
-        )}
+        <Box
+          sx={{
+            px: { xs: 2.5, sm: 4 },
+            py: { xs: 2.5, sm: 3 },
+          }}
+        >
+          <Box mb={2.5}>
+            <Typography
+              fontWeight={900}
+              sx={{
+                fontSize: { xs: 21, sm: 24 },
+                color: "#0f172a",
+              }}
+            >
+              Iniciar sesión
+            </Typography>
 
-        <Box component="form" onSubmit={iniciarSesion}>
-          <TextField
-            fullWidth
-            type="email"
-            name="email"
-            label="Correo electrónico"
-            value={formulario.email}
-            onChange={cambiarValor}
-            required
-            sx={{ mb: 2 }}
-          />
+            <Typography
+              variant="body2"
+              sx={{
+                color: "#64748b",
+                mt: 0.5,
+              }}
+            >
+              Ingresa tu correo y contraseña para acceder al sistema.
+            </Typography>
+          </Box>
 
-          <TextField
-            fullWidth
-            type="password"
-            name="password"
-            label="Contraseña"
-            value={formulario.password}
-            onChange={cambiarValor}
-            required
-            sx={{ mb: 3 }}
-          />
+          {error && (
+            <Alert
+              severity="error"
+              sx={{
+                mb: 2.5,
+                borderRadius: 2,
+                fontWeight: 700,
+              }}
+            >
+              {error}
+            </Alert>
+          )}
 
-          <Button
-            fullWidth
-            type="submit"
-            variant="contained"
-            disabled={cargando}
-            size="large"
+          <Box component="form" onSubmit={iniciarSesion}>
+            <Stack spacing={2}>
+              <TextField
+                fullWidth
+                type="email"
+                name="email"
+                label="Correo electrónico"
+                value={formulario.email}
+                onChange={cambiarValor}
+                required
+                disabled={cargando}
+                autoComplete="email"
+                autoFocus
+                size="small"
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <EmailOutlinedIcon fontSize="small" />
+                    </InputAdornment>
+                  ),
+                }}
+                sx={inputStyle}
+              />
+
+              <TextField
+                fullWidth
+                type="password"
+                name="password"
+                label="Contraseña"
+                value={formulario.password}
+                onChange={cambiarValor}
+                required
+                disabled={cargando}
+                autoComplete="current-password"
+                size="small"
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <LockOutlinedIcon fontSize="small" />
+                    </InputAdornment>
+                  ),
+                }}
+                sx={inputStyle}
+              />
+
+              <Button
+                fullWidth
+                type="submit"
+                variant="contained"
+                disabled={cargando}
+                size="large"
+                startIcon={
+                  cargando ? (
+                    <CircularProgress size={18} sx={{ color: "#ffffff" }} />
+                  ) : (
+                    <LoginIcon />
+                  )
+                }
+                sx={{
+                  mt: 0.5,
+                  minHeight: 46,
+                  borderRadius: 2.5,
+                  textTransform: "none",
+                  fontWeight: 900,
+                  bgcolor: "#2563eb",
+                  boxShadow: "0 10px 20px rgba(37, 99, 235, 0.25)",
+                  "&:hover": {
+                    bgcolor: "#1d4ed8",
+                    boxShadow: "0 12px 24px rgba(37, 99, 235, 0.32)",
+                  },
+                }}
+              >
+                {cargando ? "Entrando..." : "Entrar"}
+              </Button>
+            </Stack>
+          </Box>
+        </Box>
+
+        <Box
+          sx={{
+            px: { xs: 2.5, sm: 4 },
+            py: 2,
+            bgcolor: "#f8fafc",
+            borderTop: "1px solid #e2e8f0",
+            textAlign: "center",
+          }}
+        >
+          <Typography
+            variant="body2"
+            sx={{
+              color: "#64748b",
+              fontWeight: 600,
+            }}
           >
-            {cargando ? "Entrando..." : "Entrar"}
-          </Button>
+            ¿No tienes cuenta?{" "}
+            <Box
+              component={RouterLink}
+              to="/registro"
+              sx={{
+                color: "#1d4ed8",
+                fontWeight: 900,
+                textDecoration: "none",
+                "&:hover": {
+                  textDecoration: "underline",
+                },
+              }}
+            >
+              Crear cuenta
+            </Box>
+          </Typography>
         </Box>
-
-        <Typography variant="body2" color="text.secondary" mt={3}>
-          ¿No tienes cuenta?{" "}
-          <Link to="/registro">Crear cuenta</Link>
-        </Typography>
       </Paper>
     </Box>
   );
 }
+
+const inputStyle = {
+  "& .MuiOutlinedInput-root": {
+    borderRadius: 2.5,
+    bgcolor: "#ffffff",
+    fontSize: 14,
+  },
+  "& .MuiInputLabel-root": {
+    fontSize: 14,
+  },
+};
 
 export default IniciarSesion;

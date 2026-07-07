@@ -22,12 +22,16 @@ import {
   TableRow,
   TextField,
   Typography,
+  Divider,
 } from "@mui/material";
+
+const API_ORIGIN = "https://api.thebusinessticket.com";
 
 function MisTickets() {
   const navigate = useNavigate();
 
   const usuario = JSON.parse(localStorage.getItem("USUARIO") || "null");
+  const roles = usuario?.roles || [];
 
   const [tickets, setTickets] = useState([]);
   const [busqueda, setBusqueda] = useState("");
@@ -47,6 +51,7 @@ function MisTickets() {
       setError("");
 
       const res = await axiosCliente.get("/tickets");
+
       setTickets(res.data.data || res.data || []);
     } catch (error) {
       console.log("ERROR CARGAR TICKETS:", error.response?.data || error);
@@ -156,6 +161,15 @@ function MisTickets() {
     }
   };
 
+  const tieneRol = (...permitidos) => {
+    const roleDirecto = usuario?.role;
+
+    return (
+      permitidos.includes(roleDirecto) ||
+      permitidos.some((rol) => roles.includes(rol))
+    );
+  };
+
   const nombreEstado = (ticket) =>
     ticket.status?.nombre || ticket.status?.name || ticket.status || "Abierto";
 
@@ -167,7 +181,15 @@ function MisTickets() {
 
   const nombrePrioridad = (ticket) =>
     ticket.priority?.nombre || ticket.prioridad?.nombre || "Sin prioridad";
-  const API_ORIGIN = "https://api.thebusinessticket.com";
+
+  const obtenerFolio = (ticket) => {
+    if (ticket.folio) return ticket.folio;
+
+    const prefijo = ticket.folio_prefijo || "TCK";
+    const numero = ticket.folio_numero || ticket.id;
+
+    return `${prefijo}-${numero}`;
+  };
 
   const obtenerLogoSistema = (ticket) => {
     const logo =
@@ -209,21 +231,32 @@ function MisTickets() {
 
     if (estado.includes("cerr") || estado.includes("resuelto"))
       return "success";
+
     if (estado.includes("proceso")) return "warning";
-    if (estado.includes("abiert")) return "primary";
+
+    if (
+      estado.includes("abiert") ||
+      estado.includes("reciente") ||
+      estado.includes("nuevo")
+    ) {
+      return "info";
+    }
 
     return "default";
   };
 
   const puedeEliminar = (ticket) => {
-    if (usuario?.role === "admin") return true;
+    if (tieneRol("admin", "Administrador")) return true;
 
-    return usuario?.role === "client" && Number(ticket.status_id) === 1;
+    return (
+      tieneRol("client", "Cliente") &&
+      Number(ticket.status_id) === 1
+    );
   };
 
   const puedeTomar = (ticket) => {
     return (
-      (usuario?.role === "admin" || usuario?.role === "agent") &&
+      tieneRol("admin", "agent", "Administrador", "Agente") &&
       !ticket.responsable_id &&
       Number(ticket.status_id) !== 3
     );
@@ -231,9 +264,9 @@ function MisTickets() {
 
   const puedeResolver = (ticket) => {
     return (
-      (usuario?.role === "admin" || usuario?.role === "agent") &&
+      tieneRol("admin", "agent", "Administrador", "Agente") &&
       Number(ticket.status_id) !== 3 &&
-      (usuario?.role === "admin" ||
+      (tieneRol("admin", "Administrador") ||
         Number(ticket.responsable_id) === Number(usuario?.id))
     );
   };
@@ -249,6 +282,8 @@ function MisTickets() {
 
       const baseBusqueda = [
         ticket.folio,
+        ticket.folio_prefijo,
+        ticket.folio_numero,
         ticket.titulo,
         nombreSistema(ticket),
         nombreProblema(ticket),
@@ -264,6 +299,127 @@ function MisTickets() {
     });
   }, [tickets, busqueda, estadoFiltro]);
 
+  const BotonesAccion = ({ ticket, compacto = false }) => (
+    <Stack
+      direction={compacto ? "column" : "row"}
+      spacing={1}
+      justifyContent="flex-end"
+      alignItems={compacto ? "stretch" : "center"}
+    >
+      <Button
+        size="small"
+        variant="outlined"
+        onClick={() => navigate(`/tickets/${ticket.id}`)}
+        sx={{
+          borderRadius: 2,
+          textTransform: "none",
+          fontWeight: 800,
+          minWidth: compacto ? "100%" : 72,
+        }}
+      >
+        Ver
+      </Button>
+
+      {puedeTomar(ticket) && (
+        <Button
+          size="small"
+          variant="outlined"
+          color="warning"
+          onClick={() => tomarTicket(ticket)}
+          sx={{
+            borderRadius: 2,
+            textTransform: "none",
+            fontWeight: 800,
+            minWidth: compacto ? "100%" : 72,
+          }}
+        >
+          Tomar
+        </Button>
+      )}
+
+      {puedeResolver(ticket) && (
+        <Button
+          size="small"
+          variant="outlined"
+          color="success"
+          onClick={() => resolverTicket(ticket)}
+          sx={{
+            borderRadius: 2,
+            textTransform: "none",
+            fontWeight: 800,
+            minWidth: compacto ? "100%" : 82,
+          }}
+        >
+          Resolver
+        </Button>
+      )}
+
+      {puedeEliminar(ticket) && (
+        <Button
+          size="small"
+          variant="outlined"
+          color="error"
+          onClick={() => eliminarTicket(ticket)}
+          sx={{
+            borderRadius: 2,
+            textTransform: "none",
+            fontWeight: 800,
+            minWidth: compacto ? "100%" : 82,
+          }}
+        >
+          Eliminar
+        </Button>
+      )}
+    </Stack>
+  );
+
+  const LogoSistema = ({ ticket, size = 42 }) => {
+    const logo = obtenerLogoSistema(ticket);
+
+    if (!logo) {
+      return (
+        <Box
+          sx={{
+            width: size,
+            height: size,
+            borderRadius: 2,
+            border: "1px solid #e5e7eb",
+            bgcolor: "#f1f5f9",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            flexShrink: 0,
+          }}
+        >
+          <Typography variant="caption" fontWeight={900} color="text.secondary">
+            {String(nombreSistema(ticket)).charAt(0)}
+          </Typography>
+        </Box>
+      );
+    }
+
+    return (
+      <Box
+        component="img"
+        src={logo}
+        alt={nombreSistema(ticket)}
+        onError={(e) => {
+          e.currentTarget.style.display = "none";
+        }}
+        sx={{
+          width: size,
+          height: size,
+          borderRadius: 2,
+          objectFit: "contain",
+          border: "1px solid #e5e7eb",
+          bgcolor: "#ffffff",
+          p: 0.5,
+          flexShrink: 0,
+        }}
+      />
+    );
+  };
+
   if (loading) {
     return (
       <Box display="flex" justifyContent="center" mt={6}>
@@ -277,12 +433,17 @@ function MisTickets() {
       <Box
         mb={3}
         display="flex"
+        flexDirection={{ xs: "column", sm: "row" }}
         justifyContent="space-between"
-        alignItems="center"
+        alignItems={{ xs: "stretch", sm: "center" }}
         gap={2}
       >
         <Box>
-          <Typography variant="h5" fontWeight={800}>
+          <Typography
+            variant="h5"
+            fontWeight={900}
+            sx={{ fontSize: { xs: 22, md: 26 } }}
+          >
             Tickets
           </Typography>
 
@@ -292,7 +453,16 @@ function MisTickets() {
           </Typography>
         </Box>
 
-        <Button variant="contained" onClick={() => setOpenNuevoTicket(true)}>
+        <Button
+          variant="contained"
+          onClick={() => setOpenNuevoTicket(true)}
+          sx={{
+            borderRadius: 2,
+            textTransform: "none",
+            fontWeight: 800,
+            width: { xs: "100%", sm: "auto" },
+          }}
+        >
           Nuevo ticket
         </Button>
       </Box>
@@ -305,7 +475,7 @@ function MisTickets() {
 
       <Paper
         sx={{
-          p: { xs: 2, md: 3 },
+          p: { xs: 1.5, md: 3 },
           borderRadius: 3,
           boxShadow: 1,
           border: "1px solid #e5e7eb",
@@ -334,132 +504,216 @@ function MisTickets() {
             >
               <MenuItem value="todos">Todos</MenuItem>
               <MenuItem value="abiert">Abiertos</MenuItem>
+              <MenuItem value="reciente">Recientes</MenuItem>
               <MenuItem value="proceso">En proceso</MenuItem>
               <MenuItem value="cerr">Cerrados</MenuItem>
+              <MenuItem value="resuelto">Resueltos</MenuItem>
             </TextField>
           </Grid>
         </Grid>
 
         {ticketsFiltrados.length > 0 ? (
-          <TableContainer
-            sx={{
-              border: "1px solid #e5e7eb",
-              borderRadius: 2,
-              overflowX: "auto",
-            }}
-          >
-            <Table size="small">
-              <TableHead
-                sx={{
-                  bgcolor: "#f8fafc",
-                }}
-              >
-                <TableRow>
-                  <TableCell>Folio</TableCell>
-                  <TableCell>Problema</TableCell>
-                  <TableCell>Sección</TableCell>
-                  <TableCell>Prioridad / Estado</TableCell>
-                  <TableCell>Agente</TableCell>
-                  <TableCell align="right">Acciones</TableCell>
-                </TableRow>
-              </TableHead>
-
-              <TableBody>
-                {ticketsFiltrados.map((ticket) => (
-                  <TableRow key={ticket.id} hover>
-                    <TableCell>
-                      <Stack direction="row" spacing={1.5} alignItems="center">
-                        {obtenerLogoSistema(ticket) && (
-                          <Box
-                            component="img"
-                            src={obtenerLogoSistema(ticket)}
-                            alt={nombreSistema(ticket)}
-                            onError={(e) => {
-                              e.currentTarget.style.display = "none";
-                            }}
-                            sx={{
-                              width: 42,
-                              height: 42,
-                              borderRadius: 2,
-                              objectFit: "contain",
-                              border: "1px solid #e5e7eb",
-                              bgcolor: "#ffffff",
-                              p: 0.5,
-                            }}
-                          />
-                        )}
-
-                        <Box>
-                          <Typography fontWeight={800} color="primary">
-                            {ticket.folio_prefijo || "TCK"}
-                          </Typography>
-
-                          <Typography variant="caption">
-                            {ticket.folio_numero}
-                          </Typography>
-                        </Box>
-                      </Stack>
+          <>
+            {/* Escritorio */}
+            <TableContainer
+              sx={{
+                display: { xs: "none", md: "block" },
+                border: "1px solid #e5e7eb",
+                borderRadius: 2,
+                overflowX: "auto",
+              }}
+            >
+              <Table size="small">
+                <TableHead sx={{ bgcolor: "#f8fafc" }}>
+                  <TableRow>
+                    <TableCell sx={headCell}>Folio</TableCell>
+                    <TableCell sx={headCell}>Problema</TableCell>
+                    <TableCell sx={headCell}>Sección</TableCell>
+                    <TableCell sx={headCell}>Prioridad / Estado</TableCell>
+                    <TableCell sx={headCell}>Agente</TableCell>
+                    <TableCell sx={headCell} align="right">
+                      Acciones
                     </TableCell>
+                  </TableRow>
+                </TableHead>
 
-                    <TableCell>
-                      <Typography fontWeight={600}>{ticket.titulo}</Typography>
+                <TableBody>
+                  {ticketsFiltrados.map((ticket) => (
+                    <TableRow key={ticket.id} hover>
+                      <TableCell>
+                        <Stack
+                          direction="row"
+                          spacing={1.5}
+                          alignItems="center"
+                        >
+                          <LogoSistema ticket={ticket} />
 
-                      <Chip
-                        size="small"
-                        label={nombreSistema(ticket)}
-                        sx={{ mt: 0.5 }}
-                      />
-                    </TableCell>
+                          <Box>
+                            <Typography fontWeight={900} color="primary">
+                              {ticket.folio_prefijo || "TCK"}
+                            </Typography>
 
-                    <TableCell>
-                      {ticket.seccion_nombre || nombreProblema(ticket)}
-                    </TableCell>
+                            <Typography variant="caption">
+                              {ticket.folio_numero || ticket.id}
+                            </Typography>
+                          </Box>
+                        </Stack>
+                      </TableCell>
 
-                    <TableCell>
-                      <Stack spacing={0.7}>
-                        <Typography variant="body2">
-                          {nombrePrioridad(ticket)}
+                      <TableCell>
+                        <Typography fontWeight={700}>
+                          {ticket.titulo}
                         </Typography>
 
                         <Chip
                           size="small"
-                          label={nombreEstado(ticket)}
-                          color={colorEstado(ticket)}
-                          sx={{ width: "fit-content" }}
+                          label={nombreSistema(ticket)}
+                          sx={{
+                            mt: 0.5,
+                            fontWeight: 700,
+                            borderRadius: 2,
+                          }}
                         />
-                      </Stack>
-                    </TableCell>
+                      </TableCell>
 
-                    <TableCell>{nombreAgente(ticket)}</TableCell>
+                      <TableCell>
+                        {ticket.seccion_nombre || nombreProblema(ticket)}
+                      </TableCell>
 
-                    <TableCell align="right">
-                      <Button
+                      <TableCell>
+                        <Stack spacing={0.7}>
+                          <Typography variant="body2">
+                            {nombrePrioridad(ticket)}
+                          </Typography>
+
+                          <Chip
+                            size="small"
+                            label={nombreEstado(ticket)}
+                            color={colorEstado(ticket)}
+                            sx={{
+                              width: "fit-content",
+                              fontWeight: 800,
+                            }}
+                          />
+                        </Stack>
+                      </TableCell>
+
+                      <TableCell>{nombreAgente(ticket)}</TableCell>
+
+                      <TableCell align="right">
+                        <BotonesAccion ticket={ticket} />
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </TableContainer>
+
+            {/* Móvil */}
+            <Stack
+              spacing={1.5}
+              sx={{
+                display: { xs: "flex", md: "none" },
+              }}
+            >
+              {ticketsFiltrados.map((ticket) => (
+                <Paper
+                  key={ticket.id}
+                  variant="outlined"
+                  sx={{
+                    p: 1.5,
+                    borderRadius: 3,
+                    bgcolor: "#ffffff",
+                    borderColor: "#e5e7eb",
+                  }}
+                >
+                  <Stack spacing={1.4}>
+                    <Stack direction="row" spacing={1.4} alignItems="center">
+                      <LogoSistema ticket={ticket} size={48} />
+
+                      <Box sx={{ minWidth: 0, flex: 1 }}>
+                        <Typography
+                          fontWeight={900}
+                          color="primary"
+                          noWrap
+                        >
+                          {obtenerFolio(ticket)}
+                        </Typography>
+
+                        <Typography
+                          variant="caption"
+                          color="text.secondary"
+                          noWrap
+                          display="block"
+                        >
+                          {nombreSistema(ticket)}
+                        </Typography>
+                      </Box>
+
+                      <Chip
                         size="small"
-                        variant="outlined"
-                        onClick={() => navigate(`/tickets/${ticket.id}`)}
+                        label={nombreEstado(ticket)}
+                        color={colorEstado(ticket)}
                         sx={{
-                          borderRadius: 2,
-                          textTransform: "none",
-                          fontWeight: 700,
+                          fontWeight: 800,
+                          flexShrink: 0,
+                        }}
+                      />
+                    </Stack>
+
+                    <Box>
+                      <Typography
+                        fontWeight={900}
+                        sx={{
+                          fontSize: 16,
+                          lineHeight: 1.35,
+                          wordBreak: "break-word",
                         }}
                       >
-                        Ver
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </TableContainer>
+                        {ticket.titulo}
+                      </Typography>
+                    </Box>
+
+                    <Divider />
+
+                    <Grid container spacing={1.2}>
+                      <Grid item xs={12} sm={6}>
+                        <InfoItem
+                          label="Sección"
+                          value={ticket.seccion_nombre || nombreProblema(ticket)}
+                        />
+                      </Grid>
+
+                      <Grid item xs={12} sm={6}>
+                        <InfoItem
+                          label="Prioridad"
+                          value={nombrePrioridad(ticket)}
+                        />
+                      </Grid>
+
+                      <Grid item xs={12}>
+                        <InfoItem label="Agente" value={nombreAgente(ticket)} />
+                      </Grid>
+                    </Grid>
+
+                    <BotonesAccion ticket={ticket} compacto />
+                  </Stack>
+                </Paper>
+              ))}
+            </Stack>
+          </>
         ) : (
           <Box
             sx={{
-              height: 160,
+              minHeight: 180,
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
               border: "1px dashed #cbd5e1",
-              borderRadius: 2,
+              borderRadius: 3,
+              bgcolor: "#f8fafc",
+              textAlign: "center",
+              px: 2,
             }}
           >
             <Typography color="text.secondary">
@@ -468,6 +722,7 @@ function MisTickets() {
           </Box>
         )}
       </Paper>
+
       <NuevoTicketModal
         open={openNuevoTicket}
         onClose={() => setOpenNuevoTicket(false)}
@@ -476,5 +731,34 @@ function MisTickets() {
     </Box>
   );
 }
+
+function InfoItem({ label, value }) {
+  return (
+    <Box>
+      <Typography
+        variant="caption"
+        color="text.secondary"
+        fontWeight={800}
+        display="block"
+      >
+        {label}
+      </Typography>
+
+      <Typography
+        variant="body2"
+        fontWeight={700}
+        sx={{ wordBreak: "break-word" }}
+      >
+        {value || "-"}
+      </Typography>
+    </Box>
+  );
+}
+
+const headCell = {
+  fontWeight: 900,
+  color: "#334155",
+  whiteSpace: "nowrap",
+};
 
 export default MisTickets;

@@ -7,6 +7,7 @@ import {
   Button,
   Chip,
   CircularProgress,
+  Divider,
   Grid,
   MenuItem,
   Paper,
@@ -22,8 +23,9 @@ import {
 } from "@mui/material";
 
 const headCell = {
-  fontWeight: 800,
+  fontWeight: 900,
   color: "#334155",
+  whiteSpace: "nowrap",
 };
 
 function Secciones() {
@@ -116,7 +118,10 @@ function Secciones() {
       };
 
       if (modoEdicion && seccionEditandoId) {
-        await axiosCliente.put(`/ticket-categories/${seccionEditandoId}`, payload);
+        await axiosCliente.put(
+          `/ticket-categories/${seccionEditandoId}`,
+          payload,
+        );
 
         setOk("Sección actualizada correctamente.");
       } else {
@@ -136,8 +141,7 @@ function Secciones() {
         setError(Object.values(errores).flat().join(" "));
       } else {
         setError(
-          err.response?.data?.message ||
-            "No se pudo guardar la sección.",
+          err.response?.data?.message || "No se pudo guardar la sección.",
         );
       }
     } finally {
@@ -181,8 +185,7 @@ function Secciones() {
       console.error("ERROR ELIMINAR SECCIÓN:", err.response?.data || err);
 
       setError(
-        err.response?.data?.message ||
-          "No se pudo eliminar la sección.",
+        err.response?.data?.message || "No se pudo eliminar la sección.",
       );
     }
   };
@@ -203,6 +206,69 @@ function Secciones() {
     return sistema?.prefijo ?? "TCK";
   };
 
+  const EstadoChip = ({ estado }) => (
+    <Chip
+      size="small"
+      label={Number(estado) === 1 ? "Activo" : "Inactivo"}
+      color={Number(estado) === 1 ? "success" : "default"}
+      sx={{
+        fontWeight: 800,
+        borderRadius: 2,
+      }}
+    />
+  );
+
+  const PrefijoChip = ({ systemId }) => (
+    <Chip
+      size="small"
+      label={obtenerPrefijoSistema(systemId)}
+      sx={{
+        fontWeight: 900,
+        borderRadius: 2,
+        bgcolor: "#eff6ff",
+        color: "#1d4ed8",
+      }}
+    />
+  );
+
+  const AccionesSeccion = ({ seccion, mobile = false }) => (
+    <Stack
+      direction={mobile ? "column" : "row"}
+      spacing={1}
+      justifyContent="flex-end"
+      alignItems={mobile ? "stretch" : "center"}
+    >
+      <Button
+        variant="outlined"
+        size="small"
+        onClick={() => prepararEdicion(seccion)}
+        fullWidth={mobile}
+        sx={{
+          borderRadius: 2,
+          textTransform: "none",
+          fontWeight: 800,
+        }}
+      >
+        Editar
+      </Button>
+
+      <Button
+        variant="outlined"
+        color="error"
+        size="small"
+        onClick={() => eliminarSeccion(seccion.id)}
+        fullWidth={mobile}
+        sx={{
+          borderRadius: 2,
+          textTransform: "none",
+          fontWeight: 800,
+        }}
+      >
+        Eliminar
+      </Button>
+    </Stack>
+  );
+
   if (loading) {
     return (
       <Box display="flex" justifyContent="center" mt={6}>
@@ -213,28 +279,59 @@ function Secciones() {
 
   return (
     <Box>
-      <Box mb={3}>
-        <Typography variant="h5" fontWeight={800}>
-          Secciones
-        </Typography>
+      <Box
+        mb={3}
+        display="flex"
+        flexDirection={{ xs: "column", sm: "row" }}
+        justifyContent="space-between"
+        alignItems={{ xs: "stretch", sm: "center" }}
+        gap={1.5}
+      >
+        <Box>
+          <Typography
+            variant="h5"
+            fontWeight={900}
+            sx={{ fontSize: { xs: 22, md: 26 } }}
+          >
+            Secciones
+          </Typography>
 
-        <Typography variant="body2" color="text.secondary">
-          Administra las secciones disponibles para cada sistema.
-        </Typography>
+          <Typography variant="body2" color="text.secondary">
+            Administra las secciones disponibles para cada sistema.
+          </Typography>
+        </Box>
+
+        <Chip
+          label={`${secciones.length} secciones`}
+          color="primary"
+          variant="outlined"
+          sx={{
+            fontWeight: 800,
+            width: { xs: "fit-content", sm: "auto" },
+          }}
+        />
       </Box>
 
       <Paper
         sx={{
-          p: { xs: 2, md: 3 },
+          p: { xs: 1.5, sm: 2, md: 3 },
           borderRadius: 3,
           boxShadow: 1,
           border: "1px solid #e5e7eb",
           mb: 4,
         }}
       >
-        <Typography fontWeight={800} mb={2}>
-          {modoEdicion ? "Editar sección" : "Crear sección"}
-        </Typography>
+        <Box mb={2}>
+          <Typography fontWeight={900} sx={{ fontSize: { xs: 18, md: 20 } }}>
+            {modoEdicion ? "Editar sección" : "Crear sección"}
+          </Typography>
+
+          <Typography variant="body2" color="text.secondary">
+            {modoEdicion
+              ? "Modifica el sistema o nombre de la sección seleccionada."
+              : "Agrega una nueva sección para clasificar los tickets de un sistema."}
+          </Typography>
+        </Box>
 
         {error && (
           <Alert severity="error" sx={{ mb: 3 }}>
@@ -249,7 +346,7 @@ function Secciones() {
         )}
 
         <Box component="form" onSubmit={guardarSeccion}>
-          <Grid container spacing={2.5}>
+          <Grid container spacing={2}>
             <Grid item xs={12} md={5}>
               <TextField
                 select
@@ -260,6 +357,7 @@ function Secciones() {
                 onChange={cambiarValor}
                 required
                 disabled={cargando}
+                size="small"
               >
                 {sistemas.map((sistema) => (
                   <MenuItem key={sistema.id} value={sistema.id}>
@@ -278,16 +376,17 @@ function Secciones() {
                 onChange={cambiarValor}
                 required
                 disabled={cargando}
+                size="small"
               />
             </Grid>
           </Grid>
 
-          <Box
+          <Stack
+            direction={{ xs: "column", sm: "row" }}
+            spacing={1}
             mt={3}
-            display="flex"
             justifyContent="flex-end"
-            gap={1}
-            flexWrap="wrap"
+            alignItems={{ xs: "stretch", sm: "center" }}
           >
             {modoEdicion && (
               <Button
@@ -295,11 +394,13 @@ function Secciones() {
                 variant="outlined"
                 onClick={limpiarFormulario}
                 disabled={cargando}
+                fullWidth
                 sx={{
                   borderRadius: 2,
                   textTransform: "none",
-                  fontWeight: 700,
+                  fontWeight: 800,
                   px: 3,
+                  maxWidth: { xs: "100%", sm: 180 },
                 }}
               >
                 Cancelar edición
@@ -310,11 +411,13 @@ function Secciones() {
               type="submit"
               variant="contained"
               disabled={cargando}
+              fullWidth
               sx={{
                 borderRadius: 2,
                 textTransform: "none",
-                fontWeight: 700,
+                fontWeight: 800,
                 px: 3,
+                maxWidth: { xs: "100%", sm: 190 },
               }}
             >
               {cargando
@@ -325,140 +428,210 @@ function Secciones() {
                   ? "Guardar cambios"
                   : "Crear sección"}
             </Button>
-          </Box>
+          </Stack>
         </Box>
       </Paper>
 
       <Paper
         sx={{
-          p: { xs: 2, md: 3 },
+          p: { xs: 1.5, sm: 2, md: 3 },
           borderRadius: 3,
           boxShadow: 1,
           border: "1px solid #e5e7eb",
         }}
       >
         <Box mb={2}>
-          <Typography fontWeight={800}>Secciones registradas</Typography>
+          <Typography fontWeight={900} sx={{ fontSize: { xs: 18, md: 20 } }}>
+            Secciones registradas
+          </Typography>
 
           <Typography variant="body2" color="text.secondary">
             Listado de secciones disponibles por sistema.
           </Typography>
         </Box>
 
-        <TableContainer
-          sx={{
-            border: "1px solid #e5e7eb",
-            borderRadius: 2,
-            overflowX: "auto",
-          }}
-        >
-          <Table size="small">
-            <TableHead sx={{ bgcolor: "#f8fafc" }}>
-              <TableRow>
-                <TableCell sx={headCell}>Sistema</TableCell>
-                <TableCell sx={headCell}>Sección</TableCell>
-                <TableCell sx={headCell}>Prefijo</TableCell>
-                <TableCell sx={headCell}>Estado</TableCell>
-                <TableCell sx={headCell} align="right">
-                  Acciones
-                </TableCell>
-              </TableRow>
-            </TableHead>
+        {secciones.length === 0 ? (
+          <Box
+            sx={{
+              py: 5,
+              textAlign: "center",
+              border: "1px dashed #cbd5e1",
+              borderRadius: 3,
+              bgcolor: "#f8fafc",
+              color: "text.secondary",
+            }}
+          >
+            <Typography fontWeight={800}>No hay secciones registradas.</Typography>
+            <Typography variant="body2" mt={0.5}>
+              Crea una sección para comenzar.
+            </Typography>
+          </Box>
+        ) : (
+          <>
+            {/* Escritorio */}
+            <TableContainer
+              sx={{
+                display: { xs: "none", md: "block" },
+                border: "1px solid #e5e7eb",
+                borderRadius: 2,
+                overflowX: "auto",
+              }}
+            >
+              <Table size="small">
+                <TableHead sx={{ bgcolor: "#f8fafc" }}>
+                  <TableRow>
+                    <TableCell sx={headCell}>Sistema</TableCell>
+                    <TableCell sx={headCell}>Sección</TableCell>
+                    <TableCell sx={headCell}>Prefijo</TableCell>
+                    <TableCell sx={headCell}>Estado</TableCell>
+                    <TableCell sx={headCell} align="right">
+                      Acciones
+                    </TableCell>
+                  </TableRow>
+                </TableHead>
 
-            <TableBody>
+                <TableBody>
+                  {secciones.map((seccion) => (
+                    <TableRow key={seccion.id} hover>
+                      <TableCell>
+                        <Typography fontWeight={700}>
+                          {obtenerNombreSistema(seccion.system_id)}
+                        </Typography>
+                      </TableCell>
+
+                      <TableCell>
+                        <Typography fontWeight={800}>
+                          {seccion.nombre}
+                        </Typography>
+                      </TableCell>
+
+                      <TableCell>
+                        <PrefijoChip systemId={seccion.system_id} />
+                      </TableCell>
+
+                      <TableCell>
+                        <EstadoChip estado={seccion.estado} />
+                      </TableCell>
+
+                      <TableCell align="right">
+                        <AccionesSeccion seccion={seccion} />
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </TableContainer>
+
+            {/* Móvil */}
+            <Stack
+              spacing={1.5}
+              sx={{
+                display: { xs: "flex", md: "none" },
+              }}
+            >
               {secciones.map((seccion) => (
-                <TableRow key={seccion.id} hover>
-                  <TableCell>
-                    {obtenerNombreSistema(seccion.system_id)}
-                  </TableCell>
-
-                  <TableCell>
-                    <Typography fontWeight={700}>
-                      {seccion.nombre}
-                    </Typography>
-                  </TableCell>
-
-                  <TableCell>
-                    <Chip
-                      size="small"
-                      label={obtenerPrefijoSistema(seccion.system_id)}
-                      sx={{
-                        fontWeight: 800,
-                        borderRadius: 2,
-                        bgcolor: "#eff6ff",
-                        color: "#1d4ed8",
-                      }}
-                    />
-                  </TableCell>
-
-                  <TableCell>
-                    <Chip
-                      size="small"
-                      label={
-                        Number(seccion.estado) === 1 ? "Activo" : "Inactivo"
-                      }
-                      color={
-                        Number(seccion.estado) === 1 ? "success" : "default"
-                      }
-                    />
-                  </TableCell>
-
-                  <TableCell align="right">
+                <Paper
+                  key={seccion.id}
+                  variant="outlined"
+                  sx={{
+                    p: 1.5,
+                    borderRadius: 3,
+                    borderColor: "#e5e7eb",
+                    bgcolor: "#ffffff",
+                  }}
+                >
+                  <Stack spacing={1.4}>
                     <Stack
-                      direction={{ xs: "column", sm: "row" }}
+                      direction="row"
                       spacing={1}
-                      justifyContent="flex-end"
+                      justifyContent="space-between"
+                      alignItems="flex-start"
                     >
-                      <Button
-                        variant="outlined"
-                        size="small"
-                        onClick={() => prepararEdicion(seccion)}
-                        sx={{
-                          borderRadius: 2,
-                          textTransform: "none",
-                          fontWeight: 700,
-                        }}
-                      >
-                        Editar
-                      </Button>
+                      <Box sx={{ minWidth: 0, flex: 1 }}>
+                        <Typography
+                          variant="caption"
+                          color="text.secondary"
+                          fontWeight={800}
+                          display="block"
+                        >
+                          Sección
+                        </Typography>
 
-                      <Button
-                        variant="outlined"
-                        color="error"
-                        size="small"
-                        onClick={() => eliminarSeccion(seccion.id)}
-                        sx={{
-                          borderRadius: 2,
-                          textTransform: "none",
-                          fontWeight: 700,
-                        }}
-                      >
-                        Eliminar
-                      </Button>
+                        <Typography
+                          fontWeight={900}
+                          sx={{
+                            fontSize: 16,
+                            lineHeight: 1.3,
+                            wordBreak: "break-word",
+                          }}
+                        >
+                          {seccion.nombre}
+                        </Typography>
+                      </Box>
+
+                      <EstadoChip estado={seccion.estado} />
                     </Stack>
-                  </TableCell>
-                </TableRow>
-              ))}
 
-              {secciones.length === 0 && (
-                <TableRow>
-                  <TableCell colSpan={5}>
-                    <Box
-                      sx={{
-                        py: 4,
-                        textAlign: "center",
-                        color: "text.secondary",
-                      }}
-                    >
-                      No hay secciones registradas.
-                    </Box>
-                  </TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
-        </TableContainer>
+                    <Divider />
+
+                    <Grid container spacing={1.2}>
+                      <Grid item xs={12}>
+                        <InfoItem
+                          label="Sistema"
+                          value={obtenerNombreSistema(seccion.system_id)}
+                        />
+                      </Grid>
+
+                      <Grid item xs={12}>
+                        <Typography
+                          variant="caption"
+                          color="text.secondary"
+                          fontWeight={800}
+                          display="block"
+                        >
+                          Prefijo
+                        </Typography>
+
+                        <Box mt={0.5}>
+                          <PrefijoChip systemId={seccion.system_id} />
+                        </Box>
+                      </Grid>
+                    </Grid>
+
+                    <AccionesSeccion seccion={seccion} mobile />
+                  </Stack>
+                </Paper>
+              ))}
+            </Stack>
+          </>
+        )}
       </Paper>
+    </Box>
+  );
+}
+
+function InfoItem({ label, value }) {
+  return (
+    <Box>
+      <Typography
+        variant="caption"
+        color="text.secondary"
+        fontWeight={800}
+        display="block"
+      >
+        {label}
+      </Typography>
+
+      <Typography
+        variant="body2"
+        fontWeight={800}
+        sx={{
+          wordBreak: "break-word",
+          lineHeight: 1.35,
+        }}
+      >
+        {value || "-"}
+      </Typography>
     </Box>
   );
 }

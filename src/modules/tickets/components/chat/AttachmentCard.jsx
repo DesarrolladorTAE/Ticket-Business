@@ -20,14 +20,21 @@ export default function AttachmentCard({ file, abrirArchivo, getArchivoUrl }) {
       <Box
         onClick={() => abrirArchivo(file)}
         sx={{
-          width: { xs: 230, sm: 280 },
+          width: {
+            xs: "100%",
+            sm: 280,
+          },
           maxWidth: "100%",
-          borderRadius: 2,
+          borderRadius: 2.5,
           overflow: "hidden",
           cursor: "pointer",
           bgcolor: "#ffffff",
           border: "1px solid rgba(15,23,42,0.08)",
           boxShadow: "0 1px 2px rgba(15,23,42,0.12)",
+          transition: "0.15s ease",
+          "&:hover": {
+            boxShadow: "0 3px 8px rgba(15,23,42,0.16)",
+          },
         }}
       >
         <Box
@@ -36,28 +43,38 @@ export default function AttachmentCard({ file, abrirArchivo, getArchivoUrl }) {
           alt={nombre}
           sx={{
             width: "100%",
-            height: { xs: 180, sm: 220 },
+            height: {
+              xs: 150,
+              sm: 210,
+            },
             display: "block",
             objectFit: "cover",
             bgcolor: "#e5e7eb",
           }}
         />
 
-        <Box sx={{ px: 1, py: 0.7 }}>
+        <Box sx={{ px: 1, py: 0.8 }}>
           <Typography
             sx={{
-              fontSize: 11.5,
-              fontWeight: 800,
+              fontSize: { xs: 11, sm: 11.5 },
+              fontWeight: 900,
               color: "#1f2937",
               overflow: "hidden",
               textOverflow: "ellipsis",
               whiteSpace: "nowrap",
+              lineHeight: 1.25,
             }}
           >
             {nombre}
           </Typography>
 
-          <Typography sx={{ fontSize: 10, color: "#667781" }}>
+          <Typography
+            sx={{
+              fontSize: 10,
+              color: "#667781",
+              mt: 0.2,
+            }}
+          >
             Tocar para ampliar
           </Typography>
         </Box>
@@ -69,26 +86,31 @@ export default function AttachmentCard({ file, abrirArchivo, getArchivoUrl }) {
     <Box
       onClick={() => abrirArchivo(file)}
       sx={{
+        width: {
+          xs: "100%",
+          sm: 280,
+        },
+        maxWidth: "100%",
         display: "flex",
         alignItems: "center",
         gap: 1,
-        p: 0.9,
-        borderRadius: 2,
+        p: { xs: 0.85, sm: 0.95 },
+        borderRadius: 2.5,
         bgcolor: tipo.bgcolor,
         border: `1px solid ${tipo.border}`,
         cursor: "pointer",
-        minWidth: 230,
-        maxWidth: 280,
         transition: "0.15s ease",
+        overflow: "hidden",
         "&:hover": {
           bgcolor: tipo.hover,
+          boxShadow: "0 2px 6px rgba(15,23,42,0.12)",
         },
       }}
     >
       <Box
         sx={{
-          width: 36,
-          height: 36,
+          width: { xs: 34, sm: 38 },
+          height: { xs: 34, sm: 38 },
           borderRadius: 2,
           bgcolor: tipo.iconBg,
           color: tipo.color,
@@ -101,14 +123,15 @@ export default function AttachmentCard({ file, abrirArchivo, getArchivoUrl }) {
         {tipo.icon}
       </Box>
 
-      <Box sx={{ minWidth: 0 }}>
+      <Box sx={{ minWidth: 0, flex: 1 }}>
         <Typography
           sx={{
-            fontSize: 10.5,
+            fontSize: 10,
             fontWeight: 900,
             color: tipo.color,
             textTransform: "uppercase",
             letterSpacing: 0.35,
+            lineHeight: 1.2,
           }}
         >
           {tipo.label}
@@ -116,19 +139,26 @@ export default function AttachmentCard({ file, abrirArchivo, getArchivoUrl }) {
 
         <Typography
           sx={{
-            fontSize: 12,
-            fontWeight: 800,
+            fontSize: { xs: 11.5, sm: 12 },
+            fontWeight: 900,
             color: "#1f2937",
             overflow: "hidden",
             textOverflow: "ellipsis",
             whiteSpace: "nowrap",
-            maxWidth: 205,
+            lineHeight: 1.25,
+            mt: 0.2,
           }}
         >
           {nombre}
         </Typography>
 
-        <Typography sx={{ fontSize: 10, color: "#667781" }}>
+        <Typography
+          sx={{
+            fontSize: 10,
+            color: "#667781",
+            mt: 0.2,
+          }}
+        >
           Abrir archivo
         </Typography>
       </Box>

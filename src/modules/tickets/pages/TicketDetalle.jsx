@@ -12,32 +12,13 @@ import Swal from "sweetalert2";
 
 import {
   Alert,
-  Avatar,
   Box,
   Button,
-  Chip,
   CircularProgress,
-  Divider,
-  Grid,
   Paper,
   Stack,
-  TextField,
   Typography,
-  useMediaQuery,
-  useTheme,
-  MenuItem,
-  Dialog,
-  DialogContent,
-  DialogTitle,
-  IconButton,
 } from "@mui/material";
-
-import AttachFileIcon from "@mui/icons-material/AttachFile";
-import InsertDriveFileIcon from "@mui/icons-material/InsertDriveFile";
-import CloseIcon from "@mui/icons-material/Close";
-import VisibilityIcon from "@mui/icons-material/Visibility";
-import DownloadIcon from "@mui/icons-material/Download";
-import DeleteIcon from "@mui/icons-material/Delete";
 
 const STORAGE_URL = "https://api.thebusinessticket.com/storage";
 
@@ -45,12 +26,7 @@ export default function TicketDetalle() {
   const { id } = useParams();
   const navigate = useNavigate();
 
-  const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
-
   const usuario = JSON.parse(localStorage.getItem("USUARIO") || "{}");
-
-  // Roles garantizados como array
   const roles = Array.isArray(usuario?.roles) ? usuario.roles : [];
 
   const isAdmin = roles.includes("Administrador");
@@ -59,17 +35,9 @@ export default function TicketDetalle() {
   const isClient = roles.includes("Cliente");
 
   const puedeCambiarEstado = isAdmin || isSupervisor;
-
-  // ✅ Puede mensajear
   const puedeMensajear = isAdmin || isAgent || isSupervisor || isClient;
-
-  // ✅ Puede ver selector interno/externo
   const puedeGestionar = isAdmin || isAgent || isSupervisor;
-
-  // ✅ Solo Admin y Supervisor pueden resolver/finalizar
   const puedeResolver = isAdmin || isSupervisor;
-
-  // ✅ Solo Admin puede eliminar
   const puedeEliminar = isAdmin;
 
   const [ticket, setTicket] = useState(null);
@@ -82,23 +50,9 @@ export default function TicketDetalle() {
   const [error, setError] = useState("");
   const [previewOpen, setPreviewOpen] = useState(false);
   const [previewFile, setPreviewFile] = useState(null);
-  const [mostrarHistorial, setMostrarHistorial] = useState(false);
   const [mostrarInfoTicket, setMostrarInfoTicket] = useState(false);
 
-  // ✅ Solo staff puede enviar mensajes internos
-  const canSendPrivate =
-    roles.includes("Administrador") ||
-    roles.includes("Supervisor") ||
-    roles.includes("Agente");
-
   const chatRef = useRef(null);
-
-  useEffect(() => {
-    cargarTodo();
-  }, [id]);
-  useEffect(() => {
-    scrollBottom();
-  }, [messages]);
 
   useEffect(() => {
     if (!id || Number.isNaN(Number(id))) {
@@ -107,11 +61,17 @@ export default function TicketDetalle() {
     }
 
     cargarTodo();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
+
+  useEffect(() => {
+    scrollBottom();
+  }, [messages]);
 
   const cargarTodo = async () => {
     setLoading(true);
     setError("");
+
     try {
       const [ticketRes, msgRes, statusRes] = await Promise.all([
         axiosCliente.get(`/tickets/${id}`),
@@ -120,12 +80,11 @@ export default function TicketDetalle() {
       ]);
 
       setTicket(ticketRes.data.data || ticketRes.data);
-      console.log("TICKET:", ticketRes.data.data || ticketRes.data);
       setMessages(msgRes.data.data || []);
       setEstados(statusRes.data.data || statusRes.data || []);
     } catch (error) {
-      console.log(error);
-      setError("No se pudo cargar la información del ticket");
+      console.log("ERROR CARGAR TICKET:", error.response?.data || error);
+      setError("No se pudo cargar la información del ticket.");
     } finally {
       setLoading(false);
     }
@@ -141,13 +100,22 @@ export default function TicketDetalle() {
     } catch (error) {
       console.log("ERROR CAMBIAR ESTADO:", error.response?.data || error);
 
-      alert(error.response?.data?.message || "No se pudo cambiar el estado.");
+      Swal.fire({
+        icon: "error",
+        title: "No se pudo cambiar el estado",
+        text: error.response?.data?.message || "No se pudo cambiar el estado.",
+      });
     }
   };
 
   const abrirArchivo = (file) => {
     setPreviewFile(file);
     setPreviewOpen(true);
+  };
+
+  const cerrarPreview = () => {
+    setPreviewOpen(false);
+    setPreviewFile(null);
   };
 
   const getArchivoUrl = (file) => {
@@ -172,11 +140,6 @@ export default function TicketDetalle() {
     return getFileExtension(file) === "pdf";
   };
 
-  const cerrarPreview = () => {
-    setPreviewOpen(false);
-    setPreviewFile(null);
-  };
-
   const descargarArchivo = (file) => {
     const url = getArchivoUrl(file);
     const link = document.createElement("a");
@@ -188,15 +151,6 @@ export default function TicketDetalle() {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-  };
-
-  const formatearFecha = (fecha) => {
-    if (!fecha) return "Sin fecha";
-
-    return new Date(fecha).toLocaleString("es-MX", {
-      dateStyle: "medium",
-      timeStyle: "short",
-    });
   };
 
   const calcularTiempoResolucion = () => {
@@ -247,15 +201,22 @@ export default function TicketDetalle() {
         formData.append("archivo", archivo);
 
         await axiosCliente.post("/ticket-attachments", formData, {
-          headers: { "Content-Type": "multipart/form-data" },
+          headers: {
+            "Content-Type": "multipart/form-data",
+          },
         });
       }
 
       setText("");
       setArchivo(null);
+
       cargarTodo();
-    } catch (err) {
-      setError(err.response?.data?.message || "No se pudo enviar mensaje");
+    } catch (error) {
+      console.log("ERROR ENVIAR MENSAJE:", error.response?.data || error);
+
+      setError(
+        error.response?.data?.message || "No se pudo enviar el mensaje.",
+      );
     } finally {
       setEnviando(false);
     }
@@ -269,14 +230,17 @@ export default function TicketDetalle() {
       showCancelButton: true,
       confirmButtonText: "Sí, eliminar",
       cancelButtonText: "Cancelar",
+      confirmButtonColor: "#d33",
     });
+
     if (!confirmar.isConfirmed) return;
+
     try {
       await axiosCliente.delete(`/tickets/${id}`);
       navigate("/mis-tickets");
     } catch (error) {
       setError(
-        error.response?.data?.message || "No se pudo eliminar el ticket",
+        error.response?.data?.message || "No se pudo eliminar el ticket.",
       );
     }
   };
@@ -289,13 +253,16 @@ export default function TicketDetalle() {
       showCancelButton: true,
       confirmButtonText: "Eliminar",
       cancelButtonText: "Cancelar",
+      confirmButtonColor: "#d33",
     });
+
     if (!confirmar.isConfirmed) return;
+
     try {
       await axiosCliente.delete(`/ticket-messages/${mensaje.id}`);
       cargarTodo();
     } catch (error) {
-      setError(error.response?.data?.message || "No se pudo eliminar mensaje");
+      setError(error.response?.data?.message || "No se pudo eliminar mensaje.");
     }
   };
 
@@ -328,47 +295,51 @@ export default function TicketDetalle() {
       icon: "question",
       showCancelButton: true,
       confirmButtonText: "Resolver",
+      cancelButtonText: "Cancelar",
     });
+
     if (!confirmar.isConfirmed) return;
-    await axiosCliente.post(`/tickets/${id}/resolve`);
-    cargarTodo();
+
+    try {
+      await axiosCliente.post(`/tickets/${id}/resolve`);
+      cargarTodo();
+    } catch (error) {
+      Swal.fire({
+        icon: "error",
+        title: "No se pudo resolver",
+        text: error.response?.data?.message || "No se pudo resolver el ticket.",
+      });
+    }
   };
 
   const scrollBottom = () => {
     setTimeout(() => {
-      chatRef.current?.scrollIntoView({ behavior: "smooth" });
+      chatRef.current?.scrollIntoView({
+        behavior: "smooth",
+        block: "end",
+      });
     }, 100);
   };
 
   const esMio = (msg) => Number(msg.user_id) === Number(usuario?.id);
+
   const inicial = (msg) => (msg.user?.name || "U").charAt(0).toUpperCase();
-  const estadoNombre =
-    ticket?.status?.nombre ||
-    ticket?.status?.name ||
-    ticket?.status ||
-    "Abierto";
 
-const esMensajeSistema = (msg) => {
-  return (
-    msg?.type === "system" ||
-    msg?.tipo === "system" ||
-    msg?.is_system === true ||
-    msg?.message?.startsWith("Ticket creado") ||
-    msg?.message?.includes("tomó el ticket") ||
-    msg?.message?.startsWith("Estado cambiado") ||
-    msg?.message?.includes("fue eliminado por")
-  );
-};
-  const agenteAsignado = ticket?.responsable
-    ? ticket.responsable.name
-    : "Sin asignar";
+  const esMensajeSistema = (msg) => {
+    return (
+      msg?.type === "system" ||
+      msg?.tipo === "system" ||
+      msg?.is_system === true ||
+      msg?.message?.startsWith("Ticket creado") ||
+      msg?.message?.includes("tomó el ticket") ||
+      msg?.message?.startsWith("Estado cambiado") ||
+      msg?.message?.includes("fue eliminado por")
+    );
+  };
 
-  // Permisos para eliminar mensajes
   const puedeEliminarMensaje = (msg) => {
-    // Administrador y Supervisor pueden eliminar cualquier mensaje
     if (isAdmin || isSupervisor) return true;
 
-    // Agente y Cliente solo pueden eliminar sus propios mensajes
     if (isAgent || isClient) {
       return Number(msg.user_id) === Number(usuario?.id);
     }
@@ -384,20 +355,101 @@ const esMensajeSistema = (msg) => {
     );
   }
 
+  if (!ticket) {
+    return (
+      <Box>
+        <Alert severity="error">
+          No se encontró la información del ticket.
+        </Alert>
+
+        <Button
+          variant="outlined"
+          onClick={() => navigate("/mis-tickets")}
+          sx={{
+            mt: 2,
+            borderRadius: 2,
+            textTransform: "none",
+            fontWeight: 800,
+          }}
+        >
+          Volver a mis tickets
+        </Button>
+      </Box>
+    );
+  }
+
+  const estadoNombre =
+    ticket?.status?.nombre ||
+    ticket?.status?.name ||
+    ticket?.status ||
+    "Abierto";
+
+  const agenteAsignado = ticket?.responsable
+    ? ticket.responsable.name
+    : "Sin asignar";
+
   return (
     <Box
       sx={{
+        width: "100%",
         maxWidth: "1300px",
         mx: "auto",
       }}
     >
-      <Box mb={3}>
-        <Typography variant="h5" fontWeight="bold">
-          Detalle del ticket
-        </Typography>
-        <Typography variant="body2" color="text.secondary">
-          Información, seguimiento y conversación.
-        </Typography>
+      <Box
+        mb={3}
+        display="flex"
+        flexDirection={{ xs: "column", sm: "row" }}
+        justifyContent="space-between"
+        alignItems={{ xs: "stretch", sm: "center" }}
+        gap={1.5}
+      >
+        <Box sx={{ minWidth: 0 }}>
+          <Typography
+            variant="h5"
+            fontWeight={900}
+            sx={{
+              fontSize: { xs: 22, md: 26 },
+              lineHeight: 1.2,
+            }}
+          >
+            Detalle del ticket
+          </Typography>
+
+          <Typography variant="body2" color="text.secondary">
+            Información, seguimiento y conversación.
+          </Typography>
+        </Box>
+
+        <Stack
+          direction={{ xs: "column", sm: "row" }}
+          spacing={1}
+          alignItems={{ xs: "stretch", sm: "center" }}
+        >
+          <Button
+            variant="outlined"
+            onClick={() => navigate("/mis-tickets")}
+            sx={{
+              borderRadius: 2,
+              textTransform: "none",
+              fontWeight: 800,
+            }}
+          >
+            Volver
+          </Button>
+
+          <Button
+            variant="contained"
+            onClick={cargarTodo}
+            sx={{
+              borderRadius: 2,
+              textTransform: "none",
+              fontWeight: 800,
+            }}
+          >
+            Actualizar
+          </Button>
+        </Stack>
       </Box>
 
       {error && (
@@ -406,31 +458,40 @@ const esMensajeSistema = (msg) => {
         </Alert>
       )}
 
-      <TicketHeader
-        ticket={ticket}
-        estados={estados}
-        estadoNombre={estadoNombre}
-        agenteAsignado={agenteAsignado}
-        puedeCambiarEstado={puedeCambiarEstado}
-        puedeResolver={puedeResolver}
-        puedeEliminar={puedeEliminar}
-        puedeGestionar={puedeGestionar}
-        mostrarInfoTicket={mostrarInfoTicket}
-        setMostrarInfoTicket={setMostrarInfoTicket}
-        cambiarEstado={cambiarEstado}
-        tomarTicket={tomarTicket}
-        resolverTicket={resolverTicket}
-        eliminarTicket={eliminarTicket}
-        calcularTiempoResolucion={calcularTiempoResolucion}
-        Info={TicketInfoItem}
-      />
+      <Box mb={2}>
+        <TicketHeader
+          ticket={ticket}
+          estados={estados}
+          estadoNombre={estadoNombre}
+          agenteAsignado={agenteAsignado}
+          puedeCambiarEstado={puedeCambiarEstado}
+          puedeResolver={puedeResolver}
+          puedeEliminar={puedeEliminar}
+          puedeGestionar={puedeGestionar}
+          mostrarInfoTicket={mostrarInfoTicket}
+          setMostrarInfoTicket={setMostrarInfoTicket}
+          cambiarEstado={cambiarEstado}
+          tomarTicket={tomarTicket}
+          resolverTicket={resolverTicket}
+          eliminarTicket={eliminarTicket}
+          calcularTiempoResolucion={calcularTiempoResolucion}
+          Info={TicketInfoItem}
+        />
+      </Box>
 
-      {/* Chat */}
       <Paper
         sx={{
-          height: { xs: 420, md: 560 },
+          height: {
+            xs: "58dvh",
+            sm: 460,
+            md: 560,
+          },
+          minHeight: {
+            xs: 360,
+            md: 480,
+          },
           overflowY: "auto",
-          p: 2,
+          p: { xs: 1, sm: 1.5, md: 2 },
           mb: 2,
           borderRadius: 3,
           border: "1px solid #e5e7eb",
@@ -454,17 +515,27 @@ const esMensajeSistema = (msg) => {
         />
       </Paper>
 
-      {/* Enviar mensaje */}
       {puedeMensajear && (
-        <ChatInput
-          text={text}
-          setText={setText}
-          archivo={archivo}
-          setArchivo={setArchivo}
-          puedeGestionar={puedeGestionar}
-          enviando={enviando}
-          enviarMensaje={enviarMensaje}
-        />
+        <Box
+          sx={{
+            position: { xs: "sticky", md: "static" },
+            bottom: { xs: 0, md: "auto" },
+            zIndex: 5,
+            bgcolor: "#f5f6fa",
+            pt: { xs: 1, md: 0 },
+            pb: { xs: 1, md: 0 },
+          }}
+        >
+          <ChatInput
+            text={text}
+            setText={setText}
+            archivo={archivo}
+            setArchivo={setArchivo}
+            puedeGestionar={puedeGestionar}
+            enviando={enviando}
+            enviarMensaje={enviarMensaje}
+          />
+        </Box>
       )}
 
       <AttachmentPreview

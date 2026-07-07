@@ -6,15 +6,21 @@ import {
   Box,
   Button,
   Dialog,
+  DialogActions,
   DialogContent,
   DialogTitle,
+  Divider,
+  IconButton,
   MenuItem,
+  Paper,
   Stack,
   TextField,
   Typography,
 } from "@mui/material";
 
 import AttachFileIcon from "@mui/icons-material/AttachFile";
+import CloseIcon from "@mui/icons-material/Close";
+import InsertDriveFileIcon from "@mui/icons-material/InsertDriveFile";
 
 function NuevoTicketModal({ open, onClose, onCreated }) {
   const [formulario, setFormulario] = useState({
@@ -51,11 +57,11 @@ function NuevoTicketModal({ open, onClose, onCreated }) {
       setSistemas(
         normalizar(resS)
           .filter((sistema) => Number(sistema.estado) === 1)
-          .sort((a, b) => Number(a.orden || 999) - Number(b.orden || 999))
+          .sort((a, b) => Number(a.orden || 999) - Number(b.orden || 999)),
       );
 
       setCategorias(
-        normalizar(resC).filter((categoria) => Number(categoria.estado) === 1)
+        normalizar(resC).filter((categoria) => Number(categoria.estado) === 1),
       );
 
       setPrioridades(normalizar(resP));
@@ -66,7 +72,7 @@ function NuevoTicketModal({ open, onClose, onCreated }) {
   };
 
   const categoriasFiltradas = categorias.filter(
-    (categoria) => String(categoria.system_id) === String(formulario.system_id)
+    (categoria) => String(categoria.system_id) === String(formulario.system_id),
   );
 
   const cambiarValor = (e) => {
@@ -91,6 +97,30 @@ function NuevoTicketModal({ open, onClose, onCreated }) {
     setArchivo(null);
     setError("");
     onClose();
+  };
+
+  const seleccionarArchivo = (e) => {
+    const file = e.target.files?.[0] || null;
+
+    setArchivo(file);
+
+    e.target.value = "";
+  };
+
+  const quitarArchivo = () => {
+    setArchivo(null);
+  };
+
+  const formatoPeso = (bytes) => {
+    if (!bytes) return "0 KB";
+
+    const kb = bytes / 1024;
+
+    if (kb < 1024) {
+      return `${kb.toFixed(1)} KB`;
+    }
+
+    return `${(kb / 1024).toFixed(1)} MB`;
   };
 
   const crearTicket = async (e) => {
@@ -139,159 +169,354 @@ function NuevoTicketModal({ open, onClose, onCreated }) {
   };
 
   return (
-    <Dialog open={open} onClose={cerrar} maxWidth="sm" fullWidth>
-      <DialogTitle>
-        <Typography fontWeight={800}>Crear ticket</Typography>
+    <Dialog
+      open={open}
+      onClose={cargando ? undefined : cerrar}
+      maxWidth="sm"
+      fullWidth
+      fullScreen={false}
+      PaperProps={{
+        sx: {
+          width: "100%",
+          maxWidth: { xs: "calc(100% - 24px)", sm: 620 },
+          m: { xs: 1.5, sm: 3 },
+          borderRadius: { xs: 3, sm: 4 },
+          overflow: "hidden",
+        },
+      }}
+    >
+      <DialogTitle
+        sx={{
+          px: { xs: 2, sm: 3 },
+          py: { xs: 1.6, sm: 2.2 },
+          borderBottom: "1px solid #e5e7eb",
+        }}
+      >
+        <Stack direction="row" justifyContent="space-between" spacing={1.5}>
+          <Box sx={{ minWidth: 0 }}>
+            <Typography
+              fontWeight={900}
+              sx={{
+                fontSize: { xs: 19, sm: 22 },
+                lineHeight: 1.2,
+              }}
+            >
+              Crear ticket
+            </Typography>
 
-        <Typography variant="body2" color="text.secondary">
-          Completa la información para registrar un nuevo ticket de soporte.
-        </Typography>
+            <Typography
+              variant="body2"
+              color="text.secondary"
+              sx={{
+                mt: 0.5,
+                fontSize: { xs: 12.5, sm: 14 },
+                lineHeight: 1.35,
+              }}
+            >
+              Completa la información para registrar un nuevo ticket de soporte.
+            </Typography>
+          </Box>
+
+          <IconButton
+            onClick={cerrar}
+            disabled={cargando}
+            size="small"
+            sx={{
+              flexShrink: 0,
+              border: "1px solid #e5e7eb",
+              width: 34,
+              height: 34,
+            }}
+          >
+            <CloseIcon fontSize="small" />
+          </IconButton>
+        </Stack>
       </DialogTitle>
 
-      <DialogContent dividers>
-        {error && (
-          <Alert severity="error" sx={{ mb: 2 }}>
-            {error}
-          </Alert>
-        )}
-
-        <Box component="form" onSubmit={crearTicket}>
+      <Box component="form" onSubmit={crearTicket}>
+        <DialogContent
+          dividers={false}
+          sx={{
+            px: { xs: 2, sm: 3 },
+            py: { xs: 2, sm: 2.5 },
+            maxHeight: { xs: "calc(100dvh - 190px)", sm: "70vh" },
+            overflowY: "auto",
+          }}
+        >
           <Stack spacing={2}>
-            <TextField
-              select
-              fullWidth
-              label="Sistema"
-              name="system_id"
-              value={formulario.system_id}
-              onChange={cambiarValor}
-              required
+            {error && <Alert severity="error">{error}</Alert>}
+
+            <Paper
+              variant="outlined"
+              sx={{
+                p: { xs: 1.5, sm: 2 },
+                borderRadius: 3,
+                borderColor: "#e5e7eb",
+                bgcolor: "#ffffff",
+              }}
             >
-              {sistemas.map((sistema) => (
-                <MenuItem key={sistema.id} value={sistema.id}>
-                  {sistema.nombre}
-                </MenuItem>
-              ))}
-            </TextField>
+              <Stack spacing={2}>
+                <Box>
+                  <Typography fontWeight={900} sx={{ fontSize: 15 }}>
+                    Clasificación
+                  </Typography>
 
-            <TextField
-              select
-              fullWidth
-              label="Sección"
-              name="category_id"
-              value={formulario.category_id}
-              onChange={cambiarValor}
-              disabled={!formulario.system_id}
-              required
+                  <Typography variant="caption" color="text.secondary">
+                    Selecciona el sistema, sección y prioridad del ticket.
+                  </Typography>
+                </Box>
+
+                <TextField
+                  select
+                  fullWidth
+                  size="small"
+                  label="Sistema"
+                  name="system_id"
+                  value={formulario.system_id}
+                  onChange={cambiarValor}
+                  required
+                  disabled={cargando}
+                >
+                  {sistemas.map((sistema) => (
+                    <MenuItem key={sistema.id} value={sistema.id}>
+                      {sistema.nombre}
+                    </MenuItem>
+                  ))}
+                </TextField>
+
+                <TextField
+                  select
+                  fullWidth
+                  size="small"
+                  label="Sección"
+                  name="category_id"
+                  value={formulario.category_id}
+                  onChange={cambiarValor}
+                  disabled={!formulario.system_id || cargando}
+                  required
+                  helperText={
+                    !formulario.system_id
+                      ? "Primero selecciona un sistema"
+                      : categoriasFiltradas.length === 0
+                        ? "Este sistema no tiene secciones disponibles"
+                        : ""
+                  }
+                >
+                  {categoriasFiltradas.map((categoria) => (
+                    <MenuItem key={categoria.id} value={categoria.id}>
+                      {categoria.nombre}
+                    </MenuItem>
+                  ))}
+                </TextField>
+
+                <TextField
+                  select
+                  fullWidth
+                  size="small"
+                  label="Prioridad"
+                  name="priority_id"
+                  value={formulario.priority_id}
+                  onChange={cambiarValor}
+                  required
+                  disabled={cargando}
+                >
+                  {prioridades.map((prioridad) => (
+                    <MenuItem key={prioridad.id} value={prioridad.id}>
+                      {prioridad.nombre}
+                    </MenuItem>
+                  ))}
+                </TextField>
+              </Stack>
+            </Paper>
+
+            <Paper
+              variant="outlined"
+              sx={{
+                p: { xs: 1.5, sm: 2 },
+                borderRadius: 3,
+                borderColor: "#e5e7eb",
+                bgcolor: "#ffffff",
+              }}
             >
-              {categoriasFiltradas.map((categoria) => (
-                <MenuItem key={categoria.id} value={categoria.id}>
-                  {categoria.nombre}
-                </MenuItem>
-              ))}
-            </TextField>
+              <Stack spacing={2}>
+                <Box>
+                  <Typography fontWeight={900} sx={{ fontSize: 15 }}>
+                    Detalle del problema
+                  </Typography>
 
-            <TextField
-              select
-              fullWidth
-              label="Prioridad"
-              name="priority_id"
-              value={formulario.priority_id}
-              onChange={cambiarValor}
-              required
-            >
-              {prioridades.map((prioridad) => (
-                <MenuItem key={prioridad.id} value={prioridad.id}>
-                  {prioridad.nombre}
-                </MenuItem>
-              ))}
-            </TextField>
+                  <Typography variant="caption" color="text.secondary">
+                    Describe el asunto y agrega información suficiente para
+                    atenderlo.
+                  </Typography>
+                </Box>
 
-            <TextField
-              fullWidth
-              label="Asunto"
-              name="titulo"
-              value={formulario.titulo}
-              onChange={cambiarValor}
-              required
-            />
-
-            <TextField
-              fullWidth
-              multiline
-              rows={5}
-              label="Descripción"
-              name="descripcion"
-              value={formulario.descripcion}
-              onChange={cambiarValor}
-              required
-            />
-
-            <Box>
-              <Typography fontWeight={700} mb={1}>
-                Archivo
-              </Typography>
-
-              <Button
-                component="label"
-                variant="outlined"
-                startIcon={<AttachFileIcon />}
-                sx={{
-                  borderRadius: 2,
-                  textTransform: "none",
-                  fontWeight: 700,
-                }}
-              >
-                Adjuntar archivo
-                <input
-                  hidden
-                  type="file"
-                  accept="image/*,video/*,.jfif,.pdf,.doc,.docx,.xls,.xlsx,.txt,.zip"
-                  onChange={(e) => setArchivo(e.target.files?.[0] || null)}
+                <TextField
+                  fullWidth
+                  size="small"
+                  label="Asunto"
+                  name="titulo"
+                  value={formulario.titulo}
+                  onChange={cambiarValor}
+                  required
+                  disabled={cargando}
                 />
-              </Button>
 
-              {archivo && (
-                <Typography variant="body2" color="text.secondary" mt={1}>
-                  Archivo seleccionado: {archivo.name}
-                </Typography>
-              )}
-            </Box>
+                <TextField
+                  fullWidth
+                  multiline
+                  minRows={4}
+                  maxRows={7}
+                  size="small"
+                  label="Descripción"
+                  name="descripcion"
+                  value={formulario.descripcion}
+                  onChange={cambiarValor}
+                  required
+                  disabled={cargando}
+                />
+              </Stack>
+            </Paper>
 
-            <Stack
-              direction={{ xs: "column", sm: "row" }}
-              spacing={2}
-              justifyContent="flex-end"
-              pt={1}
+            <Paper
+              variant="outlined"
+              sx={{
+                p: { xs: 1.5, sm: 2 },
+                borderRadius: 3,
+                borderColor: "#e5e7eb",
+                bgcolor: "#ffffff",
+              }}
             >
-              <Button
-                variant="outlined"
-                onClick={cerrar}
-                disabled={cargando}
-                sx={{
-                  borderRadius: 2,
-                  textTransform: "none",
-                  fontWeight: 700,
-                }}
-              >
-                Cancelar
-              </Button>
+              <Stack spacing={1.4}>
+                <Box>
+                  <Typography fontWeight={900} sx={{ fontSize: 15 }}>
+                    Archivo adjunto
+                  </Typography>
 
-              <Button
-                type="submit"
-                variant="contained"
-                disabled={cargando}
-                sx={{
-                  borderRadius: 2,
-                  textTransform: "none",
-                  fontWeight: 700,
-                }}
-              >
-                {cargando ? "Creando..." : "Crear ticket"}
-              </Button>
-            </Stack>
+                  <Typography variant="caption" color="text.secondary">
+                    Puedes adjuntar una captura, documento o archivo relacionado.
+                  </Typography>
+                </Box>
+
+                <Button
+                  component="label"
+                  variant="outlined"
+                  startIcon={<AttachFileIcon />}
+                  disabled={cargando}
+                  fullWidth
+                  sx={{
+                    borderRadius: 2,
+                    textTransform: "none",
+                    fontWeight: 800,
+                    justifyContent: "center",
+                    minHeight: 40,
+                  }}
+                >
+                  Adjuntar archivo
+                  <input
+                    hidden
+                    type="file"
+                    accept="image/*,video/*,.jfif,.pdf,.doc,.docx,.xls,.xlsx,.txt,.zip"
+                    onChange={seleccionarArchivo}
+                  />
+                </Button>
+
+                {archivo && (
+                  <Box
+                    sx={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      gap: 1,
+                      p: 1.2,
+                      borderRadius: 2,
+                      bgcolor: "#f8fafc",
+                      border: "1px solid #e5e7eb",
+                    }}
+                  >
+                    <Stack
+                      direction="row"
+                      spacing={1}
+                      alignItems="center"
+                      sx={{ minWidth: 0 }}
+                    >
+                      <InsertDriveFileIcon color="action" />
+
+                      <Box sx={{ minWidth: 0 }}>
+                        <Typography
+                          variant="body2"
+                          fontWeight={800}
+                          noWrap
+                          sx={{
+                            maxWidth: { xs: 220, sm: 420 },
+                          }}
+                        >
+                          {archivo.name}
+                        </Typography>
+
+                        <Typography variant="caption" color="text.secondary">
+                          {formatoPeso(archivo.size)}
+                        </Typography>
+                      </Box>
+                    </Stack>
+
+                    <IconButton
+                      size="small"
+                      onClick={quitarArchivo}
+                      disabled={cargando}
+                      sx={{ flexShrink: 0 }}
+                    >
+                      <CloseIcon fontSize="small" />
+                    </IconButton>
+                  </Box>
+                )}
+              </Stack>
+            </Paper>
           </Stack>
-        </Box>
-      </DialogContent>
+        </DialogContent>
+
+        <Divider />
+
+        <DialogActions
+          sx={{
+            px: { xs: 2, sm: 3 },
+            py: { xs: 1.5, sm: 2 },
+            display: "flex",
+            flexDirection: { xs: "column-reverse", sm: "row" },
+            alignItems: { xs: "stretch", sm: "center" },
+            gap: 1,
+          }}
+        >
+          <Button
+            variant="outlined"
+            onClick={cerrar}
+            disabled={cargando}
+            fullWidth
+            sx={{
+              borderRadius: 2,
+              textTransform: "none",
+              fontWeight: 800,
+              maxWidth: { xs: "100%", sm: 140 },
+            }}
+          >
+            Cancelar
+          </Button>
+
+          <Button
+            type="submit"
+            variant="contained"
+            disabled={cargando}
+            fullWidth
+            sx={{
+              borderRadius: 2,
+              textTransform: "none",
+              fontWeight: 800,
+              maxWidth: { xs: "100%", sm: 150 },
+            }}
+          >
+            {cargando ? "Creando..." : "Crear ticket"}
+          </Button>
+        </DialogActions>
+      </Box>
     </Dialog>
   );
 }

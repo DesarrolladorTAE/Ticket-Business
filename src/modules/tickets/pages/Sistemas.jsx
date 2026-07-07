@@ -8,11 +8,19 @@ import {
   Button,
   Chip,
   CircularProgress,
+  Divider,
   Grid,
+  IconButton,
   Paper,
+  Stack,
   TextField,
   Typography,
 } from "@mui/material";
+
+import CloseIcon from "@mui/icons-material/Close";
+import ImageIcon from "@mui/icons-material/Image";
+
+const API_ORIGIN = "https://api.thebusinessticket.com";
 
 function Sistemas() {
   const [sistemas, setSistemas] = useState([]);
@@ -69,6 +77,17 @@ function Sistemas() {
     });
 
     setPreviewLogo(URL.createObjectURL(archivo));
+
+    e.target.value = "";
+  };
+
+  const quitarLogo = () => {
+    setFormulario({
+      ...formulario,
+      logo: null,
+    });
+
+    setPreviewLogo(null);
   };
 
   const crearSistema = async (e) => {
@@ -123,8 +142,6 @@ function Sistemas() {
     }
   };
 
-  const API_ORIGIN = "https://api.thebusinessticket.com";
-
   const obtenerLogoUrl = (logo) => {
     if (!logo) return null;
 
@@ -153,28 +170,59 @@ function Sistemas() {
 
   return (
     <Box>
-      <Box mb={3}>
-        <Typography variant="h5" fontWeight={800}>
-          Sistemas
-        </Typography>
+      <Box
+        mb={3}
+        display="flex"
+        flexDirection={{ xs: "column", sm: "row" }}
+        justifyContent="space-between"
+        alignItems={{ xs: "stretch", sm: "center" }}
+        gap={1.5}
+      >
+        <Box>
+          <Typography
+            variant="h5"
+            fontWeight={900}
+            sx={{ fontSize: { xs: 22, md: 26 } }}
+          >
+            Sistemas
+          </Typography>
 
-        <Typography variant="body2" color="text.secondary">
-          Administra los sistemas disponibles para clasificar tickets.
-        </Typography>
+          <Typography variant="body2" color="text.secondary">
+            Administra los sistemas disponibles para clasificar tickets y
+            configurar su portal público.
+          </Typography>
+        </Box>
+
+        <Chip
+          label={`${sistemas.length} activos`}
+          color="primary"
+          variant="outlined"
+          sx={{
+            fontWeight: 800,
+            width: { xs: "fit-content", sm: "auto" },
+          }}
+        />
       </Box>
 
       <Paper
         sx={{
-          p: { xs: 2, md: 3 },
+          p: { xs: 1.5, sm: 2, md: 3 },
           borderRadius: 3,
           boxShadow: 1,
           mb: 4,
           border: "1px solid #e5e7eb",
         }}
       >
-        <Typography fontWeight={800} mb={2}>
-          Crear sistema
-        </Typography>
+        <Box mb={2}>
+          <Typography fontWeight={900} sx={{ fontSize: { xs: 18, md: 20 } }}>
+            Crear sistema
+          </Typography>
+
+          <Typography variant="body2" color="text.secondary">
+            Agrega un nuevo sistema para que los tickets puedan clasificarse por
+            producto o servicio.
+          </Typography>
+        </Box>
 
         {error && (
           <Alert severity="error" sx={{ mb: 3 }}>
@@ -183,7 +231,7 @@ function Sistemas() {
         )}
 
         <Box component="form" onSubmit={crearSistema}>
-          <Grid container spacing={2.5}>
+          <Grid container spacing={2}>
             <Grid item xs={12} md={4}>
               <TextField
                 fullWidth
@@ -192,6 +240,7 @@ function Sistemas() {
                 value={formulario.nombre}
                 onChange={cambiarValor}
                 required
+                size="small"
               />
             </Grid>
 
@@ -203,6 +252,7 @@ function Sistemas() {
                 value={formulario.descripcion}
                 onChange={cambiarValor}
                 required
+                size="small"
               />
             </Grid>
 
@@ -214,6 +264,7 @@ function Sistemas() {
                 value={formulario.prefijo}
                 onChange={cambiarValor}
                 required
+                size="small"
                 inputProps={{
                   maxLength: 5,
                   style: { textTransform: "uppercase" },
@@ -228,10 +279,10 @@ function Sistemas() {
                 component="label"
                 fullWidth
                 sx={{
-                  height: 56,
+                  minHeight: 44,
                   borderRadius: 2,
                   textTransform: "none",
-                  fontWeight: 700,
+                  fontWeight: 800,
                 }}
               >
                 Seleccionar logo
@@ -243,7 +294,15 @@ function Sistemas() {
                 />
               </Button>
 
-              <Typography variant="caption" color="text.secondary">
+              <Typography
+                variant="caption"
+                color="text.secondary"
+                sx={{
+                  mt: 0.7,
+                  display: "block",
+                  fontSize: { xs: 11.5, md: 12 },
+                }}
+              >
                 Formatos permitidos: JPG, PNG o WEBP. Máximo 2 MB.
               </Typography>
             </Grid>
@@ -251,64 +310,105 @@ function Sistemas() {
             <Grid item xs={12} md={6}>
               <Box
                 sx={{
-                  height: 72,
+                  minHeight: 72,
                   border: "1px dashed #cbd5e1",
                   borderRadius: 2,
                   display: "flex",
                   alignItems: "center",
-                  gap: 2,
-                  px: 2,
+                  justifyContent: "space-between",
+                  gap: 1.5,
+                  px: 1.5,
+                  py: 1,
                   bgcolor: "#f8fafc",
                 }}
               >
-                {previewLogo ? (
-                  <Box
-                    component="img"
-                    src={previewLogo}
-                    alt="Vista previa"
-                    sx={{
-                      width: 48,
-                      height: 48,
-                      objectFit: "cover",
-                      borderRadius: 2,
-                      border: "1px solid #e5e7eb",
-                    }}
-                  />
-                ) : (
-                  <Box
-                    sx={{
-                      width: 48,
-                      height: 48,
-                      borderRadius: 2,
-                      bgcolor: "#e5e7eb",
-                    }}
-                  />
+                <Stack
+                  direction="row"
+                  spacing={1.5}
+                  alignItems="center"
+                  sx={{ minWidth: 0 }}
+                >
+                  {previewLogo ? (
+                    <Box
+                      component="img"
+                      src={previewLogo}
+                      alt="Vista previa"
+                      sx={{
+                        width: 50,
+                        height: 50,
+                        objectFit: "contain",
+                        borderRadius: 2,
+                        border: "1px solid #e5e7eb",
+                        bgcolor: "#ffffff",
+                        p: 0.5,
+                        flexShrink: 0,
+                      }}
+                    />
+                  ) : (
+                    <Box
+                      sx={{
+                        width: 50,
+                        height: 50,
+                        borderRadius: 2,
+                        bgcolor: "#e5e7eb",
+                        border: "1px solid #d1d5db",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        flexShrink: 0,
+                      }}
+                    >
+                      <ImageIcon color="action" />
+                    </Box>
+                  )}
+
+                  <Box sx={{ minWidth: 0 }}>
+                    <Typography fontWeight={800} variant="body2">
+                      Vista previa del logo
+                    </Typography>
+
+                    <Typography
+                      variant="caption"
+                      color="text.secondary"
+                      noWrap
+                      display="block"
+                    >
+                      {formulario.logo?.name || "Sin archivo seleccionado"}
+                    </Typography>
+                  </Box>
+                </Stack>
+
+                {previewLogo && (
+                  <IconButton
+                    size="small"
+                    onClick={quitarLogo}
+                    disabled={cargando}
+                    sx={{ flexShrink: 0 }}
+                  >
+                    <CloseIcon fontSize="small" />
+                  </IconButton>
                 )}
-
-                <Box>
-                  <Typography fontWeight={700} variant="body2">
-                    Vista previa del logo
-                  </Typography>
-
-                  <Typography variant="caption" color="text.secondary">
-                    {formulario.logo?.name || "Sin archivo seleccionado"}
-                  </Typography>
-                </Box>
               </Box>
             </Grid>
           </Grid>
 
-          <Box mt={3}>
+          <Box
+            mt={3}
+            display="flex"
+            justifyContent={{ xs: "stretch", sm: "flex-start" }}
+          >
             <Button
               type="submit"
               variant="contained"
               disabled={cargando}
+              fullWidth
               sx={{
                 borderRadius: 2,
                 textTransform: "none",
-                fontWeight: 700,
+                fontWeight: 800,
                 px: 3,
                 py: 1,
+                maxWidth: { xs: "100%", sm: 180 },
               }}
             >
               {cargando ? "Creando..." : "Crear sistema"}
@@ -317,134 +417,200 @@ function Sistemas() {
         </Box>
       </Paper>
 
-      <Grid container spacing={3} alignItems="stretch">
-        {sistemas.map((sistema) => {
-          const logoUrl = obtenerLogoUrl(sistema.logo);
+      <Box mb={2}>
+        <Typography fontWeight={900} sx={{ fontSize: { xs: 18, md: 20 } }}>
+          Sistemas registrados
+        </Typography>
 
-          return (
-            <Grid item xs={12} lg={6} key={sistema.id}>
-              <Paper
-                sx={{
-                  height: "100%",
-                  minHeight: 190,
-                  p: 2.5,
-                  borderRadius: 3,
-                  boxShadow: 1,
-                  display: "flex",
-                  flexDirection: "column",
-                  gap: 2,
-                  border: "1px solid #e5e7eb",
-                  transition: "0.2s ease",
-                  "&:hover": {
-                    boxShadow: 4,
-                    transform: "translateY(-2px)",
-                  },
-                }}
-              >
-                <Box>
-                  <Box
-                    display="flex"
-                    justifyContent="space-between"
-                    alignItems="flex-start"
-                    gap={2}
-                    mb={1.5}
-                  >
-                    <Box display="flex" gap={1.5} sx={{ minWidth: 0 }}>
-                      {logoUrl ? (
-                        <Box
-                          component="img"
-                          src={logoUrl}
-                          alt={sistema.nombre}
-                          sx={{
-                            width: 46,
-                            height: 46,
-                            objectFit: "cover",
-                            borderRadius: 2,
-                            border: "1px solid #e5e7eb",
-                            flexShrink: 0,
-                          }}
-                        />
-                      ) : (
-                        <Box
-                          sx={{
-                            width: 46,
-                            height: 46,
-                            borderRadius: 2,
-                            bgcolor: "#e5e7eb",
-                            flexShrink: 0,
-                          }}
-                        />
-                      )}
+        <Typography variant="body2" color="text.secondary">
+          Configura el acceso público, portada, color y enlace de cada sistema.
+        </Typography>
+      </Box>
 
-                      <Box sx={{ minWidth: 0 }}>
-                        <Typography fontWeight={800} noWrap>
-                          {sistema.nombre}
-                        </Typography>
+      {sistemas.length === 0 ? (
+        <Paper
+          sx={{
+            p: 4,
+            borderRadius: 3,
+            border: "1px dashed #cbd5e1",
+            textAlign: "center",
+            bgcolor: "#f8fafc",
+          }}
+        >
+          <Typography fontWeight={800}>No hay sistemas activos.</Typography>
+          <Typography variant="body2" color="text.secondary" mt={0.5}>
+            Crea un sistema para comenzar.
+          </Typography>
+        </Paper>
+      ) : (
+        <Grid container spacing={{ xs: 2, md: 3 }} alignItems="stretch">
+          {sistemas.map((sistema) => {
+            const logoUrl = obtenerLogoUrl(sistema.logo_url || sistema.logo);
 
-                        <Typography
-                          variant="caption"
-                          color="text.secondary"
-                          sx={{ display: "block", mt: 0.5 }}
-                        >
-                          ID: {sistema.id}
-                        </Typography>
-                      </Box>
-                    </Box>
+            return (
+              <Grid item xs={12} lg={6} key={sistema.id}>
+                <Paper
+                  sx={{
+                    height: "100%",
+                    minHeight: { xs: "auto", md: 190 },
+                    p: { xs: 1.5, sm: 2, md: 2.5 },
+                    borderRadius: 3,
+                    boxShadow: 1,
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: 2,
+                    border: "1px solid #e5e7eb",
+                    transition: "0.2s ease",
+                    overflow: "hidden",
+                    "&:hover": {
+                      boxShadow: { xs: 1, md: 4 },
+                      transform: { xs: "none", md: "translateY(-2px)" },
+                    },
+                  }}
+                >
+                  <Box>
+                    <Stack
+                      direction="row"
+                      justifyContent="space-between"
+                      alignItems="flex-start"
+                      spacing={1.5}
+                      mb={1.5}
+                    >
+                      <Stack
+                        direction="row"
+                        spacing={1.5}
+                        alignItems="center"
+                        sx={{ minWidth: 0, flex: 1 }}
+                      >
+                        {logoUrl ? (
+                          <Box
+                            component="img"
+                            src={logoUrl}
+                            alt={sistema.nombre}
+                            sx={{
+                              width: { xs: 46, md: 52 },
+                              height: { xs: 46, md: 52 },
+                              objectFit: "contain",
+                              borderRadius: 2,
+                              border: "1px solid #e5e7eb",
+                              bgcolor: "#ffffff",
+                              p: 0.5,
+                              flexShrink: 0,
+                            }}
+                          />
+                        ) : (
+                          <Box
+                            sx={{
+                              width: { xs: 46, md: 52 },
+                              height: { xs: 46, md: 52 },
+                              borderRadius: 2,
+                              bgcolor: "#e5e7eb",
+                              border: "1px solid #d1d5db",
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              flexShrink: 0,
+                            }}
+                          >
+                            <ImageIcon color="action" />
+                          </Box>
+                        )}
 
-                    <Chip
-                      size="small"
-                      label={
-                        Number(sistema.estado) === 1 ? "Activo" : "Inactivo"
-                      }
-                      color={
-                        Number(sistema.estado) === 1 ? "success" : "default"
-                      }
-                    />
+                        <Box sx={{ minWidth: 0 }}>
+                          <Typography
+                            fontWeight={900}
+                            sx={{
+                              fontSize: { xs: 15, md: 16 },
+                              lineHeight: 1.2,
+                              wordBreak: "break-word",
+                            }}
+                          >
+                            {sistema.nombre}
+                          </Typography>
+
+                          <Typography
+                            variant="caption"
+                            color="text.secondary"
+                            sx={{ display: "block", mt: 0.4 }}
+                          >
+                            ID: {sistema.id}
+                          </Typography>
+                        </Box>
+                      </Stack>
+
+                      <Chip
+                        size="small"
+                        label={
+                          Number(sistema.estado) === 1 ? "Activo" : "Inactivo"
+                        }
+                        color={
+                          Number(sistema.estado) === 1 ? "success" : "default"
+                        }
+                        sx={{
+                          fontWeight: 800,
+                          flexShrink: 0,
+                        }}
+                      />
+                    </Stack>
+
+                    <Typography
+                      variant="body2"
+                      color="text.secondary"
+                      sx={{
+                        lineHeight: 1.6,
+                        display: "-webkit-box",
+                        WebkitLineClamp: { xs: 2, md: 3 },
+                        WebkitBoxOrient: "vertical",
+                        overflow: "hidden",
+                      }}
+                    >
+                      {sistema.descripcion || "Sin descripción"}
+                    </Typography>
+
+                    <Stack
+                      direction={{ xs: "column", sm: "row" }}
+                      spacing={1}
+                      mt={2}
+                      justifyContent="space-between"
+                      alignItems={{ xs: "flex-start", sm: "center" }}
+                    >
+                      <Chip
+                        label={sistema.prefijo || "TCK"}
+                        size="small"
+                        sx={{
+                          fontWeight: 900,
+                          borderRadius: 2,
+                          bgcolor: sistema.color_secundario || "#eff6ff",
+                          color: sistema.color || "#1d4ed8",
+                        }}
+                      />
+
+                      <Typography variant="caption" color="text.secondary">
+                        Prefijo de ticket
+                      </Typography>
+                    </Stack>
                   </Box>
 
-                  <Typography
-                    variant="body2"
-                    color="text.secondary"
+                  <Divider />
+
+                  <Box
                     sx={{
-                      lineHeight: 1.6,
-                      display: "-webkit-box",
-                      WebkitLineClamp: 3,
-                      WebkitBoxOrient: "vertical",
+                      minWidth: 0,
                       overflow: "hidden",
+                      "& *": {
+                        maxWidth: "100%",
+                        boxSizing: "border-box",
+                      },
                     }}
                   >
-                    {sistema.descripcion || "Sin descripción"}
-                  </Typography>
-
-                  <Box
-                    mt={2}
-                    display="flex"
-                    justifyContent="space-between"
-                    alignItems="center"
-                  >
-                    <Chip
-                      label={sistema.prefijo || "TCK"}
-                      size="small"
-                      sx={{
-                        fontWeight: 800,
-                        borderRadius: 2,
-                        bgcolor: sistema.color_secundario || "#eff6ff",
-                        color: sistema.color || "#1d4ed8",
-                      }}
-                    />
-
-                    <Typography variant="caption" color="text.secondary">
-                      Prefijo de ticket
-                    </Typography>
+                    <SystemPublicAccessPanel system={sistema} />
                   </Box>
-                </Box>
-
-                <SystemPublicAccessPanel system={sistema} />
-              </Paper>
-            </Grid>
-          );
-        })}
-      </Grid>
+                </Paper>
+              </Grid>
+            );
+          })}
+        </Grid>
+      )}
     </Box>
   );
 }

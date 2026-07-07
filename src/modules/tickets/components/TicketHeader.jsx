@@ -7,7 +7,6 @@ import {
   Chip,
   Collapse,
   Divider,
-  Grid,
   MenuItem,
   Paper,
   Stack,
@@ -35,219 +34,298 @@ export default function TicketHeader({
   return (
     <Paper
       sx={{
-        p: { xs: 2, md: 3 },
+        p: { xs: 1.5, sm: 2, md: 3 },
         borderRadius: 3,
         boxShadow: 1,
         border: "1px solid #e5e7eb",
         mb: 2,
+        overflow: "hidden",
       }}
     >
-      <Stack
-        direction={{ xs: "column", md: "row" }}
-        justifyContent="space-between"
-        alignItems={{ xs: "stretch", md: "center" }}
-        spacing={2}
-      >
-        <Box sx={{ minWidth: 0 }}>
-          <Chip
-            label={ticket?.folio || "Sin folio"}
-            sx={{
-              fontWeight: 800,
-              borderRadius: 2,
-              bgcolor: "#eff6ff",
-              color: "#1d4ed8",
-              mb: 1,
-            }}
-          />
-          <Typography
-            fontWeight={700}
-            sx={{
-              whiteSpace: "normal",
-              wordBreak: "break-word",
-              lineHeight: 1.4,
-            }}
-          >
-            {ticket?.titulo}
-          </Typography>
-        </Box>
-
+      <Stack spacing={2}>
         <Stack
-          direction={{ xs: "column", sm: "row" }}
-          spacing={1}
-          alignItems={{ xs: "stretch", sm: "center" }}
+          direction={{ xs: "column", md: "row" }}
+          justifyContent="space-between"
+          alignItems={{ xs: "stretch", md: "flex-start" }}
+          spacing={2.5}
         >
-          {puedeCambiarEstado ? (
-            <TextField
-              select
-              size="small"
-              label="Estado"
-              value={ticket?.status_id || ""}
-              onChange={(e) => cambiarEstado(e.target.value)}
-              sx={{ minWidth: 180 }}
+          <Box sx={{ minWidth: 0, flex: 1 }}>
+            <Stack
+              direction={{ xs: "column", sm: "row" }}
+              spacing={1}
+              alignItems={{ xs: "flex-start", sm: "center" }}
+              sx={{ mb: 1 }}
             >
-              {estados.map((estado) => (
-                <MenuItem key={estado.id} value={estado.id}>
-                  {estado.nombre}
-                </MenuItem>
-              ))}
-            </TextField>
-          ) : (
-            <Chip
-              label={ticket?.status?.nombre || "Sin estado"}
-              color="primary"
-              size="small"
-              sx={{ fontWeight: 700 }}
-            />
-          )}
+              <Chip
+                label={ticket?.folio || "Sin folio"}
+                size="small"
+                sx={{
+                  fontWeight: 900,
+                  borderRadius: 2,
+                  bgcolor: "#eff6ff",
+                  color: "#1d4ed8",
+                  maxWidth: "100%",
+                  "& .MuiChip-label": {
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                  },
+                }}
+              />
 
-          {puedeGestionar && !ticket?.responsable && (
-            <Button
-              variant="contained"
-              color="primary"
-              onClick={tomarTicket}
+              <Chip
+                label={estadoNombre || ticket?.status?.nombre || "Sin estado"}
+                size="small"
+                color="primary"
+                variant="outlined"
+                sx={{
+                  fontWeight: 800,
+                  borderRadius: 2,
+                  maxWidth: "100%",
+                  "& .MuiChip-label": {
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                  },
+                }}
+              />
+            </Stack>
+
+            <Typography
+              fontWeight={900}
               sx={{
-                fontWeight: 700,
-                textTransform: "none",
-                borderRadius: 2,
+                fontSize: { xs: 18, sm: 20, md: 22 },
+                whiteSpace: "normal",
+                wordBreak: "break-word",
+                overflowWrap: "anywhere",
+                lineHeight: 1.25,
+                color: "#0f172a",
               }}
             >
-              Tomar ticket
-            </Button>
-          )}
+              {ticket?.titulo || "Sin título"}
+            </Typography>
 
-          {puedeResolver && (
-            <Button
-              variant="contained"
-              color="success"
-              onClick={resolverTicket}
+            <Typography
+              variant="body2"
+              color="text.secondary"
               sx={{
-                fontWeight: 700,
-                textTransform: "none",
-                borderRadius: 2,
+                mt: 0.8,
+                fontSize: { xs: 12.5, sm: 13.5 },
               }}
             >
-              Resolver
-            </Button>
-          )}
+              Gestiona el estado, responsable e información general del ticket.
+            </Typography>
+          </Box>
 
-          {puedeEliminar && (
-            <Button
-              color="error"
-              variant="outlined"
-              onClick={eliminarTicket}
-              sx={{
-                fontWeight: 700,
-                textTransform: "none",
-                borderRadius: 2,
-              }}
-            >
-              Eliminar
-            </Button>
-          )}
-
-          <Button
-            variant="outlined"
-            onClick={() => setMostrarInfoTicket((prev) => !prev)}
+          <Box
             sx={{
-              borderRadius: 2,
-              textTransform: "none",
-              fontWeight: 700,
+              width: { xs: "100%", md: 380 },
+              flexShrink: 0,
+              display: "grid",
+              gridTemplateColumns: {
+                xs: "1fr",
+                sm: "repeat(2, minmax(0, 1fr))",
+              },
+              gap: 1,
+              alignItems: "stretch",
             }}
           >
-            {mostrarInfoTicket ? "Ocultar información" : "Ver información"}
-          </Button>
-        </Stack>
-      </Stack>
+            {puedeCambiarEstado && (
+              <TextField
+                select
+                size="small"
+                label="Estado"
+                value={ticket?.status_id || ""}
+                onChange={(e) => cambiarEstado(e.target.value)}
+                sx={{
+                  gridColumn: { xs: "1", sm: "1 / -1" },
+                  bgcolor: "#ffffff",
+                  "& .MuiInputBase-root": {
+                    borderRadius: 2,
+                    fontWeight: 800,
+                    fontSize: 13,
+                  },
+                }}
+              >
+                {estados.map((estado) => (
+                  <MenuItem key={estado.id} value={estado.id}>
+                    {estado.nombre}
+                  </MenuItem>
+                ))}
+              </TextField>
+            )}
 
-      <Divider sx={{ my: 2 }} />
+            {puedeGestionar && !ticket?.responsable && (
+              <Button
+                variant="contained"
+                color="primary"
+                onClick={tomarTicket}
+                sx={buttonStyle}
+              >
+                Tomar ticket
+              </Button>
+            )}
 
-      <Collapse in={mostrarInfoTicket} timeout="auto" unmountOnExit>
-        <Grid container spacing={1.5} sx={{ mt: 1 }}>
-          <Grid item xs={12} md={3}>
-            <Info label="Estado" value={estadoNombre} />
-          </Grid>
+            {puedeResolver && (
+              <Button
+                variant="contained"
+                color="success"
+                onClick={resolverTicket}
+                sx={buttonStyle}
+              >
+                Resolver
+              </Button>
+            )}
 
-          <Grid item xs={12} md={3}>
-            <Box
-              sx={{
-                border: "1px solid #e5e7eb",
-                borderRadius: 2,
-                p: 1.25,
-                minHeight: 58,
-              }}
-            >
-              <Typography variant="caption" color="text.secondary">
-                Agente asignado
-              </Typography>
+            {puedeEliminar && (
+              <Button
+                color="error"
+                variant="outlined"
+                onClick={eliminarTicket}
+                sx={buttonStyle}
+              >
+                Eliminar
+              </Button>
+            )}
 
-              <Box mt={1}>
-                {ticket?.responsable ? (
-                  <Chip
-                    color="success"
-                    label={`Asignado a ${ticket.responsable.name}`}
-                    sx={{ fontWeight: 700 }}
-                  />
+            <Button
+              variant="outlined"
+              onClick={() => setMostrarInfoTicket((prev) => !prev)}
+              endIcon={
+                mostrarInfoTicket ? (
+                  <KeyboardArrowUpIcon />
                 ) : (
-                  <Chip
-                    color="warning"
-                    label="Sin asignar"
-                    sx={{ fontWeight: 700 }}
-                  />
-                )}
+                  <KeyboardArrowDownIcon />
+                )
+              }
+              sx={buttonStyle}
+            >
+              {mostrarInfoTicket ? "Ocultar info" : "Ver info"}
+            </Button>
+          </Box>
+        </Stack>
+
+        <Divider />
+
+        <Collapse in={mostrarInfoTicket} timeout="auto" unmountOnExit>
+          <Stack spacing={2}>
+            <Box
+              sx={{
+                display: "grid",
+                gridTemplateColumns: {
+                  xs: "1fr",
+                  sm: "repeat(2, minmax(0, 1fr))",
+                  md: "repeat(3, minmax(0, 1fr))",
+                },
+                gap: 1.5,
+              }}
+            >
+              <Box sx={infoBoxStyle}>
+                <Typography
+                  variant="caption"
+                  color="text.secondary"
+                  fontWeight={800}
+                >
+                  Agente asignado
+                </Typography>
+
+                <Box mt={1}>
+                  {ticket?.responsable ? (
+                    <Chip
+                      color="success"
+                      label={`Asignado a ${ticket.responsable.name}`}
+                      size="small"
+                      sx={{
+                        fontWeight: 800,
+                        maxWidth: "100%",
+                        "& .MuiChip-label": {
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                        },
+                      }}
+                    />
+                  ) : (
+                    <Chip
+                      color="warning"
+                      label="Sin asignar"
+                      size="small"
+                      sx={{ fontWeight: 800 }}
+                    />
+                  )}
+                </Box>
               </Box>
+
+              <Info
+                label="Resuelto por"
+                value={ticket?.resolved_by?.name || "No resuelto"}
+              />
+
+              <Info
+                label="Tiempo de resolución"
+                value={calcularTiempoResolucion()}
+              />
             </Box>
-          </Grid>
 
-          <Grid item xs={12} md={3}>
-            <Info
-              label="Resuelto por"
-              value={ticket?.resolved_by?.name || "No resuelto"}
-            />
-          </Grid>
-
-          <Grid item xs={12} md={3}>
-            <Info
-              label="Tiempo de resolución"
-              value={calcularTiempoResolucion()}
-            />
-          </Grid>
-
-          <Grid item xs={12}>
             <Box
               sx={{
                 border: "1px solid #e5e7eb",
-                borderRadius: 2,
-                p: 2,
+                borderRadius: 2.5,
+                p: { xs: 1.5, sm: 2 },
                 bgcolor: "#ffffff",
+                minWidth: 0,
               }}
             >
-              <Typography variant="caption" color="text.secondary">
+              <Typography
+                variant="caption"
+                color="text.secondary"
+                fontWeight={800}
+              >
                 Detalle
               </Typography>
 
               <Box
                 sx={{
                   mt: 1,
-                  maxHeight: 90,
+                  maxHeight: { xs: 150, md: 120 },
                   overflowY: "auto",
                   pr: 1,
                 }}
               >
                 <Typography
                   sx={{
-                    fontSize: 14,
+                    fontSize: { xs: 13.2, sm: 14 },
                     lineHeight: 1.6,
                     whiteSpace: "pre-line",
                     color: "#111827",
+                    wordBreak: "break-word",
+                    overflowWrap: "anywhere",
                   }}
                 >
                   {ticket?.descripcion || "Sin descripción"}
                 </Typography>
               </Box>
             </Box>
-          </Grid>
-        </Grid>
-      </Collapse>
+          </Stack>
+        </Collapse>
+      </Stack>
     </Paper>
   );
 }
+
+const buttonStyle = {
+  borderRadius: 2,
+  textTransform: "none",
+  fontWeight: 900,
+  minHeight: 40,
+  px: 1.5,
+  width: "100%",
+  whiteSpace: "nowrap",
+  fontSize: 13,
+};
+
+const infoBoxStyle = {
+  border: "1px solid #e5e7eb",
+  borderRadius: 2.5,
+  p: 1.25,
+  minHeight: 64,
+  minWidth: 0,
+  bgcolor: "#ffffff",
+};

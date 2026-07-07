@@ -1,11 +1,12 @@
 import { Box, Typography } from "@mui/material";
+
 import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutlineOutlined";
 import SwapHorizIcon from "@mui/icons-material/SwapHoriz";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 
 export default function SystemMessage({ message }) {
   const texto = message?.message || "";
-  const fecha = message?.created_at ? new Date(message.created_at) : new Date();
+  const fecha = parseFecha(message?.created_at);
 
   const textoLower = texto.toLowerCase();
 
@@ -18,109 +19,105 @@ export default function SystemMessage({ message }) {
       ? "Ticket creado"
       : "Evento del sistema";
 
-  const icono = esCambioEstado ? (
-    <SwapHorizIcon sx={{ fontSize: 17, color: "#54656f" }} />
-  ) : esCreacion ? (
-    <CheckCircleOutlineIcon sx={{ fontSize: 17, color: "#54656f" }} />
-  ) : (
-    <InfoOutlinedIcon sx={{ fontSize: 17, color: "#54656f" }} />
-  );
+  const config = esCambioEstado
+    ? {
+        icono: <SwapHorizIcon sx={{ fontSize: 16 }} />,
+        bgcolor: "#f1f5f9",
+        border: "#cbd5e1",
+        color: "#475569",
+      }
+    : esCreacion
+      ? {
+          icono: <CheckCircleOutlineIcon sx={{ fontSize: 16 }} />,
+          bgcolor: "#ecfdf5",
+          border: "#bbf7d0",
+          color: "#047857",
+        }
+      : {
+          icono: <InfoOutlinedIcon sx={{ fontSize: 16 }} />,
+          bgcolor: "#eff6ff",
+          border: "#bfdbfe",
+          color: "#1d4ed8",
+        };
 
   return (
-    <Box sx={{ width: "100%", my: 2 }}>
+    <Box
+      sx={{
+        width: "100%",
+        display: "flex",
+        justifyContent: "center",
+        px: { xs: 1, sm: 2 },
+        my: { xs: 1.2, md: 1.6 },
+      }}
+    >
       <Box
         sx={{
-          display: "flex",
-          alignItems: "center",
-          gap: 1.5,
-          mb: 1,
+          width: "fit-content",
+          maxWidth: { xs: "94%", sm: 460, md: 520 },
+          px: { xs: 1.4, sm: 1.8 },
+          py: { xs: 1, sm: 1.15 },
+          borderRadius: 3,
+          bgcolor: config.bgcolor,
+          color: config.color,
+          textAlign: "center",
+          border: `1px solid ${config.border}`,
+          boxShadow: "0 1px 2px rgba(15,23,42,0.08)",
+          overflow: "hidden",
         }}
       >
-        <Box sx={{ flex: 1, height: "1px", bgcolor: "#d1d7db" }} />
-
-        <Typography
-          sx={{
-            fontSize: 11,
-            color: "#667781",
-            fontWeight: 600,
-            whiteSpace: "nowrap",
-          }}
-        >
-          {fecha.toLocaleDateString("es-MX", {
-            day: "2-digit",
-            month: "long",
-            year: "numeric",
-          })}
-        </Typography>
-
-        <Box sx={{ flex: 1, height: "1px", bgcolor: "#d1d7db" }} />
-      </Box>
-
-      <Box sx={{ display: "flex", justifyContent: "center" }}>
         <Box
           sx={{
-            px: 2,
-            py: 1.1,
-            maxWidth: 420,
-            borderRadius: 3,
-            bgcolor: "#e9edef",
-            color: "#54656f",
-            textAlign: "center",
-            boxShadow: "0 1px 2px rgba(0,0,0,.08)",
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
+            gap: 0.7,
+            mb: 0.55,
+            color: config.color,
           }}
         >
-          <Box
-            sx={{
-              display: "flex",
-              justifyContent: "center",
-              alignItems: "center",
-              gap: 0.8,
-              mb: 0.6,
-            }}
-          >
-            {icono}
-
-            <Typography
-              sx={{
-                fontSize: 12,
-                fontWeight: 800,
-                color: "#54656f",
-              }}
-            >
-              {titulo}
-            </Typography>
-          </Box>
-
-          {esCambioEstado ? (
-            <CambioEstado texto={texto} />
-          ) : (
-            <Typography
-              sx={{
-                fontSize: 13,
-                fontWeight: 500,
-                lineHeight: 1.45,
-                color: "#3b4a54",
-                whiteSpace: "pre-line",
-              }}
-            >
-              {texto}
-            </Typography>
-          )}
+          {config.icono}
 
           <Typography
             sx={{
-              mt: 0.7,
-              fontSize: 11,
-              color: "#8696a0",
-              fontWeight: 600,
+              fontSize: { xs: 11.5, sm: 12 },
+              fontWeight: 900,
+              color: config.color,
+              lineHeight: 1.2,
             }}
           >
-            {fecha.toLocaleTimeString("es-MX", {
-              hour: "2-digit",
-              minute: "2-digit",
-            })}
+            {titulo}
           </Typography>
         </Box>
+
+        {esCambioEstado ? (
+          <CambioEstado texto={texto} />
+        ) : (
+          <Typography
+            sx={{
+              fontSize: { xs: 12.2, sm: 13 },
+              fontWeight: 600,
+              lineHeight: 1.45,
+              color: "#334155",
+              whiteSpace: "pre-line",
+              wordBreak: "break-word",
+              overflowWrap: "anywhere",
+            }}
+          >
+            {texto}
+          </Typography>
+        )}
+
+        <Typography
+          sx={{
+            mt: 0.65,
+            fontSize: { xs: 10.5, sm: 11 },
+            color: "#64748b",
+            fontWeight: 700,
+            lineHeight: 1.2,
+          }}
+        >
+          {fecha}
+        </Typography>
       </Box>
     </Box>
   );
@@ -133,10 +130,13 @@ function CambioEstado({ texto }) {
     return (
       <Typography
         sx={{
-          fontSize: 13,
-          fontWeight: 500,
+          fontSize: { xs: 12.2, sm: 13 },
+          fontWeight: 600,
           lineHeight: 1.45,
-          color: "#3b4a54",
+          color: "#334155",
+          whiteSpace: "pre-line",
+          wordBreak: "break-word",
+          overflowWrap: "anywhere",
         }}
       >
         {texto}
@@ -149,22 +149,94 @@ function CambioEstado({ texto }) {
   const usuario = match[3];
 
   return (
-    <Box>
-      <Typography sx={{ fontSize: 12, color: "#667781", mb: 0.4 }}>
+    <Box sx={{ minWidth: 0 }}>
+      <Typography
+        sx={{
+          fontSize: { xs: 11.5, sm: 12 },
+          color: "#64748b",
+          fontWeight: 800,
+          mb: 0.6,
+          wordBreak: "break-word",
+        }}
+      >
         {usuario}
       </Typography>
 
-      <Typography sx={{ fontSize: 13, fontWeight: 700, color: "#3b4a54" }}>
-        {anterior}
-      </Typography>
+      <Box
+        sx={{
+          display: "grid",
+          gridTemplateColumns: {
+            xs: "1fr",
+            sm: "1fr auto 1fr",
+          },
+          gap: { xs: 0.4, sm: 1 },
+          alignItems: "center",
+        }}
+      >
+        <EstadoTexto texto={anterior} tipo="anterior" />
 
-      <Typography sx={{ fontSize: 18, fontWeight: 800, color: "#667781" }}>
-        ↓
-      </Typography>
+        <Typography
+          sx={{
+            fontSize: { xs: 17, sm: 18 },
+            fontWeight: 900,
+            color: "#64748b",
+            lineHeight: 1,
+            transform: {
+              xs: "rotate(90deg)",
+              sm: "none",
+            },
+          }}
+        >
+          →
+        </Typography>
 
-      <Typography sx={{ fontSize: 13, fontWeight: 700, color: "#3b4a54" }}>
-        {nuevo}
+        <EstadoTexto texto={nuevo} tipo="nuevo" />
+      </Box>
+    </Box>
+  );
+}
+
+function EstadoTexto({ texto, tipo }) {
+  const esNuevo = tipo === "nuevo";
+
+  return (
+    <Box
+      sx={{
+        px: 1,
+        py: 0.65,
+        borderRadius: 2,
+        bgcolor: esNuevo ? "#dcfce7" : "#ffffff",
+        border: esNuevo ? "1px solid #86efac" : "1px solid #e2e8f0",
+        minWidth: 0,
+      }}
+    >
+      <Typography
+        sx={{
+          fontSize: { xs: 12, sm: 12.5 },
+          fontWeight: 900,
+          color: esNuevo ? "#166534" : "#475569",
+          lineHeight: 1.3,
+          wordBreak: "break-word",
+          overflowWrap: "anywhere",
+        }}
+      >
+        {texto}
       </Typography>
     </Box>
   );
+}
+
+function parseFecha(fecha) {
+  if (!fecha) return "";
+
+  const parsed = new Date(String(fecha).replace(" ", "T"));
+
+  if (Number.isNaN(parsed.getTime())) {
+    return "";
+  }
+
+  return parsed.toLocaleTimeString("es-MX", {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
 }

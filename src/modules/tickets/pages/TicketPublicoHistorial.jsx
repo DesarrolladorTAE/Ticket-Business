@@ -216,7 +216,7 @@ function TicketPublicoHistorial() {
   const formatearFecha = (fecha) => {
     if (!fecha) return "";
 
-    const parsed = new Date(fecha.replace(" ", "T"));
+    const parsed = new Date(String(fecha).replace(" ", "T"));
 
     if (Number.isNaN(parsed.getTime())) {
       return fecha;
@@ -298,12 +298,12 @@ function TicketPublicoHistorial() {
   return (
     <Box
       sx={{
-        minHeight: "100vh",
+        minHeight: "100dvh",
         width: "100%",
         bgcolor: "#eef2f7",
         display: "flex",
         justifyContent: "center",
-        alignItems: "center",
+        alignItems: { xs: "stretch", md: "center" },
         px: { xs: 0, md: 2 },
         py: { xs: 0, md: 2 },
         boxSizing: "border-box",
@@ -312,181 +312,231 @@ function TicketPublicoHistorial() {
       <Paper
         sx={{
           width: "100%",
-          maxWidth: 920,
+          maxWidth: 960,
           mx: "auto",
-          height: { xs: "100vh", md: "calc(100vh - 32px)" },
+          height: { xs: "100dvh", md: "calc(100dvh - 32px)" },
           borderRadius: { xs: 0, md: 4 },
           border: { xs: "none", md: "1px solid #e5e7eb" },
           overflow: "hidden",
           display: "flex",
           flexDirection: "column",
           bgcolor: "#f8fafc",
+          boxShadow: { xs: "none", md: 4 },
         }}
       >
         <Box
           sx={{
             bgcolor: color,
             color: "#fff",
-            p: { xs: 2, md: 3 },
+            p: { xs: 1.3, sm: 2, md: 3 },
+            flexShrink: 0,
           }}
         >
-          <Stack
-            direction={{ xs: "column", md: "row" }}
-            justifyContent="space-between"
-            alignItems={{ xs: "flex-start", md: "center" }}
-            spacing={2}
-          >
-            <Stack
-              direction={{ xs: "column", sm: "row" }}
-              spacing={2}
-              alignItems={{ xs: "flex-start", sm: "center" }}
-              sx={{ minWidth: 0 }}
-            >
-              {system?.logo_url ? (
-                <Box
-                  component="img"
-                  src={system.logo_url}
-                  alt={system?.nombre || "Logo del sistema"}
+          <Stack spacing={{ xs: 1.2, md: 2 }}>
+            <Stack spacing={{ xs: 1.2, md: 2 }}>
+              <Stack
+                direction="row"
+                spacing={{ xs: 1, sm: 1.5, md: 2 }}
+                alignItems="center"
+                sx={{ minWidth: 0 }}
+              >
+                {system?.logo_url ? (
+                  <Box
+                    component="img"
+                    src={system.logo_url}
+                    alt={system?.nombre || "Logo del sistema"}
+                    sx={{
+                      width: { xs: 42, sm: 52, md: 72 },
+                      height: { xs: 42, sm: 52, md: 72 },
+                      objectFit: "contain",
+                      borderRadius: 2,
+                      bgcolor: "#ffffff",
+                      p: { xs: 0.5, md: 1 },
+                      border: "1px solid rgba(255,255,255,0.35)",
+                      flexShrink: 0,
+                    }}
+                  />
+                ) : (
+                  <Box
+                    sx={{
+                      width: { xs: 42, sm: 52, md: 72 },
+                      height: { xs: 42, sm: 52, md: 72 },
+                      borderRadius: 2,
+                      bgcolor: "rgba(255,255,255,0.18)",
+                      border: "1px solid rgba(255,255,255,0.35)",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      flexShrink: 0,
+                    }}
+                  >
+                    <ImageIcon fontSize="small" />
+                  </Box>
+                )}
+
+                <Box sx={{ minWidth: 0, flex: 1 }}>
+                  <Typography
+                    fontWeight={900}
+                    sx={{
+                      fontSize: { xs: 15, sm: 18, md: 25 },
+                      lineHeight: 1.15,
+                      wordBreak: "break-word",
+                    }}
+                  >
+                    {tituloPortada}
+                  </Typography>
+
+                  <Typography
+                    variant="body2"
+                    mt={0.3}
+                    sx={{
+                      opacity: 0.94,
+                      fontWeight: 800,
+                      fontSize: { xs: 11.5, sm: 13, md: 14 },
+                      lineHeight: 1.25,
+                      display: "-webkit-box",
+                      WebkitLineClamp: { xs: 2, sm: 2, md: 3 },
+                      WebkitBoxOrient: "vertical",
+                      overflow: "hidden",
+                    }}
+                  >
+                    {subtituloPortada}
+                  </Typography>
+
+                  <Typography
+                    variant="body2"
+                    mt={0.4}
+                    sx={{
+                      opacity: 0.9,
+                      maxWidth: 650,
+                      lineHeight: 1.4,
+                      fontSize: { xs: 12, sm: 13, md: 14 },
+                      display: { xs: "none", md: "block" },
+                    }}
+                  >
+                    {descripcionPortada}
+                  </Typography>
+                </Box>
+              </Stack>
+
+              <Stack
+                direction="row"
+                spacing={1}
+                alignItems="center"
+                justifyContent="space-between"
+              >
+                <Chip
+                  label={estado.label}
+                  size="small"
                   sx={{
-                    width: 72,
-                    height: 72,
-                    objectFit: "contain",
-                    borderRadius: 2,
+                    fontWeight: 900,
                     bgcolor: "#ffffff",
-                    p: 1,
-                    border: "1px solid rgba(255,255,255,0.35)",
-                    flexShrink: 0,
+                    color,
+                    border: "1px solid rgba(255,255,255,0.7)",
+                    maxWidth: "100%",
+                    "& .MuiChip-label": {
+                      px: 1.2,
+                    },
                   }}
                 />
-              ) : (
-                <Box
-                  sx={{
-                    width: 72,
-                    height: 72,
-                    borderRadius: 2,
-                    bgcolor: "rgba(255,255,255,0.18)",
-                    border: "1px solid rgba(255,255,255,0.35)",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    flexShrink: 0,
-                  }}
-                >
-                  <ImageIcon />
-                </Box>
-              )}
 
-              <Box sx={{ minWidth: 0 }}>
-                <Typography
-                  variant="h5"
-                  fontWeight={900}
-                  sx={{
-                    wordBreak: "break-word",
-                  }}
-                >
-                  {tituloPortada}
-                </Typography>
+                <Stack direction="row" spacing={0.8} alignItems="center">
+                  <Tooltip title="Copiar folio">
+                    <IconButton
+                      onClick={() =>
+                        copiarTexto(ticket?.folio, "Folio copiado.")
+                      }
+                      size="small"
+                      sx={{
+                        color: "#fff",
+                        border: "1px solid rgba(255,255,255,0.35)",
+                        width: { xs: 32, md: 40 },
+                        height: { xs: 32, md: 40 },
+                      }}
+                    >
+                      <ContentCopyIcon fontSize="small" />
+                    </IconButton>
+                  </Tooltip>
 
-                <Typography
-                  variant="body2"
-                  mt={0.5}
-                  sx={{ opacity: 0.92, fontWeight: 700 }}
-                >
-                  {subtituloPortada}
-                </Typography>
-
-                <Typography
-                  variant="body2"
-                  mt={0.6}
-                  sx={{
-                    opacity: 0.9,
-                    maxWidth: 620,
-                    lineHeight: 1.45,
-                  }}
-                >
-                  {descripcionPortada}
-                </Typography>
-              </Box>
+                  <Tooltip title="Actualizar historial">
+                    <IconButton
+                      onClick={recargarHistorial}
+                      disabled={refrescando}
+                      size="small"
+                      sx={{
+                        color: "#fff",
+                        border: "1px solid rgba(255,255,255,0.35)",
+                        opacity: refrescando ? 0.6 : 1,
+                        width: { xs: 32, md: 40 },
+                        height: { xs: 32, md: 40 },
+                      }}
+                    >
+                      <RefreshIcon fontSize="small" />
+                    </IconButton>
+                  </Tooltip>
+                </Stack>
+              </Stack>
             </Stack>
 
-            <Stack direction="row" spacing={1} alignItems="center">
-              <Chip
-                label={estado.label}
-                size="small"
+            <Divider sx={{ borderColor: "rgba(255,255,255,0.25)" }} />
+
+            <Box>
+              <Typography
+                fontWeight={900}
                 sx={{
-                  fontWeight: 900,
-                  bgcolor: "#ffffff",
-                  color,
-                  border: "1px solid rgba(255,255,255,0.7)",
-                  "& .MuiChip-label": {
-                    px: 1.5,
-                  },
+                  fontSize: { xs: 14.5, sm: 18, md: 22 },
+                  lineHeight: 1.2,
+                  wordBreak: "break-word",
                 }}
-              />
+              >
+                {ticket?.titulo}
+              </Typography>
 
-              <Tooltip title="Copiar folio">
-                <IconButton
-                  onClick={() => copiarTexto(ticket?.folio, "Folio copiado.")}
-                  sx={{
-                    color: "#fff",
-                    border: "1px solid rgba(255,255,255,0.35)",
-                  }}
-                >
-                  <ContentCopyIcon fontSize="small" />
-                </IconButton>
-              </Tooltip>
-
-              <Tooltip title="Actualizar historial">
-                <IconButton
-                  onClick={recargarHistorial}
-                  disabled={refrescando}
-                  sx={{
-                    color: "#fff",
-                    border: "1px solid rgba(255,255,255,0.35)",
-                    opacity: refrescando ? 0.6 : 1,
-                  }}
-                >
-                  <RefreshIcon fontSize="small" />
-                </IconButton>
-              </Tooltip>
-            </Stack>
+              <Typography
+                variant="body2"
+                mt={0.3}
+                sx={{
+                  opacity: 0.9,
+                  fontSize: { xs: 11, md: 14 },
+                  wordBreak: "break-word",
+                }}
+              >
+                Folio: {ticket?.folio}
+              </Typography>
+            </Box>
           </Stack>
-
-          <Divider sx={{ my: 2, borderColor: "rgba(255,255,255,0.25)" }} />
-
-          <Box>
-            <Typography
-              variant="h6"
-              fontWeight={900}
-              sx={{
-                wordBreak: "break-word",
-              }}
-            >
-              {ticket?.titulo}
-            </Typography>
-
-            <Typography variant="body2" mt={0.5} sx={{ opacity: 0.9 }}>
-              Folio: {ticket?.folio}
-            </Typography>
-          </Box>
         </Box>
 
         <Box
           sx={{
-            px: { xs: 2, md: 3 },
-            py: 1.5,
+            px: { xs: 1.6, md: 3 },
+            py: { xs: 0.7, md: 1.5 },
             bgcolor: "#ffffff",
             borderBottom: "1px solid #e5e7eb",
+            flexShrink: 0,
           }}
         >
-          <Typography variant="body2" color="text.secondary">
+          <Typography
+            variant="body2"
+            color="text.secondary"
+            sx={{
+              fontSize: { xs: 11.5, md: 14 },
+              lineHeight: 1.35,
+            }}
+          >
             Historial público del ticket. Los mensajes enviados desde este
             portal se registran como públicos.
           </Typography>
         </Box>
 
         {(error || ok) && (
-          <Box px={{ xs: 2, md: 3 }} pt={2}>
+          <Box
+            sx={{
+              px: { xs: 1.5, md: 3 },
+              pt: 1.3,
+              flexShrink: 0,
+            }}
+          >
             {error && <Alert severity="error">{error}</Alert>}
             {ok && <Alert severity="success">{ok}</Alert>}
           </Box>
@@ -496,14 +546,14 @@ function TicketPublicoHistorial() {
           sx={{
             flex: 1,
             overflowY: "auto",
-            px: { xs: 1.5, md: 3 },
-            py: 2,
+            px: { xs: 1, sm: 1.5, md: 3 },
+            py: { xs: 1.5, md: 2 },
             bgcolor: "#e5ddd5",
             backgroundImage:
               "linear-gradient(rgba(255,255,255,0.22), rgba(255,255,255,0.22))",
           }}
         >
-          <Stack spacing={1.5}>
+          <Stack spacing={{ xs: 1.2, md: 1.5 }}>
             {messages.length === 0 && (
               <Box
                 sx={{
@@ -545,13 +595,13 @@ function TicketPublicoHistorial() {
                   >
                     <Box
                       sx={{
-                        px: 2,
-                        py: 1.2,
+                        px: { xs: 1.4, md: 2 },
+                        py: 1,
                         borderRadius: 3,
                         bgcolor: "#e2e8f0",
                         border: "1px solid #cbd5e1",
                         textAlign: "center",
-                        maxWidth: 360,
+                        maxWidth: { xs: "88%", md: 380 },
                       }}
                     >
                       <Typography
@@ -568,6 +618,10 @@ function TicketPublicoHistorial() {
                         fontWeight={700}
                         color="#334155"
                         mt={0.3}
+                        sx={{
+                          fontSize: { xs: 12.5, md: 14 },
+                          wordBreak: "break-word",
+                        }}
                       >
                         {msg.message}
                       </Typography>
@@ -595,10 +649,14 @@ function TicketPublicoHistorial() {
                 >
                   <Box
                     sx={{
-                      maxWidth: { xs: "86%", md: "68%" },
-                      minWidth: 180,
-                      px: 1.6,
-                      py: 1.2,
+                      maxWidth: {
+                        xs: "92%",
+                        sm: "82%",
+                        md: "68%",
+                      },
+                      minWidth: { xs: 0, sm: 180 },
+                      px: { xs: 1.3, md: 1.6 },
+                      py: { xs: 1, md: 1.2 },
                       borderRadius: 3,
                       bgcolor: esCliente ? "#d9fdd3" : "#ffffff",
                       border: "1px solid rgba(0,0,0,0.06)",
@@ -624,7 +682,8 @@ function TicketPublicoHistorial() {
                         sx={{
                           wordBreak: "break-word",
                           color: "#111827",
-                          lineHeight: 1.55,
+                          lineHeight: 1.5,
+                          fontSize: { xs: 13, md: 14 },
                         }}
                       >
                         {msg.message}
@@ -645,7 +704,11 @@ function TicketPublicoHistorial() {
                                   overflow: "hidden",
                                   border: "1px solid rgba(0,0,0,0.12)",
                                   bgcolor: "#ffffff",
-                                  width: { xs: 210, md: 240 },
+                                  width: {
+                                    xs: "100%",
+                                    sm: 230,
+                                    md: 250,
+                                  },
                                   maxWidth: "100%",
                                 }}
                               >
@@ -658,7 +721,7 @@ function TicketPublicoHistorial() {
                                   sx={{
                                     display: "block",
                                     width: "100%",
-                                    height: { xs: 130, md: 150 },
+                                    height: { xs: 135, sm: 145, md: 155 },
                                     objectFit: "cover",
                                   }}
                                 />
@@ -711,7 +774,7 @@ function TicketPublicoHistorial() {
                                   overflow: "hidden",
                                   textOverflow: "ellipsis",
                                   whiteSpace: "nowrap",
-                                  maxWidth: { xs: 180, md: 340 },
+                                  maxWidth: { xs: 180, sm: 260, md: 340 },
                                 }}
                               >
                                 {archivo.nombre_archivo || "Archivo adjunto"}
@@ -728,6 +791,7 @@ function TicketPublicoHistorial() {
                       display="block"
                       textAlign="right"
                       mt={0.6}
+                      sx={{ fontSize: { xs: 10.5, md: 12 } }}
                     >
                       {formatearFecha(msg.created_at)}
                     </Typography>
@@ -744,12 +808,21 @@ function TicketPublicoHistorial() {
 
         <Box
           sx={{
-            p: { xs: 1.5, md: 2 },
+            p: { xs: 1, sm: 1.3, md: 2 },
             bgcolor: "#ffffff",
+            flexShrink: 0,
           }}
         >
           {archivos.length > 0 && (
-            <Stack spacing={1} mb={1.2}>
+            <Stack
+              spacing={1}
+              mb={1.2}
+              sx={{
+                maxHeight: { xs: 120, md: 170 },
+                overflowY: "auto",
+                pr: 0.5,
+              }}
+            >
               {archivos.map((archivo, index) => (
                 <Box
                   key={`${archivo.name}-${index}`}
@@ -795,19 +868,24 @@ function TicketPublicoHistorial() {
             </Stack>
           )}
 
-          <Stack direction="row" spacing={1.2} alignItems="flex-end">
+          <Stack
+            direction="row"
+            spacing={{ xs: 0.8, md: 1.2 }}
+            alignItems="flex-end"
+          >
             <Tooltip title="Adjuntar archivo">
               <IconButton
                 component="label"
                 disabled={enviando}
                 sx={{
-                  width: 42,
-                  height: 42,
+                  width: { xs: 40, md: 42 },
+                  height: { xs: 40, md: 42 },
                   border: "1px solid #d1d5db",
                   bgcolor: "#f8fafc",
+                  flexShrink: 0,
                 }}
               >
-                <AttachFileIcon />
+                <AttachFileIcon fontSize="small" />
 
                 <input
                   type="file"
@@ -834,6 +912,7 @@ function TicketPublicoHistorial() {
                 "& .MuiOutlinedInput-root": {
                   borderRadius: 4,
                   bgcolor: "#f8fafc",
+                  fontSize: { xs: 13, md: 14 },
                 },
               }}
             />
@@ -844,14 +923,20 @@ function TicketPublicoHistorial() {
               disabled={enviando || (!message.trim() && archivos.length === 0)}
               endIcon={<SendIcon />}
               sx={{
-                minWidth: { xs: 48, md: 150 },
-                height: 42,
+                minWidth: { xs: 42, sm: 48, md: 150 },
+                width: { xs: 42, sm: 48, md: "auto" },
+                height: { xs: 40, md: 42 },
+                px: { xs: 0, md: 2 },
                 borderRadius: 4,
                 fontWeight: 900,
                 bgcolor: color,
+                flexShrink: 0,
                 "&:hover": {
                   bgcolor: color,
                   opacity: 0.92,
+                },
+                "& .MuiButton-endIcon": {
+                  m: { xs: 0, md: "0 0 0 8px" },
                 },
               }}
             >
@@ -868,6 +953,13 @@ function TicketPublicoHistorial() {
         onClose={cerrarPreview}
         maxWidth="md"
         fullWidth
+        PaperProps={{
+          sx: {
+            m: { xs: 1, md: 3 },
+            borderRadius: { xs: 2, md: 3 },
+            overflow: "hidden",
+          },
+        }}
       >
         <DialogContent
           sx={{
@@ -902,7 +994,7 @@ function TicketPublicoHistorial() {
                 sx={{
                   display: "block",
                   width: "100%",
-                  maxHeight: "80vh",
+                  maxHeight: { xs: "72vh", md: "80vh" },
                   objectFit: "contain",
                   bgcolor: "#0f172a",
                 }}
@@ -915,7 +1007,7 @@ function TicketPublicoHistorial() {
                   bgcolor: "#ffffff",
                 }}
               >
-                <Typography fontWeight={800}>
+                <Typography fontWeight={800} noWrap>
                   {archivoPreview.nombre_archivo || "Imagen adjunta"}
                 </Typography>
               </Box>
