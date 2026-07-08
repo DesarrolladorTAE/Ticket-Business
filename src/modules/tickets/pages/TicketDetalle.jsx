@@ -20,7 +20,11 @@ import {
   Typography,
 } from "@mui/material";
 
+import ContentCopyIcon from "@mui/icons-material/ContentCopy";
+import OpenInNewIcon from "@mui/icons-material/OpenInNew";
+
 const STORAGE_URL = "https://api.thebusinessticket.com/storage";
+const PUBLIC_TICKET_BASE_PATH = "/public/tickets";
 
 export default function TicketDetalle() {
   const { id } = useParams();
@@ -104,6 +108,118 @@ export default function TicketDetalle() {
         icon: "error",
         title: "No se pudo cambiar el estado",
         text: error.response?.data?.message || "No se pudo cambiar el estado.",
+      });
+    }
+  };
+
+  const normalizarUrlPublica = (url) => {
+    if (!url) return "";
+
+    const cleanUrl = String(url).trim();
+
+    if (!cleanUrl) return "";
+
+    if (/^https?:\/\//i.test(cleanUrl)) {
+      return cleanUrl;
+    }
+
+    return `${window.location.origin}${cleanUrl.startsWith("/") ? "" : "/"}${cleanUrl}`;
+  };
+
+  const obtenerLinkPublicoTicket = () => {
+    const urlDirecta =
+      ticket?.public_url ||
+      ticket?.publicUrl ||
+      ticket?.link_publico ||
+      ticket?.public_link ||
+      ticket?.publicLink;
+
+    if (urlDirecta) {
+      return normalizarUrlPublica(urlDirecta);
+    }
+
+const tokenPublico =
+  ticket?.public_tracking_code ||
+  ticket?.public_token ||
+  ticket?.token_publico ||
+  ticket?.public_uuid ||
+  ticket?.uuid_publico ||
+  ticket?.token ||
+  ticket?.uuid;
+
+    if (!tokenPublico) {
+      return "";
+    }
+
+    return `${window.location.origin}${PUBLIC_TICKET_BASE_PATH}/${tokenPublico}`;
+  };
+
+  const copiarTextoPortapapeles = async (texto) => {
+    if (navigator.clipboard && window.isSecureContext) {
+      await navigator.clipboard.writeText(texto);
+      return;
+    }
+
+    const textarea = document.createElement("textarea");
+    textarea.value = texto;
+    textarea.setAttribute("readonly", "");
+    textarea.style.position = "fixed";
+    textarea.style.top = "-9999px";
+    textarea.style.left = "-9999px";
+
+    document.body.appendChild(textarea);
+    textarea.focus();
+    textarea.select();
+    document.execCommand("copy");
+    document.body.removeChild(textarea);
+  };
+
+  const abrirVistaPublica = () => {
+    const linkPublico = obtenerLinkPublicoTicket();
+
+    if (!linkPublico) {
+      Swal.fire({
+        icon: "warning",
+        title: "Link público no disponible",
+        text: "El ticket no tiene token público disponible.",
+      });
+
+      return;
+    }
+
+    window.open(linkPublico, "_blank", "noopener,noreferrer");
+  };
+
+  const copiarLinkPublico = async () => {
+    const linkPublico = obtenerLinkPublicoTicket();
+
+    if (!linkPublico) {
+      Swal.fire({
+        icon: "warning",
+        title: "Link público no disponible",
+        text: "El ticket no tiene token público disponible.",
+      });
+
+      return;
+    }
+
+    try {
+      await copiarTextoPortapapeles(linkPublico);
+
+      Swal.fire({
+        icon: "success",
+        title: "Link copiado",
+        text: "El link público fue copiado correctamente.",
+        timer: 1600,
+        showConfirmButton: false,
+      });
+    } catch (error) {
+      console.log("ERROR COPIAR LINK:", error);
+
+      Swal.fire({
+        icon: "error",
+        title: "No se pudo copiar",
+        text: "No fue posible copiar el link público.",
       });
     }
   };
@@ -422,33 +538,96 @@ export default function TicketDetalle() {
         </Box>
 
         <Stack
-          direction={{ xs: "column", sm: "row" }}
+          direction="row"
           spacing={1}
-          alignItems={{ xs: "stretch", sm: "center" }}
+          useFlexGap
+          flexWrap="wrap"
+          justifyContent={{ xs: "flex-start", sm: "flex-end" }}
+          alignItems="center"
+          sx={{
+            "& .MuiButton-root": {
+              minHeight: 40,
+              borderRadius: 2,
+              textTransform: "none",
+              fontWeight: 800,
+              whiteSpace: "nowrap",
+            },
+            "& .MuiButton-startIcon": {
+              mr: { xs: 0, sm: 1 },
+            },
+          }}
         >
           <Button
             variant="outlined"
             onClick={() => navigate("/mis-tickets")}
             sx={{
-              borderRadius: 2,
-              textTransform: "none",
-              fontWeight: 800,
+              minWidth: { xs: 44, sm: "auto" },
+              px: { xs: 1.3, sm: 2 },
             }}
           >
-            Volver
+            <Box component="span" sx={{ display: { xs: "none", sm: "inline" } }}>
+              Volver
+            </Box>
+
+            <Box component="span" sx={{ display: { xs: "inline", sm: "none" } }}>
+              ←
+            </Box>
           </Button>
 
           <Button
             variant="contained"
             onClick={cargarTodo}
             sx={{
-              borderRadius: 2,
-              textTransform: "none",
-              fontWeight: 800,
+              minWidth: { xs: 44, sm: "auto" },
+              px: { xs: 1.3, sm: 2 },
             }}
           >
-            Actualizar
+            <Box component="span" sx={{ display: { xs: "none", sm: "inline" } }}>
+              Actualizar
+            </Box>
+
+            <Box component="span" sx={{ display: { xs: "inline", sm: "none" } }}>
+              ↻
+            </Box>
           </Button>
+
+          {puedeGestionar && (
+            <>
+              <Button
+                variant="outlined"
+                startIcon={<OpenInNewIcon />}
+                onClick={abrirVistaPublica}
+                sx={{
+                  minWidth: { xs: 44, sm: "auto" },
+                  px: { xs: 1.3, sm: 2 },
+                }}
+              >
+                <Box
+                  component="span"
+                  sx={{ display: { xs: "none", sm: "inline" } }}
+                >
+                  Vista pública
+                </Box>
+              </Button>
+
+              <Button
+                variant="outlined"
+                startIcon={<ContentCopyIcon />}
+                onClick={copiarLinkPublico}
+                sx={{
+                  minWidth: { xs: 44, sm: "auto" },
+                  px: { xs: 1.3, sm: 2 },
+                }}
+              >
+                <Box
+                  component="span"
+                  sx={{ display: { xs: "none", sm: "inline" } }}
+                >
+                  Copiar link
+                </Box>
+              </Button>
+            </>
+          )}
         </Stack>
       </Box>
 

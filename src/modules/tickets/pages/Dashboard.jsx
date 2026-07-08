@@ -134,7 +134,7 @@ function Dashboard() {
   return (
     <Box sx={{ width: "100%" }}>
       <Box
-        mb={3}
+        mb={{ xs: 1.5, md: 3 }}
         display="flex"
         justifyContent="space-between"
         alignItems={{ xs: "flex-start", sm: "center" }}
@@ -181,12 +181,11 @@ function Dashboard() {
         sx={{
           display: "grid",
           gridTemplateColumns: {
-            xs: "1fr",
-            sm: "repeat(2, minmax(0, 1fr))",
+            xs: "repeat(2, minmax(0, 1fr))",
             md: "repeat(4, minmax(0, 1fr))",
           },
-          gap: { xs: 1.5, md: 3 },
-          mb: 4,
+          gap: { xs: 1, sm: 1.5, md: 3 },
+          mb: { xs: 2, md: 4 },
         }}
       >
         <StatCard
@@ -585,40 +584,72 @@ function Dashboard() {
 function StatCard({ titulo, valor, chip, color = "default", icon, accent }) {
   return (
     <Paper sx={cardStyle}>
-      <Box sx={{ minWidth: 0 }}>
+      <Box
+        sx={{
+          width: "100%",
+          minWidth: 0,
+          display: { xs: "flex", md: "block" },
+          alignItems: { xs: "center", md: "initial" },
+          gap: { xs: 1.1, md: 0 },
+        }}
+      >
         <Box
           sx={{
-            width: 38,
-            height: 38,
-            borderRadius: 2.5,
+            width: { xs: 34, md: 38 },
+            height: { xs: 34, md: 38 },
+            borderRadius: { xs: 2.2, md: 2.5 },
             bgcolor: `${accent}18`,
             color: accent,
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            mb: 1.3,
+            mb: { xs: 0, md: 1.3 },
+            flexShrink: 0,
+            "& svg": {
+              fontSize: { xs: 20, md: 24 },
+            },
           }}
         >
           {icon}
         </Box>
 
-        <Typography variant="body2" color="text.secondary" fontWeight={800}>
-          {titulo}
-        </Typography>
+        <Box sx={{ minWidth: 0 }}>
+          <Typography
+            variant="body2"
+            color="text.secondary"
+            fontWeight={800}
+            sx={{
+              fontSize: { xs: 11.5, md: 14 },
+              lineHeight: 1.15,
+              whiteSpace: "nowrap",
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+            }}
+          >
+            {titulo}
+          </Typography>
 
-        <Typography
-          fontWeight={900}
-          mt={0.8}
-          sx={{
-            fontSize: { xs: 26, md: 34 },
-            lineHeight: 1,
-          }}
-        >
-          {valor}
-        </Typography>
+          <Typography
+            fontWeight={900}
+            mt={{ xs: 0.35, md: 0.8 }}
+            sx={{
+              fontSize: { xs: 24, md: 34 },
+              lineHeight: 1,
+            }}
+          >
+            {valor}
+          </Typography>
+        </Box>
       </Box>
 
-      <Chip label={chip} color={color} sx={chipStyle} />
+      <Chip
+        label={chip}
+        color={color}
+        sx={{
+          ...chipStyle,
+          display: { xs: "none", md: "inline-flex" },
+        }}
+      />
     </Paper>
   );
 }
@@ -701,15 +732,15 @@ function EmptyBox({ texto, height = 220 }) {
 
 const cardStyle = {
   height: "100%",
-  minHeight: { xs: 145, md: 165 },
-  p: { xs: 1.6, md: 2.5 },
-  borderRadius: 3,
+  minHeight: { xs: 78, sm: 88, md: 165 },
+  p: { xs: 1.15, sm: 1.4, md: 2.5 },
+  borderRadius: { xs: 2.5, md: 3 },
   boxShadow: 1,
   border: "1px solid #e5e7eb",
   display: "flex",
-  justifyContent: "space-between",
-  alignItems: "flex-start",
-  gap: 1.5,
+  justifyContent: { xs: "flex-start", md: "space-between" },
+  alignItems: { xs: "center", md: "flex-start" },
+  gap: { xs: 1, md: 1.5 },
   transition: "0.2s ease",
   overflow: "hidden",
   "&:hover": {

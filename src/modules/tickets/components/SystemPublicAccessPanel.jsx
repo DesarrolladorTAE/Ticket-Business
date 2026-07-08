@@ -18,7 +18,6 @@ import {
 } from "@mui/material";
 
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
-import AutorenewIcon from "@mui/icons-material/Autorenew";
 import PublicIcon from "@mui/icons-material/Public";
 import BlockIcon from "@mui/icons-material/Block";
 import CloudUploadIcon from "@mui/icons-material/CloudUpload";
@@ -223,30 +222,6 @@ function SystemPublicAccessPanel({ system }) {
       setError(
         error.response?.data?.message ||
           "No se pudo desactivar el acceso público.",
-      );
-    } finally {
-      setGuardando(false);
-    }
-  };
-
-  const regenerarToken = async () => {
-    setGuardando(true);
-    setError("");
-    setOk("");
-
-    try {
-      const res = await axiosCliente.post(
-        `/systems/${system.id}/public-access/regenerate`,
-      );
-
-      setPublicEnabled(true);
-      setPublicToken(res.data.public_token);
-
-      setOk("Token público regenerado correctamente.");
-    } catch (error) {
-      setError(
-        error.response?.data?.message ||
-          "No se pudo regenerar el token público.",
       );
     } finally {
       setGuardando(false);
@@ -554,33 +529,65 @@ function SystemPublicAccessPanel({ system }) {
         </Stack>
 
         {frontendUrl && (
-          <Box>
-            <Typography variant="body2" fontWeight={800} mb={0.5}>
-              URL pública
-            </Typography>
+          <Paper
+            variant="outlined"
+            sx={{
+              p: 2,
+              borderRadius: 3,
+              bgcolor: "#f8fafc",
+            }}
+          >
+            <Stack spacing={1.5}>
+              <Stack
+                direction={{ xs: "column", sm: "row" }}
+                justifyContent="space-between"
+                alignItems={{ xs: "stretch", sm: "center" }}
+                spacing={1.5}
+              >
+                <Box>
+                  <Typography variant="body2" fontWeight={900}>
+                    URL pública
+                  </Typography>
 
-            <Stack direction={{ xs: "column", md: "row" }} spacing={1}>
-              <TextField
-                value={frontendUrl}
-                fullWidth
-                size="small"
-                InputProps={{
-                  readOnly: true,
+                  <Typography variant="caption" color="text.secondary">
+                    Copia el enlace para compartir el formulario público.
+                  </Typography>
+                </Box>
+
+                <Tooltip title="Copiar URL pública">
+                  <Button
+                    variant="outlined"
+                    onClick={copiarUrl}
+                    startIcon={<ContentCopyIcon />}
+                    sx={{
+                      whiteSpace: "nowrap",
+                      alignSelf: { xs: "stretch", sm: "center" },
+                    }}
+                  >
+                    Copiar URL pública
+                  </Button>
+                </Tooltip>
+              </Stack>
+
+              <Box
+                sx={{
+                  px: 1.5,
+                  py: 1.2,
+                  borderRadius: 2,
+                  border: "1px solid #dbe3ef",
+                  bgcolor: "#ffffff",
+                  fontSize: 14,
+                  color: "#334155",
+                  fontFamily:
+                    'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace',
+                  wordBreak: "break-all",
+                  userSelect: "text",
                 }}
-              />
-
-              <Tooltip title="Copiar URL">
-                <Button
-                  variant="outlined"
-                  onClick={copiarUrl}
-                  startIcon={<ContentCopyIcon />}
-                  sx={{ whiteSpace: "nowrap" }}
-                >
-                  Copiar
-                </Button>
-              </Tooltip>
+              >
+                {frontendUrl}
+              </Box>
             </Stack>
-          </Box>
+          </Paper>
         )}
 
         <Stack direction={{ xs: "column", md: "row" }} spacing={1}>
@@ -591,16 +598,6 @@ function SystemPublicAccessPanel({ system }) {
             startIcon={<PublicIcon />}
           >
             {publicEnabled ? "Guardar portada" : "Activar público"}
-          </Button>
-
-          <Button
-            variant="outlined"
-            onClick={regenerarToken}
-            disabled={guardando || !publicEnabled}
-            startIcon={<AutorenewIcon />}
-            color="warning"
-          >
-            Regenerar token
           </Button>
 
           <Button

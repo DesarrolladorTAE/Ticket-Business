@@ -27,6 +27,273 @@ import CloseIcon from "@mui/icons-material/Close";
 import InsertDriveFileIcon from "@mui/icons-material/InsertDriveFile";
 import ImageIcon from "@mui/icons-material/Image";
 
+function PublicTicketTopBanner({
+  system,
+  color,
+  titulo,
+  subtitulo,
+  descripcion,
+}) {
+  const logoUrl = system?.logo_url || "";
+
+  return (
+    <Box
+      component="header"
+      sx={{
+        width: "100vw",
+        maxWidth: "none",
+        mx: "calc(50% - 50vw)",
+        overflow: "hidden",
+        position: "relative",
+        background: `linear-gradient(135deg, #111827 0%, #0f172a 58%, ${color} 100%)`,
+        color: "#ffffff",
+        boxShadow: "none",
+      }}
+    >
+      <Box
+        sx={{
+          position: "absolute",
+          inset: 0,
+          opacity: 0.28,
+          backgroundImage:
+            "radial-gradient(circle at 18% 28%, rgba(255,255,255,0.85) 0 2px, transparent 3px), radial-gradient(circle at 72% 35%, rgba(255,255,255,0.65) 0 2px, transparent 3px), linear-gradient(90deg, rgba(255,255,255,0.16) 1px, transparent 1px), linear-gradient(0deg, rgba(255,255,255,0.12) 1px, transparent 1px)",
+          backgroundSize: "120px 120px, 160px 160px, 34px 34px, 34px 34px",
+        }}
+      />
+
+      <Box
+        sx={{
+          position: "absolute",
+          inset: 0,
+          background:
+            "linear-gradient(180deg, rgba(15,23,42,0.02), rgba(15,23,42,0.72))",
+        }}
+      />
+
+      <Box
+        sx={{
+          position: "relative",
+          zIndex: 1,
+          width: "100%",
+          maxWidth: 1168,
+          mx: "auto",
+          minHeight: { xs: 190, sm: 230, md: 285 },
+          px: { xs: 2, sm: 3, md: 5 },
+          py: { xs: 3, sm: 4, md: 5 },
+          display: "flex",
+          alignItems: "flex-end",
+          boxSizing: "border-box",
+        }}
+      >
+        <Stack spacing={1.3} sx={{ width: "100%" }}>
+          <Chip
+            label="The Business Ticket"
+            size="small"
+            sx={{
+              width: "fit-content",
+              bgcolor: "rgba(255,255,255,0.14)",
+              border: "1px solid rgba(255,255,255,0.28)",
+              color: "#ffffff",
+              fontWeight: 900,
+              backdropFilter: "blur(8px)",
+            }}
+          />
+
+          <Stack
+            direction="row"
+            spacing={{ xs: 1.4, md: 2 }}
+            alignItems="center"
+            sx={{ minWidth: 0 }}
+          >
+            {logoUrl ? (
+              <Box
+                component="img"
+                src={logoUrl}
+                alt={system?.nombre || "Logo del sistema"}
+                sx={{
+                  width: { xs: 58, sm: 70, md: 86 },
+                  height: { xs: 58, sm: 70, md: 86 },
+                  objectFit: "contain",
+                  borderRadius: 3,
+                  bgcolor: "rgba(255,255,255,0.96)",
+                  p: { xs: 0.7, md: 1 },
+                  border: "1px solid rgba(255,255,255,0.5)",
+                  boxShadow: "0 18px 45px rgba(0,0,0,0.28)",
+                  flexShrink: 0,
+                }}
+              />
+            ) : (
+              <Box
+                sx={{
+                  width: { xs: 58, sm: 70, md: 86 },
+                  height: { xs: 58, sm: 70, md: 86 },
+                  borderRadius: 3,
+                  bgcolor: "rgba(255,255,255,0.16)",
+                  border: "1px solid rgba(255,255,255,0.3)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  flexShrink: 0,
+                }}
+              >
+                <ImageIcon />
+              </Box>
+            )}
+
+            <Box sx={{ minWidth: 0 }}>
+              <Typography
+                fontWeight={900}
+                sx={{
+                  fontSize: { xs: 26, sm: 34, md: 44 },
+                  lineHeight: 1.05,
+                  letterSpacing: "-0.04em",
+                  textShadow: "0 4px 18px rgba(0,0,0,0.28)",
+                  wordBreak: "break-word",
+                }}
+              >
+                {titulo}
+              </Typography>
+
+              <Typography
+                fontWeight={800}
+                sx={{
+                  mt: 0.6,
+                  opacity: 0.94,
+                  fontSize: { xs: 13, sm: 15, md: 17 },
+                  lineHeight: 1.25,
+                  display: "-webkit-box",
+                  WebkitLineClamp: { xs: 2, md: 2 },
+                  WebkitBoxOrient: "vertical",
+                  overflow: "hidden",
+                }}
+              >
+                {subtitulo}
+              </Typography>
+            </Box>
+          </Stack>
+
+          <Typography
+            sx={{
+              maxWidth: 760,
+              opacity: 0.9,
+              fontSize: { xs: 13, sm: 14, md: 15 },
+              lineHeight: 1.55,
+              display: { xs: "none", sm: "block" },
+            }}
+          >
+            {descripcion}
+          </Typography>
+        </Stack>
+      </Box>
+    </Box>
+  );
+}
+
+function PublicTicketFooter({ system, color, titulo }) {
+  const logoUrl = system?.logo_url || "";
+
+  return (
+    <Box
+      component="footer"
+      sx={{
+        width: "100vw",
+        mx: "calc(50% - 50vw)",
+        mt: { xs: 2, md: 4 },
+        mb: 0,
+        color: "#ffffff",
+        px: { xs: 2, sm: 4, md: 8 },
+        py: { xs: 4, sm: 5, md: 6 },
+        background: `linear-gradient(135deg, #0f172a 0%, #111827 58%, ${color} 100%)`,
+        boxShadow: "none",
+      }}
+    >
+      <Box
+        sx={{
+          width: "100%",
+          maxWidth: 920,
+          mx: "auto",
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          justifyContent: "center",
+          textAlign: "center",
+        }}
+      >
+        <Typography
+          fontWeight={900}
+          sx={{
+            width: "100%",
+            textAlign: "center",
+            fontSize: { xs: 24, md: 32 },
+            lineHeight: 1.1,
+            letterSpacing: "-0.03em",
+            mb: 1.5,
+          }}
+        >
+          Gracias por contactarnos
+        </Typography>
+
+        <Typography
+          sx={{
+            width: "100%",
+            maxWidth: 720,
+            mx: "auto",
+            textAlign: "center",
+            opacity: 0.92,
+            fontSize: { xs: 13, md: 15 },
+            lineHeight: 1.55,
+            mb: 3,
+          }}
+        >
+          Tu solicitud será revisada por el equipo de soporte. Conserva el folio
+          de tu ticket para consultar el seguimiento público cuando lo necesites.
+        </Typography>
+
+        <Box
+          sx={{
+            width: 74,
+            height: 74,
+            borderRadius: 4,
+            bgcolor: "rgba(255,255,255,0.95)",
+            border: "1px solid rgba(255,255,255,0.35)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            p: 1,
+            mb: 2,
+          }}
+        >
+          {logoUrl ? (
+            <Box
+              component="img"
+              src={logoUrl}
+              alt={system?.nombre || "Logo del sistema"}
+              sx={{
+                width: "100%",
+                height: "100%",
+                objectFit: "contain",
+              }}
+            />
+          ) : (
+            <ImageIcon sx={{ color }} />
+          )}
+        </Box>
+
+        <Typography
+          fontWeight={900}
+          sx={{
+            width: "100%",
+            textAlign: "center",
+            fontSize: { xs: 13, md: 14 },
+          }}
+        >
+          {system?.nombre || titulo} | The Business Ticket
+        </Typography>
+      </Box>
+    </Box>
+  );
+}
+
 function TicketPublicoHistorial() {
   const { trackingCode } = useParams();
   const location = useLocation();
@@ -62,9 +329,7 @@ function TicketPublicoHistorial() {
     setOk("");
 
     try {
-      const res = await axiosCliente.get(
-        `/public/tickets/${trackingCode}?access_token=${accessToken}`,
-      );
+      const res = await axiosCliente.get(construirUrlHistorial());
 
       setTicket(res.data.ticket);
       setSystem(res.data.system || null);
@@ -85,9 +350,7 @@ function TicketPublicoHistorial() {
     setOk("");
 
     try {
-      const res = await axiosCliente.get(
-        `/public/tickets/${trackingCode}?access_token=${accessToken}`,
-      );
+      const res = await axiosCliente.get(construirUrlHistorial());
 
       setTicket(res.data.ticket);
       setSystem(res.data.system || null);
@@ -125,7 +388,10 @@ function TicketPublicoHistorial() {
     try {
       const formData = new FormData();
 
-      formData.append("access_token", accessToken);
+      if (accessToken) {
+        formData.append("access_token", accessToken);
+      }
+
       formData.append("message", message.trim());
 
       archivos.forEach((archivo) => {
@@ -255,6 +521,20 @@ function TicketPublicoHistorial() {
     setArchivoPreview(null);
   };
 
+  const construirUrlHistorial = () => {
+    const params = new URLSearchParams();
+
+    if (accessToken) {
+      params.append("access_token", accessToken);
+    }
+
+    const queryString = params.toString();
+
+    return queryString
+      ? `/public/tickets/${trackingCode}?${queryString}`
+      : `/public/tickets/${trackingCode}`;
+  };
+
   if (loading) {
     return (
       <Box
@@ -289,8 +569,7 @@ function TicketPublicoHistorial() {
   const portada = system?.dato_portada || {};
 
   const tituloPortada = portada.titulo || system?.nombre || "Soporte";
-  const subtituloPortada =
-    portada.subtitulo || "Historial público del ticket";
+  const subtituloPortada = portada.subtitulo || "Historial público del ticket";
   const descripcionPortada =
     portada.descripcion ||
     "Consulta el seguimiento de tu solicitud y responde al equipo de soporte.";
@@ -302,19 +581,29 @@ function TicketPublicoHistorial() {
         width: "100%",
         bgcolor: "#eef2f7",
         display: "flex",
-        justifyContent: "center",
-        alignItems: { xs: "stretch", md: "center" },
+        flexDirection: "column",
+        justifyContent: "flex-start",
+        alignItems: "center",
+        gap: { xs: 2, md: 3 },
         px: { xs: 0, md: 2 },
-        py: { xs: 0, md: 2 },
+        py: { xs: 0, md: 3 },
         boxSizing: "border-box",
       }}
     >
+      <PublicTicketTopBanner
+        system={system}
+        color={color}
+        titulo={tituloPortada}
+        subtitulo={subtituloPortada}
+        descripcion={descripcionPortada}
+      />
+
       <Paper
         sx={{
           width: "100%",
-          maxWidth: 960,
+          maxWidth: { xs: "100%", md: 920 },
           mx: "auto",
-          height: { xs: "100dvh", md: "calc(100dvh - 32px)" },
+          height: { xs: "calc(100dvh - 32px)", md: 720 },
           borderRadius: { xs: 0, md: 4 },
           border: { xs: "none", md: "1px solid #e5e7eb" },
           overflow: "hidden",
@@ -326,166 +615,39 @@ function TicketPublicoHistorial() {
       >
         <Box
           sx={{
-            bgcolor: color,
-            color: "#fff",
-            p: { xs: 1.3, sm: 2, md: 3 },
+            px: { xs: 1.6, sm: 2.2, md: 3 },
+            py: { xs: 1.5, md: 2 },
+            bgcolor: "#ffffff",
+            borderBottom: "1px solid #e5e7eb",
             flexShrink: 0,
           }}
         >
-          <Stack spacing={{ xs: 1.2, md: 2 }}>
-            <Stack spacing={{ xs: 1.2, md: 2 }}>
-              <Stack
-                direction="row"
-                spacing={{ xs: 1, sm: 1.5, md: 2 }}
-                alignItems="center"
-                sx={{ minWidth: 0 }}
+          <Stack
+            direction={{ xs: "column", sm: "row" }}
+            spacing={1.5}
+            alignItems={{ xs: "stretch", sm: "flex-start" }}
+            justifyContent="space-between"
+          >
+            <Box sx={{ minWidth: 0, flex: 1 }}>
+              <Typography
+                variant="caption"
+                fontWeight={900}
+                sx={{
+                  color,
+                  textTransform: "uppercase",
+                  letterSpacing: "0.08em",
+                }}
               >
-                {system?.logo_url ? (
-                  <Box
-                    component="img"
-                    src={system.logo_url}
-                    alt={system?.nombre || "Logo del sistema"}
-                    sx={{
-                      width: { xs: 42, sm: 52, md: 72 },
-                      height: { xs: 42, sm: 52, md: 72 },
-                      objectFit: "contain",
-                      borderRadius: 2,
-                      bgcolor: "#ffffff",
-                      p: { xs: 0.5, md: 1 },
-                      border: "1px solid rgba(255,255,255,0.35)",
-                      flexShrink: 0,
-                    }}
-                  />
-                ) : (
-                  <Box
-                    sx={{
-                      width: { xs: 42, sm: 52, md: 72 },
-                      height: { xs: 42, sm: 52, md: 72 },
-                      borderRadius: 2,
-                      bgcolor: "rgba(255,255,255,0.18)",
-                      border: "1px solid rgba(255,255,255,0.35)",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      flexShrink: 0,
-                    }}
-                  >
-                    <ImageIcon fontSize="small" />
-                  </Box>
-                )}
+                Historial público del ticket
+              </Typography>
 
-                <Box sx={{ minWidth: 0, flex: 1 }}>
-                  <Typography
-                    fontWeight={900}
-                    sx={{
-                      fontSize: { xs: 15, sm: 18, md: 25 },
-                      lineHeight: 1.15,
-                      wordBreak: "break-word",
-                    }}
-                  >
-                    {tituloPortada}
-                  </Typography>
-
-                  <Typography
-                    variant="body2"
-                    mt={0.3}
-                    sx={{
-                      opacity: 0.94,
-                      fontWeight: 800,
-                      fontSize: { xs: 11.5, sm: 13, md: 14 },
-                      lineHeight: 1.25,
-                      display: "-webkit-box",
-                      WebkitLineClamp: { xs: 2, sm: 2, md: 3 },
-                      WebkitBoxOrient: "vertical",
-                      overflow: "hidden",
-                    }}
-                  >
-                    {subtituloPortada}
-                  </Typography>
-
-                  <Typography
-                    variant="body2"
-                    mt={0.4}
-                    sx={{
-                      opacity: 0.9,
-                      maxWidth: 650,
-                      lineHeight: 1.4,
-                      fontSize: { xs: 12, sm: 13, md: 14 },
-                      display: { xs: "none", md: "block" },
-                    }}
-                  >
-                    {descripcionPortada}
-                  </Typography>
-                </Box>
-              </Stack>
-
-              <Stack
-                direction="row"
-                spacing={1}
-                alignItems="center"
-                justifyContent="space-between"
-              >
-                <Chip
-                  label={estado.label}
-                  size="small"
-                  sx={{
-                    fontWeight: 900,
-                    bgcolor: "#ffffff",
-                    color,
-                    border: "1px solid rgba(255,255,255,0.7)",
-                    maxWidth: "100%",
-                    "& .MuiChip-label": {
-                      px: 1.2,
-                    },
-                  }}
-                />
-
-                <Stack direction="row" spacing={0.8} alignItems="center">
-                  <Tooltip title="Copiar folio">
-                    <IconButton
-                      onClick={() =>
-                        copiarTexto(ticket?.folio, "Folio copiado.")
-                      }
-                      size="small"
-                      sx={{
-                        color: "#fff",
-                        border: "1px solid rgba(255,255,255,0.35)",
-                        width: { xs: 32, md: 40 },
-                        height: { xs: 32, md: 40 },
-                      }}
-                    >
-                      <ContentCopyIcon fontSize="small" />
-                    </IconButton>
-                  </Tooltip>
-
-                  <Tooltip title="Actualizar historial">
-                    <IconButton
-                      onClick={recargarHistorial}
-                      disabled={refrescando}
-                      size="small"
-                      sx={{
-                        color: "#fff",
-                        border: "1px solid rgba(255,255,255,0.35)",
-                        opacity: refrescando ? 0.6 : 1,
-                        width: { xs: 32, md: 40 },
-                        height: { xs: 32, md: 40 },
-                      }}
-                    >
-                      <RefreshIcon fontSize="small" />
-                    </IconButton>
-                  </Tooltip>
-                </Stack>
-              </Stack>
-            </Stack>
-
-            <Divider sx={{ borderColor: "rgba(255,255,255,0.25)" }} />
-
-            <Box>
               <Typography
                 fontWeight={900}
                 sx={{
-                  fontSize: { xs: 14.5, sm: 18, md: 22 },
-                  lineHeight: 1.2,
+                  mt: 0.5,
+                  color: "#0f172a",
+                  fontSize: { xs: 18, sm: 21, md: 24 },
+                  lineHeight: 1.15,
                   wordBreak: "break-word",
                 }}
               >
@@ -494,38 +656,87 @@ function TicketPublicoHistorial() {
 
               <Typography
                 variant="body2"
-                mt={0.3}
+                color="text.secondary"
                 sx={{
-                  opacity: 0.9,
-                  fontSize: { xs: 11, md: 14 },
+                  mt: 0.4,
+                  fontSize: { xs: 12.5, md: 14 },
                   wordBreak: "break-word",
                 }}
               >
                 Folio: {ticket?.folio}
               </Typography>
             </Box>
-          </Stack>
-        </Box>
 
-        <Box
-          sx={{
-            px: { xs: 1.6, md: 3 },
-            py: { xs: 0.7, md: 1.5 },
-            bgcolor: "#ffffff",
-            borderBottom: "1px solid #e5e7eb",
-            flexShrink: 0,
-          }}
-        >
+            <Stack
+              direction="row"
+              spacing={1}
+              alignItems="center"
+              justifyContent={{ xs: "space-between", sm: "flex-end" }}
+              sx={{ flexShrink: 0 }}
+            >
+              <Chip
+                label={estado.label}
+                size="small"
+                sx={{
+                  fontWeight: 900,
+                  bgcolor: color,
+                  color: "#ffffff",
+                  maxWidth: "100%",
+                  "& .MuiChip-label": {
+                    px: 1.2,
+                  },
+                }}
+              />
+
+              <Stack direction="row" spacing={0.8} alignItems="center">
+                <Tooltip title="Copiar folio">
+                  <IconButton
+                    onClick={() => copiarTexto(ticket?.folio, "Folio copiado.")}
+                    size="small"
+                    sx={{
+                      color: "#334155",
+                      border: "1px solid #d1d5db",
+                      bgcolor: "#f8fafc",
+                      width: { xs: 34, md: 38 },
+                      height: { xs: 34, md: 38 },
+                    }}
+                  >
+                    <ContentCopyIcon fontSize="small" />
+                  </IconButton>
+                </Tooltip>
+
+                <Tooltip title="Actualizar historial">
+                  <IconButton
+                    onClick={recargarHistorial}
+                    disabled={refrescando}
+                    size="small"
+                    sx={{
+                      color: "#334155",
+                      border: "1px solid #d1d5db",
+                      bgcolor: "#f8fafc",
+                      opacity: refrescando ? 0.6 : 1,
+                      width: { xs: 34, md: 38 },
+                      height: { xs: 34, md: 38 },
+                    }}
+                  >
+                    <RefreshIcon fontSize="small" />
+                  </IconButton>
+                </Tooltip>
+              </Stack>
+            </Stack>
+          </Stack>
+
           <Typography
             variant="body2"
             color="text.secondary"
             sx={{
-              fontSize: { xs: 11.5, md: 14 },
-              lineHeight: 1.35,
+              mt: 1.3,
+              fontSize: { xs: 12.5, md: 14 },
+              lineHeight: 1.45,
             }}
           >
-            Historial público del ticket. Los mensajes enviados desde este
-            portal se registran como públicos.
+            Los mensajes enviados desde este portal se registran como públicos y
+            serán visibles para el equipo de soporte.
           </Typography>
         </Box>
 
@@ -739,8 +950,7 @@ function TicketPublicoHistorial() {
                                     noWrap
                                     display="block"
                                   >
-                                    {archivo.nombre_archivo ||
-                                      "Imagen adjunta"}
+                                    {archivo.nombre_archivo || "Imagen adjunta"}
                                   </Typography>
                                 </Box>
                               </Box>
@@ -947,6 +1157,12 @@ function TicketPublicoHistorial() {
           </Stack>
         </Box>
       </Paper>
+
+      <PublicTicketFooter
+        system={system}
+        color={color}
+        titulo={tituloPortada}
+      />
 
       <Dialog
         open={Boolean(archivoPreview)}
