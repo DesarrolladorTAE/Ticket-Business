@@ -294,6 +294,131 @@ function PublicTicketFooter({ system, color, titulo }) {
   );
 }
 
+function normalizarEstadoVisual(ticket) {
+  const nombre = String(
+    ticket?.status?.nombre ||
+      ticket?.status_nombre ||
+      ticket?.estado ||
+      ""
+  )
+    .trim()
+    .toLowerCase();
+
+  const id = Number(ticket?.status_id || ticket?.status?.id || 0);
+
+  if (nombre.includes("cerr")) {
+    return {
+      label: "Cerrado",
+      bg: "#334155",
+      color: "#ffffff",
+      border: "#334155",
+    };
+  }
+
+  if (nombre.includes("resuelto") || id === 3) {
+    return {
+      label: "Resuelto",
+      bg: "#dcfce7",
+      color: "#166534",
+      border: "#86efac",
+    };
+  }
+
+  if (nombre.includes("proceso") || id === 2) {
+    return {
+      label: "En proceso",
+      bg: "#ffedd5",
+      color: "#9a3412",
+      border: "#fdba74",
+    };
+  }
+
+  if (nombre.includes("pendiente")) {
+    return {
+      label: "Pendiente",
+      bg: "#fef9c3",
+      color: "#854d0e",
+      border: "#fde047",
+    };
+  }
+
+  if (nombre.includes("abierto") || nombre.includes("reciente") || id === 1) {
+    return {
+      label: nombre.includes("reciente") ? "Abierto" : "Abierto",
+      bg: "#dbeafe",
+      color: "#1d4ed8",
+      border: "#93c5fd",
+    };
+  }
+
+  return {
+    label: ticket?.status?.nombre || ticket?.status_nombre || `Estado ${id || "-"}`,
+    bg: "#f1f5f9",
+    color: "#334155",
+    border: "#cbd5e1",
+  };
+}
+
+function PublicTicketInfoItem({ label, value, badge }) {
+  return (
+    <Box
+      sx={{
+        minWidth: 0,
+        p: { xs: 1.1, md: 1.3 },
+        borderRadius: 2.5,
+        bgcolor: "#f8fafc",
+        border: "1px solid #e5e7eb",
+      }}
+    >
+      <Typography
+        variant="caption"
+        color="text.secondary"
+        fontWeight={900}
+        sx={{
+          textTransform: "uppercase",
+          letterSpacing: "0.06em",
+          fontSize: { xs: 10.5, md: 11 },
+        }}
+      >
+        {label}
+      </Typography>
+
+      {badge ? (
+        <Chip
+          label={badge.label}
+          size="small"
+          sx={{
+            mt: 0.6,
+            maxWidth: "100%",
+            fontWeight: 900,
+            bgcolor: badge.bg,
+            color: badge.color,
+            border: `1px solid ${badge.border}`,
+            "& .MuiChip-label": {
+              px: 1.1,
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+            },
+          }}
+        />
+      ) : (
+        <Typography
+          fontWeight={900}
+          sx={{
+            mt: 0.5,
+            color: "#0f172a",
+            fontSize: { xs: 12.5, md: 14 },
+            lineHeight: 1.25,
+            wordBreak: "break-word",
+          }}
+        >
+          {value || "-"}
+        </Typography>
+      )}
+    </Box>
+  );
+}
+
 function TicketPublicoHistorial() {
   const { trackingCode } = useParams();
   const location = useLocation();
@@ -449,35 +574,6 @@ function TicketPublicoHistorial() {
     }
   };
 
-  const obtenerEstado = (statusId) => {
-    const id = Number(statusId);
-
-    if (id === 1) {
-      return {
-        label: "Reciente",
-        color: "info",
-      };
-    }
-
-    if (id === 2) {
-      return {
-        label: "En proceso",
-        color: "warning",
-      };
-    }
-
-    if (id === 3) {
-      return {
-        label: "Resuelto",
-        color: "success",
-      };
-    }
-
-    return {
-      label: `Estado ${statusId || "-"}`,
-      color: "default",
-    };
-  };
 
   const formatearFecha = (fecha) => {
     if (!fecha) return "";
@@ -564,7 +660,7 @@ function TicketPublicoHistorial() {
     );
   }
 
-  const estado = obtenerEstado(ticket?.status_id);
+  const estado = normalizarEstadoVisual(ticket);
   const color = system?.color_hex || "#23388B";
   const portada = system?.dato_portada || {};
 
@@ -573,6 +669,15 @@ function TicketPublicoHistorial() {
   const descripcionPortada =
     portada.descripcion ||
     "Consulta el seguimiento de tu solicitud y responde al equipo de soporte.";
+
+  const sistemaNombre = system?.nombre || ticket?.system?.nombre || "Sin sistema";
+  const seccionNombre =
+    ticket?.category?.nombre ||
+    ticket?.seccion_nombre ||
+    ticket?.section?.nombre ||
+    "Sin sección";
+  const fechaCreacion = formatearFecha(ticket?.created_at);
+  const fechaActualizacion = formatearFecha(ticket?.updated_at);
 
   return (
     <Box
@@ -585,9 +690,11 @@ function TicketPublicoHistorial() {
         justifyContent: "flex-start",
         alignItems: "center",
         gap: { xs: 2, md: 3 },
-        px: { xs: 0, md: 2 },
-        py: { xs: 0, md: 3 },
+        px: 0,
+        pt: 0,
+        pb: 0,
         boxSizing: "border-box",
+        overflowX: "hidden",
       }}
     >
       <PublicTicketTopBanner
@@ -658,12 +765,13 @@ function TicketPublicoHistorial() {
                 variant="body2"
                 color="text.secondary"
                 sx={{
-                  mt: 0.4,
+                  mt: 0.6,
                   fontSize: { xs: 12.5, md: 14 },
-                  wordBreak: "break-word",
+                  lineHeight: 1.45,
                 }}
               >
-                Folio: {ticket?.folio}
+                Consulta el avance del ticket y las respuestas públicas del
+                cliente y del área de soporte.
               </Typography>
             </Box>
 
@@ -674,19 +782,7 @@ function TicketPublicoHistorial() {
               justifyContent={{ xs: "space-between", sm: "flex-end" }}
               sx={{ flexShrink: 0 }}
             >
-              <Chip
-                label={estado.label}
-                size="small"
-                sx={{
-                  fontWeight: 900,
-                  bgcolor: color,
-                  color: "#ffffff",
-                  maxWidth: "100%",
-                  "& .MuiChip-label": {
-                    px: 1.2,
-                  },
-                }}
-              />
+
 
               <Stack direction="row" spacing={0.8} alignItems="center">
                 <Tooltip title="Copiar folio">
@@ -726,18 +822,27 @@ function TicketPublicoHistorial() {
             </Stack>
           </Stack>
 
-          <Typography
-            variant="body2"
-            color="text.secondary"
+          <Box
             sx={{
-              mt: 1.3,
-              fontSize: { xs: 12.5, md: 14 },
-              lineHeight: 1.45,
+              display: "grid",
+              gridTemplateColumns: {
+                xs: "repeat(2, minmax(0, 1fr))",
+                md: "repeat(3, minmax(0, 1fr))",
+              },
+              gap: { xs: 1, md: 1.2 },
+              mt: 1.8,
             }}
           >
-            Los mensajes enviados desde este portal se registran como públicos y
-            serán visibles para el equipo de soporte.
-          </Typography>
+            <PublicTicketInfoItem label="Folio" value={ticket?.folio} />
+            <PublicTicketInfoItem label="Sistema" value={sistemaNombre} />
+            <PublicTicketInfoItem label="Sección" value={seccionNombre} />
+            <PublicTicketInfoItem label="Estado" badge={estado} />
+            <PublicTicketInfoItem label="Creado" value={fechaCreacion} />
+            <PublicTicketInfoItem
+              label="Última actualización"
+              value={fechaActualizacion}
+            />
+          </Box>
         </Box>
 
         {(error || ok) && (
@@ -794,6 +899,7 @@ function TicketPublicoHistorial() {
               const adjuntos = Array.isArray(msg.attachments)
                 ? msg.attachments
                 : [];
+              const autorTipo = esCliente ? "Cliente" : "Soporte";
 
               if (esEvento) {
                 return (
@@ -883,7 +989,7 @@ function TicketPublicoHistorial() {
                       display="block"
                       mb={0.5}
                     >
-                      {msg.user?.name || "Usuario"}
+                      {autorTipo} · {msg.user?.name || "Usuario"}
                     </Typography>
 
                     {msg.message && (

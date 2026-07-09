@@ -14,6 +14,8 @@ import Sistemas from "../modules/tickets/pages/Sistemas";
 import Secciones from "../modules/tickets/pages/Secciones";
 import TicketPublicoCrear from "../modules/tickets/pages/TicketPublicoCrear";
 import TicketPublicoHistorial from "../modules/tickets/pages/TicketPublicoHistorial";
+import ExternalApiLogs from "../modules/tickets/pages/ExternalApiLogs";
+import ExternalApiTokens from "../modules/tickets/pages/ExternalApiTokens";
 
 import GruposSoporte from "../modules/support-groups/pages/GruposSoporte";
 
@@ -74,6 +76,8 @@ function AppRouter() {
             </RutaPorRol>
           }
         />
+        <Route path="/external-api/logs" element={<ExternalApiLogs />} />
+        <Route path="/external-api/tokens" element={<ExternalApiTokens />} />
 
         {/* MIS TICKETS */}
         <Route
