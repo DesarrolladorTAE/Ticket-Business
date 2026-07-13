@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   AppBar,
   Toolbar,
@@ -15,6 +15,10 @@ import {
   useMediaQuery,
   useTheme,
   Stack,
+  Badge,
+  Menu,
+  MenuItem,
+  CircularProgress,
 } from "@mui/material";
 
 import MenuIcon from "@mui/icons-material/Menu";
@@ -26,8 +30,11 @@ import AppsIcon from "@mui/icons-material/Apps";
 import CategoryIcon from "@mui/icons-material/Category";
 import GroupsIcon from "@mui/icons-material/Groups";
 import LogoutIcon from "@mui/icons-material/Logout";
+import NotificationsIcon from "@mui/icons-material/Notifications";
 
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
+
+import axiosCliente from "../services/axiosCliente";
 
 const drawerWidth = 270;
 
@@ -39,8 +46,15 @@ function AdminLayout() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [desktopOpen, setDesktopOpen] = useState(true);
 
+  const [notificationAnchorEl, setNotificationAnchorEl] = useState(null);
+  const [notifications, setNotifications] = useState([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [notificationsLoading, setNotificationsLoading] = useState(false);
+
   const usuario = JSON.parse(localStorage.getItem("USUARIO") || "null");
   const roles = usuario?.roles || [];
+
+  const notificationsOpen = Boolean(notificationAnchorEl);
 
   const cerrarSesion = () => {
     localStorage.removeItem("TOKEN");
@@ -60,6 +74,115 @@ function AdminLayout() {
   const cerrarSidebarMobile = () => {
     setMobileOpen(false);
   };
+
+  const abrirNotificaciones = (event) => {
+    setNotificationAnchorEl(event.currentTarget);
+    cargarNotificaciones();
+  };
+
+  const cerrarNotificaciones = () => {
+    setNotificationAnchorEl(null);
+  };
+
+  const parseNotificationData = (notification) => {
+    if (!notification?.data) {
+      return {};
+    }
+
+    if (typeof notification.data === "object") {
+      return notification.data;
+    }
+
+    try {
+      return JSON.parse(notification.data);
+    } catch (error) {
+      return {};
+    }
+  };
+
+  const formatFecha = (value) => {
+    if (!value) return "";
+
+    try {
+      return new Intl.DateTimeFormat("es-MX", {
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+        hour: "2-digit",
+        minute: "2-digit",
+      }).format(new Date(value));
+    } catch (error) {
+      return value;
+    }
+  };
+
+  const cargarNotificaciones = async () => {
+    setNotificationsLoading(true);
+
+    try {
+      const { data } = await axiosCliente.get("/internal-notifications", {
+        params: {
+          per_page: 5,
+        },
+      });
+
+      setNotifications(data?.data || []);
+      setUnreadCount(data?.unread_count || 0);
+    } catch (error) {
+      setNotifications([]);
+      setUnreadCount(0);
+    } finally {
+      setNotificationsLoading(false);
+    }
+  };
+
+  const marcarNotificacionComoLeida = async (notification) => {
+    if (!notification?.id) return;
+
+    try {
+      await axiosCliente.patch(`/internal-notifications/${notification.id}/read`);
+      await cargarNotificaciones();
+    } catch (error) {
+      console.error("No se pudo marcar la notificación como leída", error);
+    }
+  };
+
+  const marcarTodasComoLeidas = async () => {
+    try {
+      await axiosCliente.patch("/internal-notifications/read-all");
+      await cargarNotificaciones();
+    } catch (error) {
+      console.error("No se pudieron marcar todas como leídas", error);
+    }
+  };
+
+  const abrirTicketDesdeNotificacion = async (notification) => {
+    await marcarNotificacionComoLeida(notification);
+
+    const notificationData = parseNotificationData(notification);
+    const ticketId = notificationData?.ticket_id || notification?.ticket_id;
+
+    cerrarNotificaciones();
+
+    if (ticketId) {
+      navigate(`/tickets/${ticketId}`);
+      return;
+    }
+
+    navigate("/mis-tickets");
+  };
+
+  useEffect(() => {
+    cargarNotificaciones();
+
+    const interval = setInterval(() => {
+      cargarNotificaciones();
+    }, 60000);
+
+    return () => {
+      clearInterval(interval);
+    };
+  }, []);
 
   const menuItems = [
     {
@@ -98,10 +221,22 @@ function AdminLayout() {
       roles: ["Administrador"],
       icon: <GroupsIcon fontSize="small" />,
     },
+    {
+      label: "Logs externos",
+      path: "/external-api/logs",
+      roles: ["Administrador"],
+      icon: <AppsIcon fontSize="small" />,
+    },
+    {
+      label: "Tokens externos",
+      path: "/external-api/tokens",
+      roles: ["Administrador"],
+      icon: <ConfirmationNumberIcon fontSize="small" />,
+    },
   ];
 
   const menuVisible = menuItems.filter((item) =>
-    item.roles.some((r) => roles.includes(r)),
+    item.roles.some((role) => roles.includes(role)),
   );
 
   const drawerContent = (
@@ -249,7 +384,6 @@ function AdminLayout() {
         overflow: "hidden",
       }}
     >
-      {/* Sidebar escritorio */}
       {!isMobile && desktopOpen && (
         <Drawer
           variant="permanent"
@@ -261,7 +395,7 @@ function AdminLayout() {
               width: drawerWidth,
               boxSizing: "border-box",
               background: "linear-gradient(180deg, #0f172a, #111827)",
-              color: "#fff",
+              color: "#ffffff",
               borderRight: "none",
             },
           }}
@@ -270,7 +404,6 @@ function AdminLayout() {
         </Drawer>
       )}
 
-      {/* Sidebar móvil */}
       <Drawer
         variant="temporary"
         open={mobileOpen}
@@ -285,7 +418,7 @@ function AdminLayout() {
             maxWidth: "86vw",
             boxSizing: "border-box",
             background: "linear-gradient(180deg, #0f172a, #111827)",
-            color: "#fff",
+            color: "#ffffff",
             borderRight: "none",
           },
         }}
@@ -370,7 +503,185 @@ function AdminLayout() {
               </Box>
             </Box>
 
-            <Stack direction="row" alignItems="center" spacing={1.5}>
+            <Stack direction="row" alignItems="center" spacing={1.2}>
+              <IconButton
+                onClick={abrirNotificaciones}
+                sx={{
+                  border: "1px solid #e5e7eb",
+                  borderRadius: 2,
+                  bgcolor: "#f8fafc",
+                  "&:hover": {
+                    bgcolor: "#eef2ff",
+                  },
+                }}
+              >
+                <Badge
+                  badgeContent={unreadCount}
+                  color="error"
+                  max={99}
+                  invisible={unreadCount <= 0}
+                >
+                  <NotificationsIcon />
+                </Badge>
+              </IconButton>
+
+              <Menu
+                anchorEl={notificationAnchorEl}
+                open={notificationsOpen}
+                onClose={cerrarNotificaciones}
+                PaperProps={{
+                  sx: {
+                    width: { xs: 330, sm: 390 },
+                    maxWidth: "calc(100vw - 24px)",
+                    mt: 1,
+                    borderRadius: 3,
+                    border: "1px solid #e5e7eb",
+                    boxShadow: "0 18px 45px rgba(15,23,42,0.18)",
+                  },
+                }}
+              >
+                <Box
+                  sx={{
+                    px: 2,
+                    py: 1.5,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    gap: 1,
+                  }}
+                >
+                  <Box>
+                    <Typography fontWeight={900}>Notificaciones</Typography>
+
+                    <Typography variant="caption" color="text.secondary">
+                      {unreadCount > 0
+                        ? `${unreadCount} sin leer`
+                        : "Sin notificaciones pendientes"}
+                    </Typography>
+                  </Box>
+
+                  <Button
+                    size="small"
+                    onClick={marcarTodasComoLeidas}
+                    disabled={unreadCount <= 0}
+                    sx={{
+                      textTransform: "none",
+                      fontWeight: 800,
+                    }}
+                  >
+                    Leer todas
+                  </Button>
+                </Box>
+
+                <Divider />
+
+                {notificationsLoading ? (
+                  <Box sx={{ py: 4, textAlign: "center" }}>
+                    <CircularProgress size={24} />
+
+                    <Typography
+                      variant="body2"
+                      color="text.secondary"
+                      sx={{ mt: 1 }}
+                    >
+                      Cargando...
+                    </Typography>
+                  </Box>
+                ) : notifications.length === 0 ? (
+                  <Box sx={{ py: 4, px: 2, textAlign: "center" }}>
+                    <Typography color="text.secondary">
+                      No tienes notificaciones.
+                    </Typography>
+                  </Box>
+                ) : (
+                  notifications.map((notification) => {
+                    const unread = !notification.read_at;
+                    const notificationData = parseNotificationData(notification);
+
+                    return (
+                      <MenuItem
+                        key={notification.id}
+                        onClick={() => abrirTicketDesdeNotificacion(notification)}
+                        sx={{
+                          alignItems: "flex-start",
+                          whiteSpace: "normal",
+                          py: 1.5,
+                          px: 2,
+                          bgcolor: unread ? "#eff6ff" : "#ffffff",
+                          borderBottom: "1px solid #f1f5f9",
+                          "&:hover": {
+                            bgcolor: unread ? "#dbeafe" : "#f8fafc",
+                          },
+                        }}
+                      >
+                        <Box sx={{ width: "100%", minWidth: 0 }}>
+                          <Stack
+                            direction="row"
+                            justifyContent="space-between"
+                            alignItems="flex-start"
+                            spacing={1}
+                          >
+                            <Typography
+                              variant="body2"
+                              fontWeight={900}
+                              sx={{ lineHeight: 1.25 }}
+                            >
+                              {notification.title || "Notificación"}
+                            </Typography>
+
+                            {unread && (
+                              <Chip
+                                label="Nuevo"
+                                size="small"
+                                color="primary"
+                                sx={{
+                                  height: 20,
+                                  fontSize: 11,
+                                  fontWeight: 900,
+                                }}
+                              />
+                            )}
+                          </Stack>
+
+                          <Typography
+                            variant="body2"
+                            color="text.secondary"
+                            sx={{
+                              mt: 0.5,
+                              lineHeight: 1.35,
+                            }}
+                          >
+                            {notification.message || "Sin mensaje"}
+                          </Typography>
+
+                          {notificationData?.folio && (
+                            <Typography
+                              variant="caption"
+                              sx={{
+                                display: "block",
+                                mt: 0.75,
+                                fontWeight: 800,
+                                color: "#2563eb",
+                              }}
+                            >
+                              Folio: {notificationData.folio}
+                            </Typography>
+                          )}
+
+                          <Typography
+                            variant="caption"
+                            color="text.secondary"
+                            sx={{ display: "block", mt: 0.5 }}
+                          >
+                            {formatFecha(notification.created_at)}
+                          </Typography>
+                        </Box>
+                      </MenuItem>
+                    );
+                  })
+                )}
+              </Menu>
+
               {!isMobile && (
                 <Box sx={{ textAlign: "right", maxWidth: 240 }}>
                   <Typography fontWeight={800} noWrap>
@@ -383,23 +694,6 @@ function AdminLayout() {
                     sx={{ mt: 0.5, fontWeight: 700 }}
                   />
                 </Box>
-              )}
-
-              {!isMobile && (
-                <Button
-                  variant="contained"
-                  color="error"
-                  onClick={cerrarSesion}
-                  startIcon={<LogoutIcon />}
-                  sx={{
-                    borderRadius: 2,
-                    textTransform: "none",
-                    fontWeight: 800,
-                    px: 2,
-                  }}
-                >
-                  Salir
-                </Button>
               )}
             </Stack>
           </Toolbar>
@@ -440,12 +734,12 @@ const navStyle = {
   transition: "all 0.18s ease",
   "&.active": {
     backgroundColor: "#2563eb",
-    color: "#fff",
+    color: "#ffffff",
     boxShadow: "0 10px 22px rgba(37,99,235,0.25)",
   },
   "&:hover": {
     backgroundColor: "rgba(37,99,235,0.18)",
-    color: "#fff",
+    color: "#ffffff",
   },
 };
 

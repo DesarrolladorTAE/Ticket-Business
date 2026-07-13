@@ -154,9 +154,11 @@ function MobileTokenCard({ token, onToggle }) {
             color={activo ? "error" : "success"}
             onClick={() => onToggle(token)}
             sx={{
+              mt: 1,
+              minHeight: 38,
+              borderRadius: 2,
               textTransform: "none",
               fontWeight: 900,
-              mt: 1,
             }}
           >
             {activo ? "Desactivar token" : "Activar token"}
@@ -387,7 +389,7 @@ export default function ExternalApiTokens() {
         spacing={2}
         sx={{ mb: 3 }}
       >
-        <Box>
+        <Box sx={{ minWidth: 0 }}>
           <Typography
             fontWeight={900}
             sx={{
@@ -404,16 +406,29 @@ export default function ExternalApiTokens() {
           </Typography>
         </Box>
 
-        <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
+        <Stack
+          direction="row"
+          spacing={1}
+          justifyContent={{ xs: "flex-start", md: "flex-end" }}
+          sx={{
+            flexShrink: 0,
+            flexWrap: "wrap",
+            alignSelf: { xs: "flex-start", md: "center" },
+          }}
+        >
           <Button
             variant="outlined"
             onClick={cargarTokens}
             disabled={loading}
+            size="small"
             sx={{
+              minHeight: 36,
+              px: 1.8,
               borderRadius: 2,
               textTransform: "none",
               fontWeight: 800,
-              minHeight: 44,
+              fontSize: 13,
+              whiteSpace: "nowrap",
             }}
           >
             Actualizar
@@ -422,11 +437,15 @@ export default function ExternalApiTokens() {
           <Button
             variant="contained"
             onClick={abrirModalCrear}
+            size="small"
             sx={{
+              minHeight: 36,
+              px: 1.8,
               borderRadius: 2,
               textTransform: "none",
               fontWeight: 800,
-              minHeight: 44,
+              fontSize: 13,
+              whiteSpace: "nowrap",
             }}
           >
             Nuevo token
@@ -517,7 +536,10 @@ export default function ExternalApiTokens() {
               variant="outlined"
               onClick={limpiarFiltros}
               fullWidth={isMobile}
+              size="small"
               sx={{
+                minHeight: 36,
+                borderRadius: 2,
                 textTransform: "none",
                 fontWeight: 800,
               }}
@@ -530,7 +552,10 @@ export default function ExternalApiTokens() {
               onClick={cargarTokens}
               disabled={loading}
               fullWidth={isMobile}
+              size="small"
               sx={{
+                minHeight: 36,
+                borderRadius: 2,
                 textTransform: "none",
                 fontWeight: 800,
               }}
@@ -724,6 +749,8 @@ export default function ExternalApiTokens() {
                             color={activo ? "error" : "success"}
                             onClick={() => cambiarEstadoToken(token)}
                             sx={{
+                              minHeight: 34,
+                              borderRadius: 2,
                               textTransform: "none",
                               fontWeight: 900,
                               whiteSpace: "nowrap",
@@ -857,8 +884,11 @@ export default function ExternalApiTokens() {
                 <Button
                   variant="contained"
                   onClick={copiarToken}
+                  size="small"
                   sx={{
                     mt: 1.5,
+                    minHeight: 36,
+                    borderRadius: 2,
                     textTransform: "none",
                     fontWeight: 900,
                   }}
@@ -873,7 +903,11 @@ export default function ExternalApiTokens() {
         <DialogActions>
           <Button
             onClick={cerrarModalCrear}
-            sx={{ textTransform: "none", fontWeight: 800 }}
+            size="small"
+            sx={{
+              textTransform: "none",
+              fontWeight: 800,
+            }}
           >
             Cerrar
           </Button>
@@ -883,7 +917,13 @@ export default function ExternalApiTokens() {
               variant="contained"
               onClick={crearToken}
               disabled={saving || !form.system_id || !form.name}
-              sx={{ textTransform: "none", fontWeight: 900 }}
+              size="small"
+              sx={{
+                minHeight: 36,
+                borderRadius: 2,
+                textTransform: "none",
+                fontWeight: 900,
+              }}
             >
               {saving ? "Generando..." : "Generar token"}
             </Button>
