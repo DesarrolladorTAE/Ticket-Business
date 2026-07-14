@@ -16,6 +16,7 @@ import TicketPublicoCrear from "../modules/tickets/pages/TicketPublicoCrear";
 import TicketPublicoHistorial from "../modules/tickets/pages/TicketPublicoHistorial";
 import ExternalApiLogs from "../modules/tickets/pages/ExternalApiLogs";
 import ExternalApiTokens from "../modules/tickets/pages/ExternalApiTokens";
+import ExternalApiDashboard from "../modules/tickets/pages/ExternalApiDashboard";
 
 import GruposSoporte from "../modules/support-groups/pages/GruposSoporte";
 
@@ -76,6 +77,7 @@ function AppRouter() {
             </RutaPorRol>
           }
         />
+        <Route path="/external-api" element={<ExternalApiDashboard />} />
         <Route path="/external-api/logs" element={<ExternalApiLogs />} />
         <Route path="/external-api/tokens" element={<ExternalApiTokens />} />
 

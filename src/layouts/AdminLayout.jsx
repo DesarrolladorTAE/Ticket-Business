@@ -140,7 +140,9 @@ function AdminLayout() {
     if (!notification?.id) return;
 
     try {
-      await axiosCliente.patch(`/internal-notifications/${notification.id}/read`);
+      await axiosCliente.patch(
+        `/internal-notifications/${notification.id}/read`,
+      );
       await cargarNotificaciones();
     } catch (error) {
       console.error("No se pudo marcar la notificación como leída", error);
@@ -222,16 +224,10 @@ function AdminLayout() {
       icon: <GroupsIcon fontSize="small" />,
     },
     {
-      label: "Logs externos",
-      path: "/external-api/logs",
+      label: "API externa",
+      path: "/external-api",
       roles: ["Administrador"],
       icon: <AppsIcon fontSize="small" />,
-    },
-    {
-      label: "Tokens externos",
-      path: "/external-api/tokens",
-      roles: ["Administrador"],
-      icon: <ConfirmationNumberIcon fontSize="small" />,
     },
   ];
 
@@ -596,12 +592,15 @@ function AdminLayout() {
                 ) : (
                   notifications.map((notification) => {
                     const unread = !notification.read_at;
-                    const notificationData = parseNotificationData(notification);
+                    const notificationData =
+                      parseNotificationData(notification);
 
                     return (
                       <MenuItem
                         key={notification.id}
-                        onClick={() => abrirTicketDesdeNotificacion(notification)}
+                        onClick={() =>
+                          abrirTicketDesdeNotificacion(notification)
+                        }
                         sx={{
                           alignItems: "flex-start",
                           whiteSpace: "normal",
