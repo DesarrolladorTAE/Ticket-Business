@@ -24,6 +24,7 @@ import {
 import MenuIcon from "@mui/icons-material/Menu";
 import CloseIcon from "@mui/icons-material/Close";
 import DashboardIcon from "@mui/icons-material/Dashboard";
+import QueryStatsIcon from "@mui/icons-material/QueryStats";
 import ConfirmationNumberIcon from "@mui/icons-material/ConfirmationNumber";
 import PersonAddIcon from "@mui/icons-material/PersonAdd";
 import AppsIcon from "@mui/icons-material/Apps";
@@ -192,6 +193,21 @@ function AdminLayout() {
       path: "/paneladministrador",
       roles: ["Administrador", "Agente", "Supervisor"],
       icon: <DashboardIcon fontSize="small" />,
+    },
+    {
+      label: "Métricas generales",
+      path: "/metricas-generales",
+      roles: [
+        "Administrador",
+        "admin",
+        "Agente",
+        "agent",
+        "Supervisor",
+        "supervisor",
+        "Cliente",
+        "client",
+      ],
+      icon: <QueryStatsIcon fontSize="small" />,
     },
     {
       label: "Mis tickets",

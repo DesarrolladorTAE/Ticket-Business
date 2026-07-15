@@ -21,6 +21,7 @@ import ApiIcon from "@mui/icons-material/Api";
 import ExternalApiTokens from "./ExternalApiTokens";
 import ExternalApiLogs from "./ExternalApiLogs";
 import ExternalApiEndpoints from "./ExternalApiEndpoints";
+import ExternalApiTester from "./ExternalApiTester";
 
 const PDF_URL = "/docs/guia-api-demo.pdf";
 
@@ -28,7 +29,8 @@ const TABS = {
   TOKENS: 0,
   LOGS: 1,
   ENDPOINTS: 2,
-  DOCUMENTATION: 3,
+  TESTER: 3,
+  DOCUMENTATION: 4,
 };
 
 function TabPanel({ value, index, children }) {
@@ -79,8 +81,8 @@ export default function ExternalApiDashboard() {
               </Typography>
 
               <Typography color="text.secondary" sx={{ mt: 0.5 }}>
-                Administra tokens, revisa logs de consumo, consulta endpoints
-                de prueba y descarga la documentación para desarrolladores.
+                Administra tokens, revisa logs de consumo, consulta endpoints de
+                prueba y descarga la documentación para desarrolladores.
               </Typography>
             </Box>
 
@@ -149,9 +151,7 @@ export default function ExternalApiDashboard() {
               cursor: "pointer",
               borderRadius: 3,
               border:
-                tab === TABS.TOKENS
-                  ? "1px solid #2563eb"
-                  : "1px solid #e5e7eb",
+                tab === TABS.TOKENS ? "1px solid #2563eb" : "1px solid #e5e7eb",
               boxShadow:
                 tab === TABS.TOKENS
                   ? "0 10px 24px rgba(37, 99, 235, 0.12)"
@@ -184,9 +184,7 @@ export default function ExternalApiDashboard() {
               cursor: "pointer",
               borderRadius: 3,
               border:
-                tab === TABS.LOGS
-                  ? "1px solid #2563eb"
-                  : "1px solid #e5e7eb",
+                tab === TABS.LOGS ? "1px solid #2563eb" : "1px solid #e5e7eb",
               boxShadow:
                 tab === TABS.LOGS
                   ? "0 10px 24px rgba(37, 99, 235, 0.12)"
@@ -310,6 +308,7 @@ export default function ExternalApiDashboard() {
             <Tab label="Tokens externos" />
             <Tab label="Logs externos" />
             <Tab label="Endpoints / Pruebas" />
+            <Tab label="Pruebas reales" />
             <Tab label="Documentación PDF" />
           </Tabs>
 
@@ -324,6 +323,10 @@ export default function ExternalApiDashboard() {
 
             <TabPanel value={tab} index={TABS.ENDPOINTS}>
               <ExternalApiEndpoints />
+            </TabPanel>
+
+            <TabPanel value={tab} index={TABS.TESTER}>
+              <ExternalApiTester />
             </TabPanel>
 
             <TabPanel value={tab} index={TABS.DOCUMENTATION}>

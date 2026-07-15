@@ -17,8 +17,72 @@ const API_BASE_URL = "https://api.thebusinessticket.com/api";
 
 const demoToken = "TOKEN_DEL_SISTEMA_DEMO";
 const demoFolio = "TBT-YYYYMMDD-XXXXXX";
+const demoExternalCustomerId = "demo-client-001";
 
 const endpoints = [
+  {
+    label: "Crear cliente",
+    method: "POST",
+    path: "/external/customers",
+    url: `${API_BASE_URL}/external/customers`,
+    description:
+      "Registra o actualiza un cliente externo asociado al sistema autorizado por token/API Key.",
+    headers: {
+      Accept: "application/json",
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${demoToken}`,
+    },
+    body: {
+      name: "Cliente Demo API",
+      email: "cliente.demo.api@example.com",
+      phone: "7441234567",
+      external_customer_id: demoExternalCustomerId,
+    },
+    response: {
+      ok: true,
+      message: "Cliente externo registrado correctamente.",
+      customer: {
+        external_customer_id: demoExternalCustomerId,
+        name: "Cliente Demo API",
+        email: "cliente.demo.api@example.com",
+        phone: "7441234567",
+      },
+    },
+    notes: [
+      "El sistema externo debe enviar un external_customer_id único para identificar al cliente.",
+      "Si el cliente ya existe para ese sistema, la API puede actualizar sus datos.",
+      "El origen del cliente se identifica por el token/API Key, no por system_id en el body.",
+    ],
+  },
+  {
+    label: "Ver detalle cliente",
+    method: "GET",
+    path: "/external/customers/{external_customer_id}",
+    url: `${API_BASE_URL}/external/customers/${demoExternalCustomerId}`,
+    description:
+      "Consulta los datos de un cliente externo usando su external_customer_id.",
+    headers: {
+      Accept: "application/json",
+      Authorization: `Bearer ${demoToken}`,
+    },
+    body: null,
+    response: {
+      ok: true,
+      customer: {
+        external_customer_id: demoExternalCustomerId,
+        name: "Cliente Demo API",
+        email: "cliente.demo.api@example.com",
+        phone: "7441234567",
+        created_at: "YYYY-MM-DD HH:mm:ss",
+        updated_at: "YYYY-MM-DD HH:mm:ss",
+      },
+    },
+    notes: [
+      "Solo se pueden consultar clientes asociados al sistema del token.",
+      "El valor enviado en la URL debe ser el external_customer_id del sistema externo.",
+      "Si el cliente no existe para ese sistema, la API responderá CUSTOMER_NOT_FOUND.",
+    ],
+  },
   {
     label: "Crear ticket",
     method: "POST",
@@ -36,7 +100,7 @@ const endpoints = [
         name: "Cliente Demo",
         email: "cliente.demo@example.com",
         phone: "7441234567",
-        external_customer_id: "demo-client-001",
+        external_customer_id: demoExternalCustomerId,
       },
       ticket: {
         section_code: "soporte-general",
@@ -62,6 +126,7 @@ const endpoints = [
       "El sistema no debe enviar system_id.",
       "El origen se identifica por el token/API Key.",
       "El section_code debe pertenecer al sistema asociado al token.",
+      "El cliente puede crearse antes con POST /external/customers o enviarse directamente dentro del ticket.",
     ],
   },
   {
@@ -112,10 +177,16 @@ const endpoints = [
     response: {
       ok: true,
       message: "Comentario agregado correctamente.",
+      data: {
+        folio: demoFolio,
+        external_reference: "demo-comment-1001",
+        created_at: "YYYY-MM-DD HH:mm:ss",
+      },
     },
     notes: [
       "El comentario queda asociado al ticket.",
       "external_reference ayuda a relacionar el comentario con el sistema origen.",
+      "El folio debe pertenecer al mismo sistema asociado al token.",
     ],
   },
   {
@@ -144,12 +215,24 @@ const endpoints = [
     },
     response: {
       ok: true,
-      message: "Archivo agregado correctamente.",
+      message: "Archivos adjuntos agregados correctamente.",
+      data: {
+        folio: demoFolio,
+        external_reference: "demo-attachment-1001",
+        attachments: [
+          {
+            nombre_archivo: "evidencia-error.txt",
+            ruta: "ticket_attachments/archivo-generado.txt",
+          },
+        ],
+        created_at: "YYYY-MM-DD HH:mm:ss",
+      },
     },
     notes: [
       "Extensiones permitidas: jpg, jpeg, png, webp, pdf, doc, docx, xls, xlsx, txt, zip.",
       "Tamaño máximo recomendado por archivo: 10 MB.",
       "Para pruebas en Postman Web puede usarse base64.",
+      "Para backend real también puede usarse multipart/form-data con attachments[].",
     ],
   },
 ];
@@ -318,7 +401,9 @@ ${headers}${body}`;
 
                 <Button
                   variant="outlined"
-                  onClick={() => copiarTexto("URL del endpoint", selectedEndpoint.url)}
+                  onClick={() =>
+                    copiarTexto("URL del endpoint", selectedEndpoint.url)
+                  }
                   sx={{
                     borderRadius: 2,
                     textTransform: "none",
@@ -444,7 +529,11 @@ ${headers}${body}`;
 
                 <Stack spacing={0.75}>
                   {selectedEndpoint.notes.map((note) => (
-                    <Typography key={note} variant="body2" color="text.secondary">
+                    <Typography
+                      key={note}
+                      variant="body2"
+                      color="text.secondary"
+                    >
                       • {note}
                     </Typography>
                   ))}

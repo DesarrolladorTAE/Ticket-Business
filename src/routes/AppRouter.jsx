@@ -17,6 +17,7 @@ import TicketPublicoHistorial from "../modules/tickets/pages/TicketPublicoHistor
 import ExternalApiLogs from "../modules/tickets/pages/ExternalApiLogs";
 import ExternalApiTokens from "../modules/tickets/pages/ExternalApiTokens";
 import ExternalApiDashboard from "../modules/tickets/pages/ExternalApiDashboard";
+import GeneralMetricsDashboard from "../modules/metrics/pages/GeneralMetricsDashboard";
 
 import GruposSoporte from "../modules/support-groups/pages/GruposSoporte";
 
@@ -80,6 +81,7 @@ function AppRouter() {
         <Route path="/external-api" element={<ExternalApiDashboard />} />
         <Route path="/external-api/logs" element={<ExternalApiLogs />} />
         <Route path="/external-api/tokens" element={<ExternalApiTokens />} />
+        <Route path="/metricas-generales" element={<GeneralMetricsDashboard />} />
 
         {/* MIS TICKETS */}
         <Route
