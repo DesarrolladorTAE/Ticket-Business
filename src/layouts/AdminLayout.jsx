@@ -39,6 +39,34 @@ import axiosCliente from "../services/axiosCliente";
 
 const drawerWidth = 270;
 
+const normalizarRol = (role) => {
+  return String(role || "")
+    .trim()
+    .toLowerCase();
+};
+
+const obtenerRolVisible = (role) => {
+  const rol = normalizarRol(role);
+
+  if (rol === "admin" || rol === "administrador") {
+    return "Administrador";
+  }
+
+  if (rol === "supervisor") {
+    return "Supervisor";
+  }
+
+  if (rol === "agent" || rol === "agente") {
+    return "Agente";
+  }
+
+  if (rol === "client" || rol === "cliente") {
+    return "Cliente";
+  }
+
+  return role || "sin rol";
+};
+
 function AdminLayout() {
   const navigate = useNavigate();
   const theme = useTheme();
@@ -53,7 +81,16 @@ function AdminLayout() {
   const [notificationsLoading, setNotificationsLoading] = useState(false);
 
   const usuario = JSON.parse(localStorage.getItem("USUARIO") || "null");
-  const roles = usuario?.roles || [];
+
+  const rolesBase = Array.isArray(usuario?.roles) ? usuario.roles : [];
+
+  const rolesNormalizados = [...rolesBase, usuario?.role, usuario?.company_role]
+    .filter(Boolean)
+    .map((role) => normalizarRol(role));
+
+  const rolVisible = obtenerRolVisible(
+    rolesBase?.[0] || usuario?.role || usuario?.company_role,
+  );
 
   const notificationsOpen = Boolean(notificationAnchorEl);
 
@@ -191,20 +228,19 @@ function AdminLayout() {
     {
       label: "Dashboard",
       path: "/paneladministrador",
-      roles: ["Administrador", "Agente", "Supervisor"],
+      roles: ["administrador", "admin", "agente", "agent", "supervisor"],
       icon: <DashboardIcon fontSize="small" />,
     },
     {
       label: "Métricas generales",
       path: "/metricas-generales",
       roles: [
-        "Administrador",
+        "administrador",
         "admin",
-        "Agente",
+        "agente",
         "agent",
-        "Supervisor",
         "supervisor",
-        "Cliente",
+        "cliente",
         "client",
       ],
       icon: <QueryStatsIcon fontSize="small" />,
@@ -212,43 +248,52 @@ function AdminLayout() {
     {
       label: "Mis tickets",
       path: "/mis-tickets",
-      roles: ["Administrador", "Agente", "Supervisor", "Cliente"],
+      roles: [
+        "administrador",
+        "admin",
+        "agente",
+        "agent",
+        "supervisor",
+        "cliente",
+        "client",
+      ],
       icon: <ConfirmationNumberIcon fontSize="small" />,
     },
+
     {
-      label: "Crear agente",
-      path: "/agents/nuevo",
-      roles: ["Administrador", "Supervisor"],
-      icon: <PersonAddIcon fontSize="small" />,
+      label: "Agentes",
+      path: "/agentes",
+      roles: ["Administrador", "admin", "Supervisor", "supervisor"],
+      icon: <GroupsIcon fontSize="small" />,
     },
     {
       label: "Sistemas",
       path: "/sistemas",
-      roles: ["Administrador"],
+      roles: ["administrador", "admin"],
       icon: <AppsIcon fontSize="small" />,
     },
     {
       label: "Secciones",
       path: "/secciones",
-      roles: ["Administrador"],
+      roles: ["administrador", "admin", "supervisor"],
       icon: <CategoryIcon fontSize="small" />,
     },
     {
       label: "Grupos de soporte",
       path: "/grupos-soporte",
-      roles: ["Administrador"],
+      roles: ["administrador", "admin", "supervisor"],
       icon: <GroupsIcon fontSize="small" />,
     },
     {
       label: "API externa",
       path: "/external-api",
-      roles: ["Administrador"],
+      roles: ["administrador", "admin"],
       icon: <AppsIcon fontSize="small" />,
     },
   ];
 
   const menuVisible = menuItems.filter((item) =>
-    item.roles.some((role) => roles.includes(role)),
+    item.roles.some((role) => rolesNormalizados.includes(normalizarRol(role))),
   );
 
   const drawerContent = (
@@ -302,7 +347,7 @@ function AdminLayout() {
             </Typography>
 
             <Chip
-              label={roles?.[0] || "sin rol"}
+              label={rolVisible}
               size="small"
               sx={{
                 mt: 1,
@@ -509,7 +554,7 @@ function AdminLayout() {
                     noWrap
                     display="block"
                   >
-                    {roles?.[0] || "sin rol"}
+                    {rolVisible}
                   </Typography>
                 )}
               </Box>
@@ -704,7 +749,7 @@ function AdminLayout() {
                   </Typography>
 
                   <Chip
-                    label={roles?.[0] || "sin rol"}
+                    label={rolVisible}
                     size="small"
                     sx={{ mt: 0.5, fontWeight: 700 }}
                   />

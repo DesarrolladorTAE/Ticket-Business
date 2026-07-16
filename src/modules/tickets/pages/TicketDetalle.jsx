@@ -15,7 +15,11 @@ import {
   Box,
   Button,
   CircularProgress,
+  FormControl,
+  InputLabel,
+  MenuItem,
   Paper,
+  Select,
   Stack,
   Typography,
 } from "@mui/material";
@@ -30,19 +34,38 @@ export default function TicketDetalle() {
   const { id } = useParams();
   const navigate = useNavigate();
 
-  const usuario = JSON.parse(localStorage.getItem("USUARIO") || "{}");
-  const roles = Array.isArray(usuario?.roles) ? usuario.roles : [];
+const usuario = JSON.parse(localStorage.getItem("USUARIO") || "{}");
 
-  const isAdmin = roles.includes("Administrador");
-  const isAgent = roles.includes("Agente");
-  const isSupervisor = roles.includes("Supervisor");
-  const isClient = roles.includes("Cliente");
+const rolesBase = Array.isArray(usuario?.roles) ? usuario.roles : [];
 
-  const puedeCambiarEstado = isAdmin || isSupervisor;
-  const puedeMensajear = isAdmin || isAgent || isSupervisor || isClient;
-  const puedeGestionar = isAdmin || isAgent || isSupervisor;
-  const puedeResolver = isAdmin || isSupervisor;
-  const puedeEliminar = isAdmin;
+const rolesNormalizados = [
+  ...rolesBase,
+  usuario?.role,
+  usuario?.company_role,
+]
+  .filter(Boolean)
+  .map((role) => String(role).trim().toLowerCase());
+
+const isAdmin =
+  rolesNormalizados.includes("administrador") ||
+  rolesNormalizados.includes("admin");
+
+const isAgent =
+  rolesNormalizados.includes("agente") ||
+  rolesNormalizados.includes("agent");
+
+const isSupervisor = rolesNormalizados.includes("supervisor");
+
+const isClient =
+  rolesNormalizados.includes("cliente") ||
+  rolesNormalizados.includes("client");
+
+const puedeCambiarEstado = isAdmin || isSupervisor;
+const puedeMensajear = isAdmin || isAgent || isSupervisor || isClient;
+const puedeGestionar = isAdmin || isAgent || isSupervisor;
+const puedeResolver = isAdmin || isSupervisor;
+const puedeEliminar = isAdmin;
+const puedeAsignarResponsable = isAdmin || isSupervisor;
 
   const [ticket, setTicket] = useState(null);
   const [messages, setMessages] = useState([]);
@@ -55,6 +78,12 @@ export default function TicketDetalle() {
   const [previewOpen, setPreviewOpen] = useState(false);
   const [previewFile, setPreviewFile] = useState(null);
   const [mostrarInfoTicket, setMostrarInfoTicket] = useState(false);
+
+  const [agentesDisponibles, setAgentesDisponibles] = useState([]);
+  const [responsableSeleccionadoId, setResponsableSeleccionadoId] =
+    useState("");
+  const [cargandoAgentes, setCargandoAgentes] = useState(false);
+  const [asignandoResponsable, setAsignandoResponsable] = useState(false);
 
   const chatRef = useRef(null);
 
@@ -83,14 +112,110 @@ export default function TicketDetalle() {
         axiosCliente.get("/ticket-statuses"),
       ]);
 
-      setTicket(ticketRes.data.data || ticketRes.data);
+      const ticketData = ticketRes.data.data || ticketRes.data;
+      const responsableActualId =
+        ticketData?.responsable?.id || ticketData?.responsable_id || "";
+
+      setTicket(ticketData);
       setMessages(msgRes.data.data || []);
       setEstados(statusRes.data.data || statusRes.data || []);
+      setResponsableSeleccionadoId(
+        responsableActualId ? String(responsableActualId) : "",
+      );
+
+      if (puedeAsignarResponsable) {
+        await cargarAgentesDisponibles();
+      }
     } catch (error) {
       console.log("ERROR CARGAR TICKET:", error.response?.data || error);
       setError("No se pudo cargar la información del ticket.");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const cargarAgentesDisponibles = async () => {
+    if (!id || !puedeAsignarResponsable) return;
+
+    setCargandoAgentes(true);
+
+    try {
+      const response = await axiosCliente.get(
+        `/tickets/${id}/available-agents`,
+      );
+
+      setAgentesDisponibles(response.data.data || []);
+    } catch (error) {
+      console.log(
+        "ERROR CARGAR AGENTES DISPONIBLES:",
+        error.response?.data || error,
+      );
+
+      setAgentesDisponibles([]);
+    } finally {
+      setCargandoAgentes(false);
+    }
+  };
+
+  const asignarResponsable = async () => {
+    if (!responsableSeleccionadoId) {
+      Swal.fire({
+        icon: "warning",
+        title: "Selecciona un agente",
+        text: "Debes seleccionar un agente responsable.",
+      });
+
+      return;
+    }
+
+    const agenteSeleccionado = agentesDisponibles.find(
+      (agente) => String(agente.id) === String(responsableSeleccionadoId),
+    );
+
+    const confirmar = await Swal.fire({
+      title: "Asignar responsable",
+      text: `¿Asignar este ticket a ${
+        agenteSeleccionado?.name || "este agente"
+      }?`,
+      icon: "question",
+      showCancelButton: true,
+      confirmButtonText: "Sí, asignar",
+      cancelButtonText: "Cancelar",
+    });
+
+    if (!confirmar.isConfirmed) return;
+
+    setAsignandoResponsable(true);
+
+    try {
+      await axiosCliente.patch(`/tickets/${id}/assign-responsible`, {
+        responsable_id: Number(responsableSeleccionadoId),
+      });
+
+      await cargarTodo();
+
+      Swal.fire({
+        icon: "success",
+        title: "Responsable asignado",
+        text: "El responsable fue asignado correctamente.",
+        timer: 1800,
+        showConfirmButton: false,
+      });
+    } catch (error) {
+      console.log(
+        "ERROR ASIGNAR RESPONSABLE:",
+        error.response?.data || error,
+      );
+
+      Swal.fire({
+        icon: "error",
+        title: "No se pudo asignar",
+        text:
+          error.response?.data?.message ||
+          "No fue posible asignar el responsable.",
+      });
+    } finally {
+      setAsignandoResponsable(false);
     }
   };
 
@@ -138,14 +263,14 @@ export default function TicketDetalle() {
       return normalizarUrlPublica(urlDirecta);
     }
 
-const tokenPublico =
-  ticket?.public_tracking_code ||
-  ticket?.public_token ||
-  ticket?.token_publico ||
-  ticket?.public_uuid ||
-  ticket?.uuid_publico ||
-  ticket?.token ||
-  ticket?.uuid;
+    const tokenPublico =
+      ticket?.public_tracking_code ||
+      ticket?.public_token ||
+      ticket?.token_publico ||
+      ticket?.public_uuid ||
+      ticket?.uuid_publico ||
+      ticket?.token ||
+      ticket?.uuid;
 
     if (!tokenPublico) {
       return "";
@@ -449,7 +574,8 @@ const tokenPublico =
       msg?.message?.startsWith("Ticket creado") ||
       msg?.message?.includes("tomó el ticket") ||
       msg?.message?.startsWith("Estado cambiado") ||
-      msg?.message?.includes("fue eliminado por")
+      msg?.message?.includes("fue eliminado por") ||
+      msg?.message?.startsWith("Responsable asignado")
     );
   };
 
@@ -503,6 +629,12 @@ const tokenPublico =
   const agenteAsignado = ticket?.responsable
     ? ticket.responsable.name
     : "Sin asignar";
+
+  const responsableSelectValue = agentesDisponibles.some(
+    (agente) => String(agente.id) === String(responsableSeleccionadoId),
+  )
+    ? String(responsableSeleccionadoId)
+    : "";
 
   return (
     <Box
@@ -657,6 +789,134 @@ const tokenPublico =
           Info={TicketInfoItem}
         />
       </Box>
+
+      {puedeAsignarResponsable && (
+        <Paper
+          sx={{
+            p: { xs: 1.5, sm: 2 },
+            mb: 2,
+            borderRadius: 3,
+            border: "1px solid #dbeafe",
+            bgcolor: "#f8fbff",
+            boxShadow: "none",
+          }}
+        >
+          <Stack spacing={1.5}>
+            <Box>
+              <Typography
+                variant="subtitle1"
+                sx={{
+                  fontWeight: 900,
+                  color: "#0f172a",
+                }}
+              >
+                Asignación de responsable
+              </Typography>
+
+              <Typography
+                variant="body2"
+                sx={{
+                  color: "#64748b",
+                }}
+              >
+                Responsable actual: <strong>{agenteAsignado}</strong>
+              </Typography>
+            </Box>
+
+            {!ticket?.supportGroup && !ticket?.support_group_id && (
+              <Alert severity="warning">
+                Este ticket no tiene grupo de soporte asignado.
+              </Alert>
+            )}
+
+            {!cargandoAgentes &&
+              agentesDisponibles.length === 0 &&
+              (ticket?.supportGroup || ticket?.support_group_id) && (
+                <Alert severity="warning">
+                  No hay agentes activos disponibles para el grupo de soporte
+                  de este ticket.
+                </Alert>
+              )}
+
+            <Stack
+              direction={{ xs: "column", md: "row" }}
+              spacing={1.5}
+              alignItems={{ xs: "stretch", md: "center" }}
+            >
+              <FormControl
+                size="small"
+                fullWidth
+                disabled={
+                  cargandoAgentes ||
+                  asignandoResponsable ||
+                  agentesDisponibles.length === 0
+                }
+              >
+                <InputLabel id="responsable-select-label">
+                  Agente responsable
+                </InputLabel>
+
+                <Select
+                  labelId="responsable-select-label"
+                  label="Agente responsable"
+                  value={responsableSelectValue}
+                  onChange={(event) =>
+                    setResponsableSeleccionadoId(event.target.value)
+                  }
+                >
+                  <MenuItem value="">
+                    <em>Selecciona un agente</em>
+                  </MenuItem>
+
+                  {agentesDisponibles.map((agente) => (
+                    <MenuItem key={agente.id} value={String(agente.id)}>
+                      {agente.name} · {agente.email}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+
+              <Button
+                variant="contained"
+                onClick={asignarResponsable}
+                disabled={
+                  cargandoAgentes ||
+                  asignandoResponsable ||
+                  !responsableSelectValue
+                }
+                sx={{
+                  minWidth: { xs: "100%", md: 190 },
+                  borderRadius: 2,
+                  textTransform: "none",
+                  fontWeight: 800,
+                  boxShadow: "none",
+                  bgcolor: "#2563eb",
+                  "&:hover": {
+                    bgcolor: "#1d4ed8",
+                    boxShadow: "none",
+                  },
+                }}
+              >
+                {asignandoResponsable ? "Guardando..." : "Guardar asignación"}
+              </Button>
+
+              <Button
+                variant="outlined"
+                onClick={cargarAgentesDisponibles}
+                disabled={cargandoAgentes || asignandoResponsable}
+                sx={{
+                  minWidth: { xs: "100%", md: 150 },
+                  borderRadius: 2,
+                  textTransform: "none",
+                  fontWeight: 800,
+                }}
+              >
+                {cargandoAgentes ? "Cargando..." : "Recargar agentes"}
+              </Button>
+            </Stack>
+          </Stack>
+        </Paper>
+      )}
 
       <Paper
         sx={{

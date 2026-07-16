@@ -9,6 +9,7 @@ import TicketDetalle from "../modules/tickets/pages/TicketDetalle";
 import MisTickets from "../modules/tickets/pages/MisTickets";
 
 import CrearAgente from "../modules/agents/pages/CrearAgente";
+import Agentes from "../modules/agents/pages/Agentes";
 
 import Sistemas from "../modules/tickets/pages/Sistemas";
 import Secciones from "../modules/tickets/pages/Secciones";
@@ -24,22 +25,45 @@ import GruposSoporte from "../modules/support-groups/pages/GruposSoporte";
 import RutaProtegida from "./RutaProtegida";
 import AdminLayout from "../layouts/AdminLayout";
 
+const normalizarRol = (rol) => {
+  return String(rol || "")
+    .trim()
+    .toLowerCase();
+};
+
 function RutaPorRol({ roles, children }) {
   let usuario = null;
 
   try {
     usuario = JSON.parse(localStorage.getItem("USUARIO"));
-  } catch (e) {
+  } catch (error) {
     usuario = null;
   }
 
-  const userRoles = usuario?.roles || [];
+  const token = localStorage.getItem("TOKEN");
 
-  const permitido =
-    Array.isArray(userRoles) && roles.some((r) => userRoles.includes(r));
-
-  if (!usuario || !permitido) {
+  if (!token || !usuario) {
     return <Navigate to="/login" replace />;
+  }
+
+  const rolesBase = Array.isArray(usuario?.roles) ? usuario.roles : [];
+
+  const userRoles = [
+    ...rolesBase,
+    usuario?.role,
+    usuario?.company_role,
+  ]
+    .filter(Boolean)
+    .map((rol) => normalizarRol(rol));
+
+  const rolesPermitidos = roles.map((rol) => normalizarRol(rol));
+
+  const permitido = rolesPermitidos.some((rolPermitido) =>
+    userRoles.includes(rolPermitido),
+  );
+
+  if (!permitido) {
+    return <Navigate to="/mis-tickets" replace />;
   }
 
   return children;
@@ -52,10 +76,12 @@ function AppRouter() {
       <Route path="/" element={<Navigate to="/login" replace />} />
       <Route path="/login" element={<IniciarSesion />} />
       <Route path="/registro" element={<Registro />} />
+
       <Route
         path="/public/s/:systemId/:prefix"
         element={<TicketPublicoCrear />}
       />
+
       <Route
         path="/public/tickets/:trackingCode"
         element={<TicketPublicoHistorial />}
@@ -73,22 +99,85 @@ function AppRouter() {
         <Route
           path="/paneladministrador"
           element={
-            <RutaPorRol roles={["Administrador", "Agente", "Supervisor"]}>
+            <RutaPorRol
+              roles={[
+                "Administrador",
+                "admin",
+                "Agente",
+                "agent",
+                "Supervisor",
+                "supervisor",
+              ]}
+            >
               <Dashboard />
             </RutaPorRol>
           }
         />
-        <Route path="/external-api" element={<ExternalApiDashboard />} />
-        <Route path="/external-api/logs" element={<ExternalApiLogs />} />
-        <Route path="/external-api/tokens" element={<ExternalApiTokens />} />
-        <Route path="/metricas-generales" element={<GeneralMetricsDashboard />} />
+
+        {/* MÉTRICAS GENERALES */}
+        <Route
+          path="/metricas-generales"
+          element={
+            <RutaPorRol
+              roles={[
+                "Administrador",
+                "admin",
+                "Supervisor",
+                "supervisor",
+                "Agente",
+                "agent",
+                "Cliente",
+                "client",
+              ]}
+            >
+              <GeneralMetricsDashboard />
+            </RutaPorRol>
+          }
+        />
+
+        {/* API EXTERNA - SOLO ADMINISTRADOR */}
+        <Route
+          path="/external-api"
+          element={
+            <RutaPorRol roles={["Administrador", "admin"]}>
+              <ExternalApiDashboard />
+            </RutaPorRol>
+          }
+        />
+
+        <Route
+          path="/external-api/logs"
+          element={
+            <RutaPorRol roles={["Administrador", "admin"]}>
+              <ExternalApiLogs />
+            </RutaPorRol>
+          }
+        />
+
+        <Route
+          path="/external-api/tokens"
+          element={
+            <RutaPorRol roles={["Administrador", "admin"]}>
+              <ExternalApiTokens />
+            </RutaPorRol>
+          }
+        />
 
         {/* MIS TICKETS */}
         <Route
           path="/mis-tickets"
           element={
             <RutaPorRol
-              roles={["Administrador", "Agente", "Supervisor", "Cliente"]}
+              roles={[
+                "Administrador",
+                "admin",
+                "Agente",
+                "agent",
+                "Supervisor",
+                "supervisor",
+                "Cliente",
+                "client",
+              ]}
             >
               <MisTickets />
             </RutaPorRol>
@@ -100,48 +189,95 @@ function AppRouter() {
           path="/tickets/:id"
           element={
             <RutaPorRol
-              roles={["Administrador", "Agente", "Supervisor", "Cliente"]}
+              roles={[
+                "Administrador",
+                "admin",
+                "Agente",
+                "agent",
+                "Supervisor",
+                "supervisor",
+                "Cliente",
+                "client",
+              ]}
             >
               <TicketDetalle />
             </RutaPorRol>
           }
         />
 
-        {/* AGENTES */}
+        {/* AGENTES - LISTADO */}
+        <Route
+          path="/agentes"
+          element={
+            <RutaPorRol
+              roles={[
+                "Administrador",
+                "admin",
+                "Supervisor",
+                "supervisor",
+              ]}
+            >
+              <Agentes />
+            </RutaPorRol>
+          }
+        />
+
+        {/* AGENTES - CREAR */}
         <Route
           path="/agents/nuevo"
           element={
-            <RutaPorRol roles={["Administrador", "Supervisor"]}>
+            <RutaPorRol
+              roles={[
+                "Administrador",
+                "admin",
+                "Supervisor",
+                "supervisor",
+              ]}
+            >
               <CrearAgente />
             </RutaPorRol>
           }
         />
 
-        {/* SISTEMAS */}
+        {/* SISTEMAS - SOLO ADMINISTRADOR */}
         <Route
           path="/sistemas"
           element={
-            <RutaPorRol roles={["Administrador"]}>
+            <RutaPorRol roles={["Administrador", "admin"]}>
               <Sistemas />
             </RutaPorRol>
           }
         />
 
-        {/* SECCIONES */}
+        {/* SECCIONES - ADMINISTRADOR Y SUPERVISOR */}
         <Route
           path="/secciones"
           element={
-            <RutaPorRol roles={["Administrador"]}>
+            <RutaPorRol
+              roles={[
+                "Administrador",
+                "admin",
+                "Supervisor",
+                "supervisor",
+              ]}
+            >
               <Secciones />
             </RutaPorRol>
           }
         />
 
-        {/* GRUPOS SOPORTE */}
+        {/* GRUPOS SOPORTE - ADMINISTRADOR Y SUPERVISOR */}
         <Route
           path="/grupos-soporte"
           element={
-            <RutaPorRol roles={["Administrador"]}>
+            <RutaPorRol
+              roles={[
+                "Administrador",
+                "admin",
+                "Supervisor",
+                "supervisor",
+              ]}
+            >
               <GruposSoporte />
             </RutaPorRol>
           }

@@ -15,6 +15,8 @@ import {
 } from "@mui/material";
 
 import RefreshIcon from "@mui/icons-material/Refresh";
+import { useNavigate } from "react-router-dom";
+
 import axiosCliente from "../../../services/axiosCliente";
 
 const formatNumber = (value) => {
@@ -59,6 +61,12 @@ const formatPeriodLabel = (period) => {
   }
 
   return `${period.date_from} al ${period.date_to}`;
+};
+
+const normalizeRoleKey = (value) => {
+  return String(value || "")
+    .trim()
+    .toLowerCase();
 };
 
 function MetricCard({ title, value, description }) {
@@ -167,6 +175,123 @@ function DataList({ title, items, emptyText }) {
               </Stack>
 
               {index < items.length - 1 && <Divider sx={{ mt: 1 }} />}
+            </Box>
+          ))
+        ) : (
+          <Typography
+            variant="body2"
+            sx={{
+              color: "#64748b",
+            }}
+          >
+            {emptyText || "No hay información disponible."}
+          </Typography>
+        )}
+      </Stack>
+    </Paper>
+  );
+}
+
+function PersonMetricsList({ title, items, emptyText }) {
+  return (
+    <Paper
+      sx={{
+        p: 2,
+        borderRadius: 3,
+        border: "1px solid #e5e7eb",
+        boxShadow: "none",
+        height: "100%",
+      }}
+    >
+      <Typography
+        variant="subtitle1"
+        sx={{
+          fontWeight: 800,
+          color: "#0f172a",
+          mb: 1.5,
+        }}
+      >
+        {title}
+      </Typography>
+
+      <Stack spacing={1.5}>
+        {items?.length ? (
+          items.map((item, index) => (
+            <Box key={`${item.user_id}-${index}`}>
+              <Stack
+                direction={{ xs: "column", sm: "row" }}
+                justifyContent="space-between"
+                alignItems={{ xs: "flex-start", sm: "center" }}
+                spacing={1}
+              >
+                <Box sx={{ minWidth: 0 }}>
+                  <Typography
+                    variant="body2"
+                    sx={{
+                      fontWeight: 800,
+                      color: "#0f172a",
+                      wordBreak: "break-word",
+                    }}
+                  >
+                    {item.name || "Sin nombre"}
+                  </Typography>
+
+                  <Typography
+                    variant="caption"
+                    sx={{
+                      display: "block",
+                      color: "#64748b",
+                      wordBreak: "break-word",
+                    }}
+                  >
+                    {item.email || "Sin correo"}
+                  </Typography>
+                </Box>
+
+                <Stack
+                  direction="row"
+                  spacing={1.2}
+                  sx={{
+                    flexWrap: "wrap",
+                    rowGap: 0.5,
+                  }}
+                >
+                  <Typography
+                    variant="caption"
+                    sx={{
+                      color: "#334155",
+                      fontWeight: 800,
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    Total: {formatNumber(item.total_tickets)}
+                  </Typography>
+
+                  <Typography
+                    variant="caption"
+                    sx={{
+                      color: "#334155",
+                      fontWeight: 800,
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    Abiertos: {formatNumber(item.open_tickets)}
+                  </Typography>
+
+                  <Typography
+                    variant="caption"
+                    sx={{
+                      color: "#334155",
+                      fontWeight: 800,
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    Resueltos: {formatNumber(item.resolved_tickets)}
+                  </Typography>
+                </Stack>
+              </Stack>
+
+              {index < items.length - 1 && <Divider sx={{ mt: 1.5 }} />}
             </Box>
           ))
         ) : (
@@ -338,7 +463,222 @@ function LatestApiErrors({ errors }) {
   );
 }
 
+function LatestUnassignedTickets({ tickets, onViewTicket }) {
+  return (
+    <Paper
+      sx={{
+        p: 2,
+        borderRadius: 3,
+        border: "1px solid #e5e7eb",
+        boxShadow: "none",
+      }}
+    >
+      <Typography
+        variant="subtitle1"
+        sx={{
+          fontWeight: 800,
+          color: "#0f172a",
+          mb: 1.5,
+        }}
+      >
+        Tickets pendientes de asignación
+      </Typography>
+
+      <Stack spacing={1.5}>
+        {tickets?.length ? (
+          tickets.map((ticket, index) => (
+            <Box key={`${ticket.folio}-${index}`}>
+              <Stack
+                direction={{ xs: "column", sm: "row" }}
+                justifyContent="space-between"
+                alignItems={{ xs: "flex-start", sm: "center" }}
+                spacing={1.5}
+              >
+                <Box sx={{ minWidth: 0 }}>
+                  <Typography
+                    variant="body2"
+                    sx={{
+                      fontWeight: 800,
+                      color: "#0f172a",
+                      wordBreak: "break-word",
+                    }}
+                  >
+                    {ticket.folio}
+                  </Typography>
+
+                  <Typography
+                    variant="body2"
+                    sx={{
+                      color: "#334155",
+                      wordBreak: "break-word",
+                    }}
+                  >
+                    {ticket.titulo}
+                  </Typography>
+
+                  <Typography
+                    variant="caption"
+                    sx={{
+                      color: "#64748b",
+                      display: "block",
+                      mt: 0.5,
+                    }}
+                  >
+                    {ticket.system || "Sin sistema"} ·{" "}
+                    {ticket.status || "Sin estado"}
+                  </Typography>
+                </Box>
+
+                <Button
+                  size="small"
+                  variant="outlined"
+                  onClick={() => onViewTicket(ticket.id)}
+                  disabled={!ticket.id || !onViewTicket}
+                  sx={{
+                    borderRadius: 2,
+                    textTransform: "none",
+                    fontWeight: 800,
+                    whiteSpace: "nowrap",
+                    alignSelf: { xs: "stretch", sm: "center" },
+                  }}
+                >
+                  Ver ticket
+                </Button>
+              </Stack>
+
+              {index < tickets.length - 1 && <Divider sx={{ mt: 1.5 }} />}
+            </Box>
+          ))
+        ) : (
+          <Typography
+            variant="body2"
+            sx={{
+              color: "#64748b",
+            }}
+          >
+            No hay tickets pendientes de asignación.
+          </Typography>
+        )}
+      </Stack>
+    </Paper>
+  );
+}
+
+function AdminControlPanel({ admin, onViewTicket, canSeeTechnicalMetrics }) {
+  const alerts = admin?.alerts || {};
+
+  return (
+    <Paper
+      sx={{
+        p: 2,
+        borderRadius: 3,
+        border: "1px solid #dbeafe",
+        bgcolor: "#f8fbff",
+        boxShadow: "none",
+      }}
+    >
+      <Stack spacing={2}>
+        <Box>
+          <Typography
+            variant="h6"
+            sx={{
+              fontWeight: 900,
+              color: "#0f172a",
+            }}
+          >
+            Control operativo
+          </Typography>
+
+          <Typography
+            variant="body2"
+            sx={{
+              color: "#64748b",
+            }}
+          >
+            Vista para revisar asignaciones, agentes, clientes y seguimiento del
+            periodo.
+          </Typography>
+        </Box>
+
+        <Box
+          sx={{
+            display: "grid",
+            gridTemplateColumns: {
+              xs: "1fr",
+              sm: "repeat(2, minmax(0, 1fr))",
+              lg: "repeat(4, minmax(0, 1fr))",
+            },
+            gap: 2,
+          }}
+        >
+          <MetricCard
+            title="Sin responsable"
+            value={alerts.tickets_without_responsible}
+            description="Tickets sin agente asignado"
+          />
+
+          <MetricCard
+            title="Abiertos sin responsable"
+            value={alerts.open_tickets_without_responsible}
+            description="Pendientes de asignación"
+          />
+
+          <MetricCard
+            title="Sin grupo"
+            value={alerts.tickets_without_group}
+            description="Tickets sin grupo de soporte"
+          />
+
+          <MetricCard
+            title="Sistemas con tickets"
+            value={alerts.systems_with_tickets}
+            description="Sistemas con actividad en el periodo"
+          />
+
+          {canSeeTechnicalMetrics && (
+            <MetricCard
+              title="Tokens activos"
+              value={alerts.active_external_tokens}
+              description="Tokens externos activos"
+            />
+          )}
+        </Box>
+
+        <Box
+          sx={{
+            display: "grid",
+            gridTemplateColumns: {
+              xs: "1fr",
+              lg: "repeat(2, minmax(0, 1fr))",
+            },
+            gap: 2,
+          }}
+        >
+          <PersonMetricsList
+            title="Tickets por agente"
+            items={admin?.agents}
+            emptyText="No hay tickets asignados a agentes en este periodo."
+          />
+
+          <PersonMetricsList
+            title="Tickets por cliente"
+            items={admin?.customers}
+            emptyText="No hay clientes con tickets en este periodo."
+          />
+        </Box>
+
+        <LatestUnassignedTickets
+          tickets={admin?.latest_unassigned_tickets}
+          onViewTicket={onViewTicket}
+        />
+      </Stack>
+    </Paper>
+  );
+}
+
 export default function GeneralMetricsDashboard() {
+  const navigate = useNavigate();
+
   const initialRange = getCurrentMonthRange();
 
   const [loading, setLoading] = useState(true);
@@ -447,7 +787,24 @@ export default function GeneralMetricsDashboard() {
   const summary = metrics?.summary || {};
   const context = metrics?.context || {};
   const period = metrics?.period || {};
-  const canSeeApiMetrics = Boolean(context?.can_see_api_metrics);
+  const admin = metrics?.admin || {};
+
+  const roleKey = normalizeRoleKey(context?.role_key);
+
+  const isAdmin = roleKey === "admin" || roleKey === "administrador";
+  const isSupervisor = roleKey === "supervisor";
+  const isAgent = roleKey === "agent" || roleKey === "agente";
+  const isClient = roleKey === "client" || roleKey === "cliente";
+
+  const canSeeOperationalControl = isAdmin || isSupervisor;
+  const canSeeOriginMetrics = isAdmin || isSupervisor;
+  const canSeeApiMetrics = isAdmin && Boolean(context?.can_see_api_metrics);
+
+  const verTicket = (ticketId) => {
+    if (!ticketId) return;
+
+    navigate(`/tickets/${ticketId}`);
+  };
 
   if (loading) {
     return (
@@ -654,16 +1011,16 @@ export default function GeneralMetricsDashboard() {
         {metrics && (
           <>
             <Alert severity="info">
-              {context.role_key === "admin" &&
-                "Vista de administrador: puedes consultar las métricas generales de la empresa."}
+              {isAdmin &&
+                "Vista de administrador: puedes consultar las métricas generales de la empresa y el control operativo de agentes y clientes."}
 
-              {context.role_key === "supervisor" &&
-                "Vista de supervisor: puedes consultar las métricas de tus grupos de soporte."}
+              {isSupervisor &&
+                "Vista de supervisor: puedes consultar métricas operativas, tickets, agentes, clientes y seguimiento general."}
 
-              {context.role_key === "agent" &&
+              {isAgent &&
                 "Vista de agente: puedes consultar las métricas de tus tickets asignados."}
 
-              {context.role_key === "client" &&
+              {isClient &&
                 "Vista de cliente: puedes consultar únicamente las métricas de tus propios tickets."}
             </Alert>
 
@@ -696,29 +1053,37 @@ export default function GeneralMetricsDashboard() {
                 description="Resueltos o cerrados"
               />
 
-              <MetricCard
-                title="Tickets externos"
-                value={summary.external_tickets}
-                description="Creados desde API externa"
-              />
+              {canSeeOriginMetrics && (
+                <MetricCard
+                  title="Tickets externos"
+                  value={summary.external_tickets}
+                  description="Creados desde API externa"
+                />
+              )}
 
-              <MetricCard
-                title="Tickets internos"
-                value={summary.internal_tickets}
-                description="Creados desde el panel"
-              />
+              {canSeeOriginMetrics && (
+                <MetricCard
+                  title="Tickets internos"
+                  value={summary.internal_tickets}
+                  description="Creados desde el panel"
+                />
+              )}
 
-              <MetricCard
-                title="Tickets públicos"
-                value={summary.public_tickets}
-                description="Creados desde portal público"
-              />
+              {canSeeOriginMetrics && (
+                <MetricCard
+                  title="Tickets públicos"
+                  value={summary.public_tickets}
+                  description="Creados desde portal público"
+                />
+              )}
 
-              <MetricCard
-                title="Clientes externos"
-                value={summary.external_customers}
-                description="Clientes registrados por integración"
-              />
+              {canSeeOriginMetrics && (
+                <MetricCard
+                  title="Clientes externos"
+                  value={summary.external_customers}
+                  description="Clientes registrados por integración"
+                />
+              )}
 
               {canSeeApiMetrics && (
                 <MetricCard
@@ -736,6 +1101,14 @@ export default function GeneralMetricsDashboard() {
                 />
               )}
             </Box>
+
+            {canSeeOperationalControl && (
+              <AdminControlPanel
+                admin={admin}
+                onViewTicket={verTicket}
+                canSeeTechnicalMetrics={isAdmin}
+              />
+            )}
 
             <Box
               sx={{
@@ -763,24 +1136,31 @@ export default function GeneralMetricsDashboard() {
               />
             </Box>
 
-            <Box
-              sx={{
-                display: "grid",
-                gridTemplateColumns: {
-                  xs: "1fr",
-                  lg: canSeeApiMetrics ? "repeat(2, minmax(0, 1fr))" : "1fr",
-                },
-                gap: 2,
-              }}
-            >
-              <LatestExternalTickets
-                tickets={metrics.latest_external_tickets}
-              />
+            {(canSeeOriginMetrics || canSeeApiMetrics) && (
+              <Box
+                sx={{
+                  display: "grid",
+                  gridTemplateColumns: {
+                    xs: "1fr",
+                    lg:
+                      canSeeOriginMetrics && canSeeApiMetrics
+                        ? "repeat(2, minmax(0, 1fr))"
+                        : "1fr",
+                  },
+                  gap: 2,
+                }}
+              >
+                {canSeeOriginMetrics && (
+                  <LatestExternalTickets
+                    tickets={metrics.latest_external_tickets}
+                  />
+                )}
 
-              {canSeeApiMetrics && (
-                <LatestApiErrors errors={metrics.latest_api_errors} />
-              )}
-            </Box>
+                {canSeeApiMetrics && (
+                  <LatestApiErrors errors={metrics.latest_api_errors} />
+                )}
+              </Box>
+            )}
           </>
         )}
       </Stack>
