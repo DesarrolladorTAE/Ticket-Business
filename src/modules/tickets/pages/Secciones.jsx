@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import axiosCliente from "../../../services/axiosCliente";
 
 import {
@@ -9,6 +9,7 @@ import {
   CircularProgress,
   Divider,
   Grid,
+  IconButton,
   MenuItem,
   Paper,
   Stack,
@@ -17,15 +18,28 @@ import {
   TableCell,
   TableContainer,
   TableHead,
+  TablePagination,
   TableRow,
   TextField,
+  Tooltip,
   Typography,
 } from "@mui/material";
+
+import EditIcon from "@mui/icons-material/Edit";
+import DeleteIcon from "@mui/icons-material/Delete";
 
 const headCell = {
   fontWeight: 900,
   color: "#334155",
   whiteSpace: "nowrap",
+  bgcolor: "#f8fafc",
+  borderBottom: "1px solid #e5e7eb",
+};
+
+const bodyCell = {
+  verticalAlign: "middle",
+  wordBreak: "break-word",
+  overflowWrap: "anywhere",
 };
 
 function Secciones() {
@@ -45,9 +59,16 @@ function Secciones() {
   const [error, setError] = useState("");
   const [ok, setOk] = useState("");
 
+  const [page, setPage] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(10);
+
   useEffect(() => {
     obtenerDatos();
   }, []);
+
+  useEffect(() => {
+    setPage(0);
+  }, [secciones.length, rowsPerPage]);
 
   const normalizar = (res) => res?.data?.data || res?.data || [];
 
@@ -83,6 +104,13 @@ function Secciones() {
       setLoading(false);
     }
   };
+
+  const seccionesPaginadas = useMemo(() => {
+    const start = page * rowsPerPage;
+    const end = start + rowsPerPage;
+
+    return secciones.slice(start, end);
+  }, [secciones, page, rowsPerPage]);
 
   const cambiarValor = (e) => {
     setFormulario((prev) => ({
@@ -206,6 +234,15 @@ function Secciones() {
     return sistema?.prefijo ?? "TCK";
   };
 
+  const handleChangePage = (event, newPage) => {
+    setPage(newPage);
+  };
+
+  const handleChangeRowsPerPage = (event) => {
+    setRowsPerPage(Number(event.target.value));
+    setPage(0);
+  };
+
   const EstadoChip = ({ estado }) => (
     <Chip
       size="small"
@@ -233,40 +270,72 @@ function Secciones() {
 
   const AccionesSeccion = ({ seccion, mobile = false }) => (
     <Stack
-      direction={mobile ? "column" : "row"}
+      direction="row"
       spacing={1}
-      justifyContent="flex-end"
-      alignItems={mobile ? "stretch" : "center"}
+      justifyContent={mobile ? "flex-start" : "center"}
+      alignItems="center"
     >
-      <Button
-        variant="outlined"
-        size="small"
-        onClick={() => prepararEdicion(seccion)}
-        fullWidth={mobile}
-        sx={{
-          borderRadius: 2,
-          textTransform: "none",
-          fontWeight: 800,
-        }}
-      >
-        Editar
-      </Button>
+      <Tooltip title="Editar sección" arrow>
+        <IconButton
+          size="small"
+          color="primary"
+          onClick={() => prepararEdicion(seccion)}
+          sx={{
+            width: 36,
+            height: 36,
+            border: "1px solid #bfdbfe",
+            bgcolor: "#eff6ff",
+            "&:hover": {
+              bgcolor: "#dbeafe",
+            },
+          }}
+        >
+          <EditIcon fontSize="small" />
+        </IconButton>
+      </Tooltip>
 
-      <Button
-        variant="outlined"
-        color="error"
-        size="small"
-        onClick={() => eliminarSeccion(seccion.id)}
-        fullWidth={mobile}
-        sx={{
-          borderRadius: 2,
-          textTransform: "none",
-          fontWeight: 800,
-        }}
-      >
-        Eliminar
-      </Button>
+      <Tooltip title="Eliminar sección" arrow>
+        <IconButton
+          size="small"
+          color="error"
+          onClick={() => eliminarSeccion(seccion.id)}
+          sx={{
+            width: 36,
+            height: 36,
+            border: "1px solid #fecaca",
+            bgcolor: "#fef2f2",
+            "&:hover": {
+              bgcolor: "#fee2e2",
+            },
+          }}
+        >
+          <DeleteIcon fontSize="small" />
+        </IconButton>
+      </Tooltip>
     </Stack>
+  );
+
+  const PaginacionSecciones = () => (
+    <TablePagination
+      component="div"
+      count={secciones.length}
+      page={page}
+      rowsPerPage={rowsPerPage}
+      onPageChange={handleChangePage}
+      onRowsPerPageChange={handleChangeRowsPerPage}
+      rowsPerPageOptions={[5, 10, 25]}
+      labelRowsPerPage="Filas por página"
+      labelDisplayedRows={({ from, to, count }) => `${from}-${to} de ${count}`}
+      sx={{
+        borderTop: "1px solid #e5e7eb",
+        bgcolor: "#ffffff",
+        ".MuiTablePagination-toolbar": {
+          flexWrap: { xs: "wrap", sm: "nowrap" },
+          justifyContent: { xs: "center", sm: "flex-end" },
+          rowGap: 1,
+        },
+      }}
+    />
   );
 
   if (loading) {
@@ -461,66 +530,130 @@ function Secciones() {
               color: "text.secondary",
             }}
           >
-            <Typography fontWeight={800}>No hay secciones registradas.</Typography>
+            <Typography fontWeight={800}>
+              No hay secciones registradas.
+            </Typography>
+
             <Typography variant="body2" mt={0.5}>
               Crea una sección para comenzar.
             </Typography>
           </Box>
         ) : (
           <>
+            <Stack
+              direction={{ xs: "column", sm: "row" }}
+              justifyContent="space-between"
+              alignItems={{ xs: "stretch", sm: "center" }}
+              spacing={1}
+              sx={{ mb: 2 }}
+            >
+              <Box>
+                <Typography fontWeight={900} color="#0f172a">
+                  Lista de secciones
+                </Typography>
+
+                <Typography variant="body2" color="text.secondary">
+                  Mostrando {secciones.length} resultado(s).
+                </Typography>
+              </Box>
+
+              <Chip
+                label={`${secciones.length} sección(es)`}
+                color="primary"
+                variant="outlined"
+                sx={{
+                  fontWeight: 800,
+                  alignSelf: { xs: "flex-start", sm: "center" },
+                }}
+              />
+            </Stack>
+
             {/* Escritorio */}
-            <TableContainer
+            <Paper
               sx={{
                 display: { xs: "none", md: "block" },
                 border: "1px solid #e5e7eb",
                 borderRadius: 2,
-                overflowX: "auto",
+                overflow: "hidden",
+                boxShadow: "none",
               }}
             >
-              <Table size="small">
-                <TableHead sx={{ bgcolor: "#f8fafc" }}>
-                  <TableRow>
-                    <TableCell sx={headCell}>Sistema</TableCell>
-                    <TableCell sx={headCell}>Sección</TableCell>
-                    <TableCell sx={headCell}>Prefijo</TableCell>
-                    <TableCell sx={headCell}>Estado</TableCell>
-                    <TableCell sx={headCell} align="right">
-                      Acciones
-                    </TableCell>
-                  </TableRow>
-                </TableHead>
-
-                <TableBody>
-                  {secciones.map((seccion) => (
-                    <TableRow key={seccion.id} hover>
-                      <TableCell>
-                        <Typography fontWeight={700}>
-                          {obtenerNombreSistema(seccion.system_id)}
-                        </Typography>
+              <TableContainer
+                sx={{
+                  maxHeight: 420,
+                  overflowX: "hidden",
+                  overflowY: "auto",
+                }}
+              >
+                <Table
+                  size="small"
+                  stickyHeader
+                  sx={{
+                    tableLayout: "fixed",
+                    width: "100%",
+                  }}
+                >
+                  <TableHead>
+                    <TableRow>
+                      <TableCell sx={{ ...headCell, width: "28%" }}>
+                        Sistema
                       </TableCell>
 
-                      <TableCell>
-                        <Typography fontWeight={800}>
-                          {seccion.nombre}
-                        </Typography>
+                      <TableCell sx={{ ...headCell, width: "30%" }}>
+                        Sección
                       </TableCell>
 
-                      <TableCell>
-                        <PrefijoChip systemId={seccion.system_id} />
+                      <TableCell sx={{ ...headCell, width: "14%" }}>
+                        Prefijo
                       </TableCell>
 
-                      <TableCell>
-                        <EstadoChip estado={seccion.estado} />
+                      <TableCell sx={{ ...headCell, width: "13%" }}>
+                        Estado
                       </TableCell>
 
-                      <TableCell align="right">
-                        <AccionesSeccion seccion={seccion} />
+                      <TableCell
+                        sx={{ ...headCell, width: "14%" }}
+                        align="center"
+                      >
+                        Acciones
                       </TableCell>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </TableContainer>
+                  </TableHead>
+
+                  <TableBody>
+                    {seccionesPaginadas.map((seccion) => (
+                      <TableRow key={seccion.id} hover>
+                        <TableCell sx={bodyCell}>
+                          <Typography fontWeight={700}>
+                            {obtenerNombreSistema(seccion.system_id)}
+                          </Typography>
+                        </TableCell>
+
+                        <TableCell sx={bodyCell}>
+                          <Typography fontWeight={800}>
+                            {seccion.nombre}
+                          </Typography>
+                        </TableCell>
+
+                        <TableCell sx={bodyCell}>
+                          <PrefijoChip systemId={seccion.system_id} />
+                        </TableCell>
+
+                        <TableCell sx={bodyCell}>
+                          <EstadoChip estado={seccion.estado} />
+                        </TableCell>
+
+                        <TableCell align="center" sx={bodyCell}>
+                          <AccionesSeccion seccion={seccion} />
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </TableContainer>
+
+              <PaginacionSecciones />
+            </Paper>
 
             {/* Móvil */}
             <Stack
@@ -529,7 +662,7 @@ function Secciones() {
                 display: { xs: "flex", md: "none" },
               }}
             >
-              {secciones.map((seccion) => (
+              {seccionesPaginadas.map((seccion) => (
                 <Paper
                   key={seccion.id}
                   variant="outlined"
@@ -602,6 +735,16 @@ function Secciones() {
                   </Stack>
                 </Paper>
               ))}
+
+              <Paper
+                sx={{
+                  borderRadius: 2,
+                  border: "1px solid #e5e7eb",
+                  overflow: "hidden",
+                }}
+              >
+                <PaginacionSecciones />
+              </Paper>
             </Stack>
           </>
         )}

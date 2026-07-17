@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+
 import {
   AppBar,
   Toolbar,
@@ -12,6 +13,7 @@ import {
   Divider,
   Chip,
   IconButton,
+  Tooltip,
   useMediaQuery,
   useTheme,
   Stack,
@@ -26,7 +28,6 @@ import CloseIcon from "@mui/icons-material/Close";
 import DashboardIcon from "@mui/icons-material/Dashboard";
 import QueryStatsIcon from "@mui/icons-material/QueryStats";
 import ConfirmationNumberIcon from "@mui/icons-material/ConfirmationNumber";
-import PersonAddIcon from "@mui/icons-material/PersonAdd";
 import AppsIcon from "@mui/icons-material/Apps";
 import CategoryIcon from "@mui/icons-material/Category";
 import GroupsIcon from "@mui/icons-material/Groups";
@@ -37,7 +38,12 @@ import { NavLink, Outlet, useNavigate } from "react-router-dom";
 
 import axiosCliente from "../services/axiosCliente";
 
-const drawerWidth = 270;
+const drawerExpandedWidth = 270;
+const drawerCollapsedWidth = 78;
+
+// Cuando ya tengas el logo, guárdalo en public/logo.png
+// y cambia esta línea por: const logoUrl = "/logo.png";
+const logoUrl = "";
 
 const normalizarRol = (role) => {
   return String(role || "")
@@ -93,6 +99,12 @@ function AdminLayout() {
   );
 
   const notificationsOpen = Boolean(notificationAnchorEl);
+
+  const drawerCollapsed = !isMobile && !desktopOpen;
+
+  const currentDrawerWidth = drawerCollapsed
+    ? drawerCollapsedWidth
+    : drawerExpandedWidth;
 
   const cerrarSesion = () => {
     localStorage.removeItem("TOKEN");
@@ -181,6 +193,7 @@ function AdminLayout() {
       await axiosCliente.patch(
         `/internal-notifications/${notification.id}/read`,
       );
+
       await cargarNotificaciones();
     } catch (error) {
       console.error("No se pudo marcar la notificación como leída", error);
@@ -259,11 +272,10 @@ function AdminLayout() {
       ],
       icon: <ConfirmationNumberIcon fontSize="small" />,
     },
-
     {
       label: "Agentes",
       path: "/agentes",
-      roles: ["Administrador", "admin", "Supervisor", "supervisor"],
+      roles: ["administrador", "admin", "supervisor"],
       icon: <GroupsIcon fontSize="small" />,
     },
     {
@@ -296,6 +308,222 @@ function AdminLayout() {
     item.roles.some((role) => rolesNormalizados.includes(normalizarRol(role))),
   );
 
+  const renderLogo = () => (
+    <Box
+      sx={{
+        width: drawerCollapsed ? 40 : 48,
+        height: drawerCollapsed ? 40 : 42,
+        borderRadius: 2,
+        bgcolor: "rgba(37, 99, 235, 0.28)",
+        border: "1px solid rgba(255,255,255,0.12)",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        overflow: "hidden",
+        flexShrink: 0,
+      }}
+    >
+      {logoUrl ? (
+        <Box
+          component="img"
+          src={logoUrl}
+          alt="Logo"
+          sx={{
+            width: "100%",
+            height: "100%",
+            objectFit: "contain",
+          }}
+        />
+      ) : (
+        <Typography
+          sx={{
+            color: "#ffffff",
+            fontWeight: 900,
+            fontSize: 15,
+            letterSpacing: 0.3,
+          }}
+        >
+          BT
+        </Typography>
+      )}
+    </Box>
+  );
+
+  const renderMenuItem = (item) => {
+    const itemButton = (
+      <ListItemButton
+        key={item.path}
+        component={NavLink}
+        to={item.path}
+        onClick={() => {
+          if (isMobile) cerrarSidebarMobile();
+        }}
+        sx={navStyle(drawerCollapsed)}
+      >
+        <Box
+          sx={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: drawerCollapsed ? "center" : "flex-start",
+            gap: drawerCollapsed ? 0 : 1.3,
+            minWidth: 0,
+            width: "100%",
+          }}
+        >
+          <Box
+            sx={{
+              width: 28,
+              height: 28,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              flexShrink: 0,
+            }}
+          >
+            {item.icon}
+          </Box>
+
+          {!drawerCollapsed && (
+            <ListItemText
+              primary={item.label}
+              primaryTypographyProps={{
+                fontSize: 14,
+                fontWeight: 700,
+                noWrap: true,
+              }}
+            />
+          )}
+        </Box>
+      </ListItemButton>
+    );
+
+    if (drawerCollapsed) {
+      return (
+        <Tooltip key={item.path} title={item.label} placement="right" arrow>
+          {itemButton}
+        </Tooltip>
+      );
+    }
+
+    return itemButton;
+  };
+
+  const drawerHeader = (
+    <Box
+      sx={{
+        minHeight: drawerCollapsed ? 118 : 74,
+        px: drawerCollapsed ? 1 : 2,
+        py: 1.2,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: drawerCollapsed ? "center" : "space-between",
+        gap: 1.2,
+      }}
+    >
+      {drawerCollapsed ? (
+        <Stack spacing={1.1} alignItems="center">
+          {!isMobile && (
+            <IconButton
+              onClick={toggleSidebar}
+              size="small"
+              sx={{
+                width: 40,
+                height: 40,
+                color: "#ffffff",
+                border: "1px solid rgba(255,255,255,0.16)",
+                bgcolor: "rgba(255,255,255,0.06)",
+                borderRadius: 2,
+                "&:hover": {
+                  bgcolor: "rgba(37,99,235,0.45)",
+                },
+              }}
+            >
+              <MenuIcon fontSize="small" />
+            </IconButton>
+          )}
+
+          {renderLogo()}
+        </Stack>
+      ) : (
+        <>
+          <Stack
+            direction="row"
+            spacing={1.3}
+            alignItems="center"
+            sx={{
+              minWidth: 0,
+              flex: 1,
+            }}
+          >
+            {renderLogo()}
+
+            <Box sx={{ minWidth: 0 }}>
+              <Typography
+                sx={{
+                  color: "#ffffff",
+                  fontWeight: 900,
+                  fontSize: 14,
+                  lineHeight: 1.2,
+                }}
+                noWrap
+              >
+                Business Ticket
+              </Typography>
+
+              <Typography
+                variant="caption"
+                sx={{
+                  color: "#94a3b8",
+                  display: "block",
+                  fontWeight: 700,
+                  lineHeight: 1.2,
+                }}
+                noWrap
+              >
+                Panel de soporte
+              </Typography>
+            </Box>
+          </Stack>
+
+          {!isMobile && (
+            <IconButton
+              onClick={toggleSidebar}
+              size="small"
+              sx={{
+                width: 40,
+                height: 40,
+                color: "#ffffff",
+                border: "1px solid rgba(255,255,255,0.16)",
+                bgcolor: "rgba(255,255,255,0.06)",
+                borderRadius: 2,
+                flexShrink: 0,
+                "&:hover": {
+                  bgcolor: "rgba(37,99,235,0.45)",
+                },
+              }}
+            >
+              <MenuIcon fontSize="small" />
+            </IconButton>
+          )}
+
+          {isMobile && (
+            <IconButton
+              onClick={cerrarSidebarMobile}
+              size="small"
+              sx={{
+                color: "#ffffff",
+                border: "1px solid rgba(255,255,255,0.15)",
+                flexShrink: 0,
+              }}
+            >
+              <CloseIcon fontSize="small" />
+            </IconButton>
+          )}
+        </>
+      )}
+    </Box>
+  );
+
   const drawerContent = (
     <Box
       sx={{
@@ -304,38 +532,7 @@ function AdminLayout() {
         flexDirection: "column",
       }}
     >
-      <Box
-        sx={{
-          p: 2.5,
-          display: "flex",
-          alignItems: "flex-start",
-          justifyContent: "space-between",
-          gap: 1,
-        }}
-      >
-        <Box sx={{ minWidth: 0 }}>
-          <Typography variant="h6" fontWeight={900} noWrap>
-            Business Ticket
-          </Typography>
-
-          <Typography variant="caption" sx={{ color: "#94a3b8" }}>
-            Panel de soporte
-          </Typography>
-        </Box>
-
-        {isMobile && (
-          <IconButton
-            onClick={cerrarSidebarMobile}
-            size="small"
-            sx={{
-              color: "#ffffff",
-              border: "1px solid rgba(255,255,255,0.15)",
-            }}
-          >
-            <CloseIcon fontSize="small" />
-          </IconButton>
-        )}
-      </Box>
+      {drawerHeader}
 
       <Divider sx={{ borderColor: "rgba(255,255,255,0.1)" }} />
 
@@ -363,70 +560,47 @@ function AdminLayout() {
       )}
 
       <Box sx={{ flex: 1, overflowY: "auto", py: 1 }}>
-        <List sx={{ px: 1.2 }}>
-          {menuVisible.map((item) => (
-            <ListItemButton
-              key={item.path}
-              component={NavLink}
-              to={item.path}
-              onClick={() => {
-                if (isMobile) cerrarSidebarMobile();
-              }}
-              sx={navStyle}
-            >
-              <Box
-                sx={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 1.3,
-                  minWidth: 0,
-                  width: "100%",
-                }}
-              >
-                <Box
-                  sx={{
-                    width: 28,
-                    height: 28,
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    flexShrink: 0,
-                  }}
-                >
-                  {item.icon}
-                </Box>
-
-                <ListItemText
-                  primary={item.label}
-                  primaryTypographyProps={{
-                    fontSize: 14,
-                    fontWeight: 700,
-                    noWrap: true,
-                  }}
-                />
-              </Box>
-            </ListItemButton>
-          ))}
+        <List sx={{ px: drawerCollapsed ? 1 : 1.2 }}>
+          {menuVisible.map((item) => renderMenuItem(item))}
         </List>
       </Box>
 
       <Divider sx={{ borderColor: "rgba(255,255,255,0.1)" }} />
 
-      <Box sx={{ p: 2 }}>
-        <Button
-          fullWidth
-          variant="contained"
-          color="error"
-          onClick={cerrarSesion}
-          startIcon={<LogoutIcon />}
-          sx={{
-            borderRadius: 2,
-            textTransform: "none",
-            fontWeight: 800,
-          }}
-        >
-          Cerrar sesión
-        </Button>
+      <Box sx={{ p: drawerCollapsed ? 1.2 : 2 }}>
+        {drawerCollapsed ? (
+          <Tooltip title="Cerrar sesión" placement="right" arrow>
+            <IconButton
+              onClick={cerrarSesion}
+              sx={{
+                width: "100%",
+                color: "#ffffff",
+                bgcolor: "#dc2626",
+                borderRadius: 2,
+                "&:hover": {
+                  bgcolor: "#b91c1c",
+                },
+              }}
+            >
+              <LogoutIcon fontSize="small" />
+            </IconButton>
+          </Tooltip>
+        ) : (
+          <Button
+            fullWidth
+            variant="contained"
+            color="error"
+            onClick={cerrarSesion}
+            startIcon={<LogoutIcon />}
+            sx={{
+              borderRadius: 2,
+              textTransform: "none",
+              fontWeight: 800,
+            }}
+          >
+            Cerrar sesión
+          </Button>
+        )}
       </Box>
     </Box>
   );
@@ -441,19 +615,28 @@ function AdminLayout() {
         overflow: "hidden",
       }}
     >
-      {!isMobile && desktopOpen && (
+      {!isMobile && (
         <Drawer
           variant="permanent"
           open
           sx={{
-            width: drawerWidth,
+            width: currentDrawerWidth,
             flexShrink: 0,
+            transition: theme.transitions.create("width", {
+              easing: theme.transitions.easing.sharp,
+              duration: theme.transitions.duration.shorter,
+            }),
             "& .MuiDrawer-paper": {
-              width: drawerWidth,
+              width: currentDrawerWidth,
               boxSizing: "border-box",
               background: "linear-gradient(180deg, #0f172a, #111827)",
               color: "#ffffff",
               borderRight: "none",
+              overflowX: "hidden",
+              transition: theme.transitions.create("width", {
+                easing: theme.transitions.easing.sharp,
+                duration: theme.transitions.duration.shorter,
+              }),
             },
           }}
         >
@@ -471,7 +654,7 @@ function AdminLayout() {
         sx={{
           display: { xs: "block", md: "none" },
           "& .MuiDrawer-paper": {
-            width: drawerWidth,
+            width: drawerExpandedWidth,
             maxWidth: "86vw",
             boxSizing: "border-box",
             background: "linear-gradient(180deg, #0f172a, #111827)",
@@ -521,20 +704,22 @@ function AdminLayout() {
                 minWidth: 0,
               }}
             >
-              <IconButton
-                onClick={toggleSidebar}
-                edge="start"
-                sx={{
-                  border: "1px solid #e5e7eb",
-                  borderRadius: 2,
-                  bgcolor: "#f8fafc",
-                  "&:hover": {
-                    bgcolor: "#eef2ff",
-                  },
-                }}
-              >
-                <MenuIcon />
-              </IconButton>
+              {isMobile && (
+                <IconButton
+                  onClick={toggleSidebar}
+                  edge="start"
+                  sx={{
+                    border: "1px solid #e5e7eb",
+                    borderRadius: 2,
+                    bgcolor: "#f8fafc",
+                    "&:hover": {
+                      bgcolor: "#eef2ff",
+                    },
+                  }}
+                >
+                  <MenuIcon />
+                </IconButton>
+              )}
 
               <Box sx={{ minWidth: 0 }}>
                 <Typography
@@ -785,12 +970,13 @@ function AdminLayout() {
   );
 }
 
-const navStyle = {
+const navStyle = (collapsed) => ({
   color: "#cbd5e1",
   borderRadius: 2.2,
   minHeight: 46,
   mb: 0.75,
-  px: 1.5,
+  px: collapsed ? 1 : 1.5,
+  justifyContent: collapsed ? "center" : "flex-start",
   transition: "all 0.18s ease",
   "&.active": {
     backgroundColor: "#2563eb",
@@ -801,6 +987,6 @@ const navStyle = {
     backgroundColor: "rgba(37,99,235,0.18)",
     color: "#ffffff",
   },
-};
+});
 
 export default AdminLayout;

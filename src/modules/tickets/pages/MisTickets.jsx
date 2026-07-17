@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
+
 import axiosCliente from "../../../services/axiosCliente";
-import Swal from "sweetalert2";
 import NuevoTicketModal from "../components/NuevoTicketModal";
 
 import {
@@ -10,6 +10,7 @@ import {
   Button,
   Chip,
   CircularProgress,
+  Divider,
   Grid,
   MenuItem,
   Paper,
@@ -19,19 +20,16 @@ import {
   TableCell,
   TableContainer,
   TableHead,
+  TablePagination,
   TableRow,
   TextField,
   Typography,
-  Divider,
 } from "@mui/material";
 
 const API_ORIGIN = "https://api.thebusinessticket.com";
 
 function MisTickets() {
   const navigate = useNavigate();
-
-  const usuario = JSON.parse(localStorage.getItem("USUARIO") || "null");
-  const roles = usuario?.roles || [];
 
   const [tickets, setTickets] = useState([]);
   const [busqueda, setBusqueda] = useState("");
@@ -40,9 +38,16 @@ function MisTickets() {
   const [error, setError] = useState("");
   const [openNuevoTicket, setOpenNuevoTicket] = useState(false);
 
+  const [page, setPage] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(10);
+
   useEffect(() => {
     cargarTickets();
   }, []);
+
+  useEffect(() => {
+    setPage(0);
+  }, [busqueda, estadoFiltro]);
 
   const cargarTickets = async () => {
     setLoading(true);
@@ -62,112 +67,6 @@ function MisTickets() {
     } finally {
       setLoading(false);
     }
-  };
-
-  const eliminarTicket = async (ticket) => {
-    const confirmar = await Swal.fire({
-      title: "Eliminar ticket",
-      text: `¿Seguro que deseas eliminar/cancelar el ticket ${
-        ticket.folio || `#${ticket.id}`
-      }?`,
-      icon: "warning",
-      showCancelButton: true,
-      confirmButtonText: "Sí, eliminar",
-      cancelButtonText: "Cancelar",
-      confirmButtonColor: "#d33",
-    });
-
-    if (!confirmar.isConfirmed) return;
-
-    try {
-      await axiosCliente.delete(`/tickets/${ticket.id}`);
-
-      await Swal.fire({
-        title: "Ticket eliminado",
-        text: "El ticket fue eliminado correctamente.",
-        icon: "success",
-        timer: 1800,
-        showConfirmButton: false,
-      });
-
-      cargarTickets();
-    } catch (error) {
-      console.log("ERROR ELIMINAR TICKET:", error.response?.data || error);
-
-      await Swal.fire({
-        title: "Error",
-        text:
-          error.response?.data?.message ||
-          "No se pudo eliminar o cancelar el ticket",
-        icon: "error",
-      });
-    }
-  };
-
-  const tomarTicket = async (ticket) => {
-    try {
-      await axiosCliente.post(`/tickets/${ticket.id}/take`);
-
-      await Swal.fire({
-        title: "Ticket tomado",
-        text: "El ticket fue asignado correctamente.",
-        icon: "success",
-        timer: 1600,
-        showConfirmButton: false,
-      });
-
-      cargarTickets();
-    } catch (error) {
-      await Swal.fire({
-        title: "Error",
-        text: error.response?.data?.message || "No se pudo tomar el ticket",
-        icon: "error",
-      });
-    }
-  };
-
-  const resolverTicket = async (ticket) => {
-    const confirmar = await Swal.fire({
-      title: "Resolver ticket",
-      text: `¿Seguro que deseas marcar como resuelto el ticket ${
-        ticket.folio || `#${ticket.id}`
-      }?`,
-      icon: "question",
-      showCancelButton: true,
-      confirmButtonText: "Sí, resolver",
-      cancelButtonText: "Cancelar",
-    });
-
-    if (!confirmar.isConfirmed) return;
-
-    try {
-      await axiosCliente.post(`/tickets/${ticket.id}/resolve`);
-
-      await Swal.fire({
-        title: "Ticket resuelto",
-        text: "El ticket fue cerrado correctamente.",
-        icon: "success",
-        timer: 1600,
-        showConfirmButton: false,
-      });
-
-      cargarTickets();
-    } catch (error) {
-      await Swal.fire({
-        title: "Error",
-        text: error.response?.data?.message || "No se pudo resolver el ticket",
-        icon: "error",
-      });
-    }
-  };
-
-  const tieneRol = (...permitidos) => {
-    const roleDirecto = usuario?.role;
-
-    return (
-      permitidos.includes(roleDirecto) ||
-      permitidos.some((rol) => roles.includes(rol))
-    );
   };
 
   const nombreEstado = (ticket) =>
@@ -223,16 +122,21 @@ function MisTickets() {
 
     return `${ticket.responsable.name || ""} ${
       ticket.responsable.apellido_paterno || ""
-    } ${ticket.responsable.apellido_materno || ""}`.trim();
+    } ${ticket.responsable.apellido_materno || ""}`
+      .trim()
+      .replace(/\s+/g, " ");
   };
 
   const colorEstado = (ticket) => {
     const estado = String(nombreEstado(ticket)).toLowerCase();
 
-    if (estado.includes("cerr") || estado.includes("resuelto"))
+    if (estado.includes("cerr") || estado.includes("resuelto")) {
       return "success";
+    }
 
-    if (estado.includes("proceso")) return "warning";
+    if (estado.includes("proceso")) {
+      return "warning";
+    }
 
     if (
       estado.includes("abiert") ||
@@ -243,32 +147,6 @@ function MisTickets() {
     }
 
     return "default";
-  };
-
-  const puedeEliminar = (ticket) => {
-    if (tieneRol("admin", "Administrador")) return true;
-
-    return (
-      tieneRol("client", "Cliente") &&
-      Number(ticket.status_id) === 1
-    );
-  };
-
-  const puedeTomar = (ticket) => {
-    return (
-      tieneRol("admin", "agent", "Administrador", "Agente") &&
-      !ticket.responsable_id &&
-      Number(ticket.status_id) !== 3
-    );
-  };
-
-  const puedeResolver = (ticket) => {
-    return (
-      tieneRol("admin", "agent", "Administrador", "Agente") &&
-      Number(ticket.status_id) !== 3 &&
-      (tieneRol("admin", "Administrador") ||
-        Number(ticket.responsable_id) === Number(usuario?.id))
-    );
   };
 
   const ticketsFiltrados = useMemo(() => {
@@ -299,78 +177,38 @@ function MisTickets() {
     });
   }, [tickets, busqueda, estadoFiltro]);
 
-  const BotonesAccion = ({ ticket, compacto = false }) => (
-    <Stack
-      direction={compacto ? "column" : "row"}
-      spacing={1}
-      justifyContent="flex-end"
-      alignItems={compacto ? "stretch" : "center"}
+  const ticketsPaginados = useMemo(() => {
+    const start = page * rowsPerPage;
+    const end = start + rowsPerPage;
+
+    return ticketsFiltrados.slice(start, end);
+  }, [ticketsFiltrados, page, rowsPerPage]);
+
+  const handleChangePage = (event, newPage) => {
+    setPage(newPage);
+  };
+
+  const handleChangeRowsPerPage = (event) => {
+    setRowsPerPage(Number(event.target.value));
+    setPage(0);
+  };
+
+  const BotonVer = ({ ticket, compacto = false }) => (
+    <Button
+      size="small"
+      variant="outlined"
+      fullWidth={compacto}
+      onClick={() => navigate(`/tickets/${ticket.id}`)}
+      sx={{
+        borderRadius: 2,
+        textTransform: "none",
+        fontWeight: 800,
+        minWidth: compacto ? "100%" : 82,
+        whiteSpace: "nowrap",
+      }}
     >
-      <Button
-        size="small"
-        variant="outlined"
-        onClick={() => navigate(`/tickets/${ticket.id}`)}
-        sx={{
-          borderRadius: 2,
-          textTransform: "none",
-          fontWeight: 800,
-          minWidth: compacto ? "100%" : 72,
-        }}
-      >
-        Ver
-      </Button>
-
-      {puedeTomar(ticket) && (
-        <Button
-          size="small"
-          variant="outlined"
-          color="warning"
-          onClick={() => tomarTicket(ticket)}
-          sx={{
-            borderRadius: 2,
-            textTransform: "none",
-            fontWeight: 800,
-            minWidth: compacto ? "100%" : 72,
-          }}
-        >
-          Tomar
-        </Button>
-      )}
-
-      {puedeResolver(ticket) && (
-        <Button
-          size="small"
-          variant="outlined"
-          color="success"
-          onClick={() => resolverTicket(ticket)}
-          sx={{
-            borderRadius: 2,
-            textTransform: "none",
-            fontWeight: 800,
-            minWidth: compacto ? "100%" : 82,
-          }}
-        >
-          Resolver
-        </Button>
-      )}
-
-      {puedeEliminar(ticket) && (
-        <Button
-          size="small"
-          variant="outlined"
-          color="error"
-          onClick={() => eliminarTicket(ticket)}
-          sx={{
-            borderRadius: 2,
-            textTransform: "none",
-            fontWeight: 800,
-            minWidth: compacto ? "100%" : 82,
-          }}
-        >
-          Eliminar
-        </Button>
-      )}
-    </Stack>
+      Ver
+    </Button>
   );
 
   const LogoSistema = ({ ticket, size = 42 }) => {
@@ -419,6 +257,31 @@ function MisTickets() {
       />
     );
   };
+
+  const PaginacionTickets = () => (
+    <TablePagination
+      component="div"
+      count={ticketsFiltrados.length}
+      page={page}
+      rowsPerPage={rowsPerPage}
+      onPageChange={handleChangePage}
+      onRowsPerPageChange={handleChangeRowsPerPage}
+      rowsPerPageOptions={[5, 10, 25]}
+      labelRowsPerPage="Filas por página"
+      labelDisplayedRows={({ from, to, count }) =>
+        `${from}-${to} de ${count}`
+      }
+      sx={{
+        borderTop: "1px solid #e5e7eb",
+        bgcolor: "#ffffff",
+        ".MuiTablePagination-toolbar": {
+          flexWrap: { xs: "wrap", sm: "nowrap" },
+          justifyContent: { xs: "center", sm: "flex-end" },
+          rowGap: 1,
+        },
+      }}
+    />
+  );
 
   if (loading) {
     return (
@@ -512,102 +375,208 @@ function MisTickets() {
           </Grid>
         </Grid>
 
+        <Stack
+          direction={{ xs: "column", sm: "row" }}
+          justifyContent="space-between"
+          alignItems={{ xs: "stretch", sm: "center" }}
+          spacing={1}
+          sx={{ mb: 2 }}
+        >
+          <Box>
+            <Typography fontWeight={900} color="#0f172a">
+              Lista de tickets
+            </Typography>
+
+            <Typography variant="body2" color="text.secondary">
+              Mostrando {ticketsFiltrados.length} resultado(s).
+            </Typography>
+          </Box>
+
+          <Chip
+            label={`${ticketsFiltrados.length} ticket(s)`}
+            color="primary"
+            variant="outlined"
+            sx={{
+              fontWeight: 800,
+              alignSelf: { xs: "flex-start", sm: "center" },
+            }}
+          />
+        </Stack>
+
         {ticketsFiltrados.length > 0 ? (
           <>
             {/* Escritorio */}
-            <TableContainer
+            <Paper
               sx={{
                 display: { xs: "none", md: "block" },
                 border: "1px solid #e5e7eb",
                 borderRadius: 2,
-                overflowX: "auto",
+                overflow: "hidden",
+                boxShadow: "none",
               }}
             >
-              <Table size="small">
-                <TableHead sx={{ bgcolor: "#f8fafc" }}>
-                  <TableRow>
-                    <TableCell sx={headCell}>Folio</TableCell>
-                    <TableCell sx={headCell}>Problema</TableCell>
-                    <TableCell sx={headCell}>Sección</TableCell>
-                    <TableCell sx={headCell}>Prioridad / Estado</TableCell>
-                    <TableCell sx={headCell}>Agente</TableCell>
-                    <TableCell sx={headCell} align="right">
-                      Acciones
-                    </TableCell>
-                  </TableRow>
-                </TableHead>
-
-                <TableBody>
-                  {ticketsFiltrados.map((ticket) => (
-                    <TableRow key={ticket.id} hover>
-                      <TableCell>
-                        <Stack
-                          direction="row"
-                          spacing={1.5}
-                          alignItems="center"
-                        >
-                          <LogoSistema ticket={ticket} />
-
-                          <Box>
-                            <Typography fontWeight={900} color="primary">
-                              {ticket.folio_prefijo || "TCK"}
-                            </Typography>
-
-                            <Typography variant="caption">
-                              {ticket.folio_numero || ticket.id}
-                            </Typography>
-                          </Box>
-                        </Stack>
+              <TableContainer
+                sx={{
+                  maxHeight: 460,
+                  overflowX: "auto",
+                  overflowY: "auto",
+                }}
+              >
+                <Table
+                  size="small"
+                  stickyHeader
+                  sx={{
+                    tableLayout: "fixed",
+                    minWidth: 980,
+                    width: "100%",
+                  }}
+                >
+                  <TableHead>
+                    <TableRow>
+                      <TableCell sx={{ ...headCell, width: 145 }}>
+                        Folio
                       </TableCell>
 
-                      <TableCell>
-                        <Typography fontWeight={700}>
-                          {ticket.titulo}
-                        </Typography>
-
-                        <Chip
-                          size="small"
-                          label={nombreSistema(ticket)}
-                          sx={{
-                            mt: 0.5,
-                            fontWeight: 700,
-                            borderRadius: 2,
-                          }}
-                        />
+                      <TableCell sx={{ ...headCell, width: 280 }}>
+                        Problema
                       </TableCell>
 
-                      <TableCell>
-                        {ticket.seccion_nombre || nombreProblema(ticket)}
+                      <TableCell sx={{ ...headCell, width: 170 }}>
+                        Sección
                       </TableCell>
 
-                      <TableCell>
-                        <Stack spacing={0.7}>
-                          <Typography variant="body2">
-                            {nombrePrioridad(ticket)}
+                      <TableCell sx={{ ...headCell, width: 180 }}>
+                        Prioridad / Estado
+                      </TableCell>
+
+                      <TableCell sx={{ ...headCell, width: 170 }}>
+                        Agente
+                      </TableCell>
+
+                      <TableCell
+                        sx={{ ...headCell, width: 95 }}
+                        align="center"
+                      >
+                        Acciones
+                      </TableCell>
+                    </TableRow>
+                  </TableHead>
+
+                  <TableBody>
+                    {ticketsPaginados.map((ticket) => (
+                      <TableRow key={ticket.id} hover>
+                        <TableCell sx={bodyCell}>
+                          <Stack
+                            direction="row"
+                            spacing={1.2}
+                            alignItems="center"
+                            sx={{ minWidth: 0 }}
+                          >
+                            <LogoSistema ticket={ticket} size={36} />
+
+                            <Box sx={{ minWidth: 0 }}>
+                              <Typography
+                                fontWeight={900}
+                                color="primary"
+                                sx={{
+                                  lineHeight: 1.2,
+                                  wordBreak: "break-word",
+                                }}
+                              >
+                                {ticket.folio_prefijo || "TCK"}
+                              </Typography>
+
+                              <Typography
+                                variant="caption"
+                                sx={{
+                                  wordBreak: "break-word",
+                                }}
+                              >
+                                {ticket.folio_numero || ticket.id}
+                              </Typography>
+                            </Box>
+                          </Stack>
+                        </TableCell>
+
+                        <TableCell sx={bodyCell}>
+                          <Typography
+                            fontWeight={700}
+                            sx={{
+                              lineHeight: 1.35,
+                              wordBreak: "break-word",
+                            }}
+                          >
+                            {ticket.titulo}
                           </Typography>
 
                           <Chip
                             size="small"
-                            label={nombreEstado(ticket)}
-                            color={colorEstado(ticket)}
+                            label={nombreSistema(ticket)}
                             sx={{
-                              width: "fit-content",
-                              fontWeight: 800,
+                              mt: 0.7,
+                              fontWeight: 700,
+                              borderRadius: 2,
+                              maxWidth: "100%",
+                              "& .MuiChip-label": {
+                                overflow: "hidden",
+                                textOverflow: "ellipsis",
+                              },
                             }}
                           />
-                        </Stack>
-                      </TableCell>
+                        </TableCell>
 
-                      <TableCell>{nombreAgente(ticket)}</TableCell>
+                        <TableCell sx={bodyCell}>
+                          {ticket.seccion_nombre || nombreProblema(ticket)}
+                        </TableCell>
 
-                      <TableCell align="right">
-                        <BotonesAccion ticket={ticket} />
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </TableContainer>
+                        <TableCell sx={bodyCell}>
+                          <Stack spacing={0.7}>
+                            <Typography
+                              variant="body2"
+                              sx={{
+                                wordBreak: "break-word",
+                                lineHeight: 1.35,
+                              }}
+                            >
+                              {nombrePrioridad(ticket)}
+                            </Typography>
+
+                            <Chip
+                              size="small"
+                              label={nombreEstado(ticket)}
+                              color={colorEstado(ticket)}
+                              sx={{
+                                width: "fit-content",
+                                fontWeight: 800,
+                                maxWidth: "100%",
+                              }}
+                            />
+                          </Stack>
+                        </TableCell>
+
+                        <TableCell sx={bodyCell}>
+                          <Typography
+                            variant="body2"
+                            sx={{
+                              wordBreak: "break-word",
+                              lineHeight: 1.35,
+                            }}
+                          >
+                            {nombreAgente(ticket)}
+                          </Typography>
+                        </TableCell>
+
+                        <TableCell align="center" sx={bodyCell}>
+                          <BotonVer ticket={ticket} />
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </TableContainer>
+
+              <PaginacionTickets />
+            </Paper>
 
             {/* Móvil */}
             <Stack
@@ -616,7 +585,7 @@ function MisTickets() {
                 display: { xs: "flex", md: "none" },
               }}
             >
-              {ticketsFiltrados.map((ticket) => (
+              {ticketsPaginados.map((ticket) => (
                 <Paper
                   key={ticket.id}
                   variant="outlined"
@@ -632,11 +601,7 @@ function MisTickets() {
                       <LogoSistema ticket={ticket} size={48} />
 
                       <Box sx={{ minWidth: 0, flex: 1 }}>
-                        <Typography
-                          fontWeight={900}
-                          color="primary"
-                          noWrap
-                        >
+                        <Typography fontWeight={900} color="primary" noWrap>
                           {obtenerFolio(ticket)}
                         </Typography>
 
@@ -696,10 +661,20 @@ function MisTickets() {
                       </Grid>
                     </Grid>
 
-                    <BotonesAccion ticket={ticket} compacto />
+                    <BotonVer ticket={ticket} compacto />
                   </Stack>
                 </Paper>
               ))}
+
+              <Paper
+                sx={{
+                  borderRadius: 2,
+                  border: "1px solid #e5e7eb",
+                  overflow: "hidden",
+                }}
+              >
+                <PaginacionTickets />
+              </Paper>
             </Stack>
           </>
         ) : (
@@ -759,6 +734,14 @@ const headCell = {
   fontWeight: 900,
   color: "#334155",
   whiteSpace: "nowrap",
+  bgcolor: "#f8fafc",
+  borderBottom: "1px solid #e5e7eb",
+};
+
+const bodyCell = {
+  verticalAlign: "top",
+  wordBreak: "break-word",
+  overflowWrap: "anywhere",
 };
 
 export default MisTickets;

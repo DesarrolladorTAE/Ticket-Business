@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import axiosCliente from "../../../services/axiosCliente";
 
 import {
@@ -9,15 +9,26 @@ import {
   CircularProgress,
   Divider,
   Grid,
+  IconButton,
   MenuItem,
   Paper,
   Stack,
+  TablePagination,
   TextField,
+  Tooltip,
   Typography,
 } from "@mui/material";
 
+import DeleteIcon from "@mui/icons-material/Delete";
+
 const normalizarRol = (rol) => {
   return String(rol || "")
+    .trim()
+    .toLowerCase();
+};
+
+const normalizarTexto = (valor) => {
+  return String(valor || "")
     .trim()
     .toLowerCase();
 };
@@ -60,6 +71,11 @@ function GruposSoporte() {
   });
 
   const [agenteSeleccionado, setAgenteSeleccionado] = useState({});
+  const [busqueda, setBusqueda] = useState("");
+
+  const [page, setPage] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(6);
+
   const [loading, setLoading] = useState(true);
   const [cargando, setCargando] = useState(false);
   const [error, setError] = useState("");
@@ -70,6 +86,10 @@ function GruposSoporte() {
     obtenerDatos();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+    setPage(0);
+  }, [busqueda, rowsPerPage, grupos.length]);
 
   const normalizarRespuesta = (res) => {
     return res?.data?.data || res?.data || [];
@@ -246,6 +266,72 @@ function GruposSoporte() {
     return nombre ? nombre.charAt(0).toUpperCase() : "A";
   };
 
+  const gruposFiltrados = useMemo(() => {
+    const texto = normalizarTexto(busqueda);
+
+    if (!texto) {
+      return grupos;
+    }
+
+    return grupos.filter((grupo) => {
+      const agentesGrupo = (grupo.agents || [])
+        .map((agente) => `${nombreAgente(agente)} ${agente.email || ""}`)
+        .join(" ");
+
+      const baseBusqueda = [
+        grupo.nombre,
+        grupo.descripcion,
+        grupo.id,
+        agentesGrupo,
+      ]
+        .join(" ")
+        .toLowerCase();
+
+      return baseBusqueda.includes(texto);
+    });
+  }, [grupos, busqueda]);
+
+  const gruposPaginados = useMemo(() => {
+    const start = page * rowsPerPage;
+    const end = start + rowsPerPage;
+
+    return gruposFiltrados.slice(start, end);
+  }, [gruposFiltrados, page, rowsPerPage]);
+
+  const handleChangePage = (event, newPage) => {
+    setPage(newPage);
+  };
+
+  const handleChangeRowsPerPage = (event) => {
+    setRowsPerPage(Number(event.target.value));
+    setPage(0);
+  };
+
+  const PaginacionGrupos = () => (
+    <TablePagination
+      component="div"
+      count={gruposFiltrados.length}
+      page={page}
+      rowsPerPage={rowsPerPage}
+      onPageChange={handleChangePage}
+      onRowsPerPageChange={handleChangeRowsPerPage}
+      rowsPerPageOptions={[4, 6, 10, 25]}
+      labelRowsPerPage="Grupos por página"
+      labelDisplayedRows={({ from, to, count }) =>
+        `${from}-${to} de ${count}`
+      }
+      sx={{
+        borderTop: "1px solid #e5e7eb",
+        bgcolor: "#ffffff",
+        ".MuiTablePagination-toolbar": {
+          flexWrap: { xs: "wrap", sm: "nowrap" },
+          justifyContent: { xs: "center", sm: "flex-end" },
+          rowGap: 1,
+        },
+      }}
+    />
+  );
+
   if (loading) {
     return (
       <Box display="flex" justifyContent="center" mt={6}>
@@ -316,7 +402,6 @@ function GruposSoporte() {
             boxShadow: 1,
             mb: 4,
             border: "1px solid #e5e7eb",
-            maxWidth: 1000,
           }}
         >
           <Box mb={2}>
@@ -401,258 +486,346 @@ function GruposSoporte() {
           </Typography>
         </Paper>
       ) : (
-        <Grid container spacing={{ xs: 2, md: 3 }} alignItems="stretch">
-          {grupos.map((grupo) => (
-            <Grid item xs={12} lg={6} key={grupo.id}>
-              <Paper
+        <Paper
+          sx={{
+            p: { xs: 1.5, sm: 2, md: 3 },
+            borderRadius: 3,
+            boxShadow: 1,
+            border: "1px solid #e5e7eb",
+          }}
+        >
+          <Stack spacing={2}>
+            <Stack
+              direction={{ xs: "column", md: "row" }}
+              justifyContent="space-between"
+              alignItems={{ xs: "stretch", md: "center" }}
+              spacing={1.5}
+            >
+              <Box>
+                <Typography fontWeight={900} sx={{ fontSize: { xs: 18, md: 20 } }}>
+                  Grupos registrados
+                </Typography>
+
+                <Typography variant="body2" color="text.secondary">
+                  Mostrando {gruposFiltrados.length} resultado(s).
+                </Typography>
+              </Box>
+
+              <Chip
+                label={`${gruposFiltrados.length} grupo(s)`}
+                color="primary"
+                variant="outlined"
                 sx={{
-                  height: "100%",
-                  p: { xs: 1.5, sm: 2, md: 2.5 },
+                  fontWeight: 800,
+                  alignSelf: { xs: "flex-start", md: "center" },
+                }}
+              />
+            </Stack>
+
+            <TextField
+              fullWidth
+              size="small"
+              label="Buscar grupo"
+              value={busqueda}
+              onChange={(event) => setBusqueda(event.target.value)}
+              placeholder="Nombre, descripción, ID, agente o correo"
+            />
+
+            {gruposFiltrados.length === 0 ? (
+              <Box
+                sx={{
+                  py: 5,
+                  textAlign: "center",
+                  border: "1px dashed #cbd5e1",
                   borderRadius: 3,
-                  boxShadow: 1,
-                  border: "1px solid #e5e7eb",
-                  display: "flex",
-                  flexDirection: "column",
-                  gap: 2,
-                  overflow: "hidden",
-                  transition: "0.2s ease",
-                  "&:hover": {
-                    boxShadow: { xs: 1, md: 4 },
-                    transform: { xs: "none", md: "translateY(-2px)" },
-                  },
+                  bgcolor: "#f8fafc",
+                  color: "text.secondary",
                 }}
               >
-                <Box>
-                  <Stack
-                    direction="row"
-                    justifyContent="space-between"
-                    alignItems="flex-start"
-                    spacing={1.5}
-                    mb={1}
-                  >
-                    <Box sx={{ minWidth: 0, flex: 1 }}>
-                      <Typography
-                        fontWeight={900}
+                <Typography fontWeight={800}>
+                  No hay grupos que coincidan con la búsqueda.
+                </Typography>
+
+                <Typography variant="body2" mt={0.5}>
+                  Limpia el buscador para ver todos los grupos.
+                </Typography>
+              </Box>
+            ) : (
+              <>
+                <Grid container spacing={{ xs: 2, md: 3 }} alignItems="stretch">
+                  {gruposPaginados.map((grupo) => (
+                    <Grid item xs={12} lg={6} key={grupo.id}>
+                      <Paper
                         sx={{
-                          fontSize: { xs: 17, md: 18 },
-                          lineHeight: 1.25,
-                          wordBreak: "break-word",
+                          height: "100%",
+                          p: { xs: 1.5, sm: 2, md: 2.5 },
+                          borderRadius: 3,
+                          boxShadow: "none",
+                          border: "1px solid #e5e7eb",
+                          display: "flex",
+                          flexDirection: "column",
+                          gap: 2,
+                          overflow: "hidden",
+                          bgcolor: "#ffffff",
                         }}
                       >
-                        {grupo.nombre}
-                      </Typography>
-
-                      <Typography
-                        variant="caption"
-                        color="text.secondary"
-                        display="block"
-                        mt={0.4}
-                      >
-                        ID: {grupo.id}
-                      </Typography>
-                    </Box>
-
-                    <Chip
-                      size="small"
-                      label={`${grupo.agents?.length || 0} agentes`}
-                      color="primary"
-                      sx={{
-                        fontWeight: 800,
-                        flexShrink: 0,
-                      }}
-                    />
-                  </Stack>
-
-                  <Typography
-                    variant="body2"
-                    color="text.secondary"
-                    sx={{
-                      lineHeight: 1.55,
-                      display: "-webkit-box",
-                      WebkitLineClamp: { xs: 2, md: 3 },
-                      WebkitBoxOrient: "vertical",
-                      overflow: "hidden",
-                    }}
-                  >
-                    {grupo.descripcion || "Sin descripción"}
-                  </Typography>
-                </Box>
-
-                <Divider />
-
-                {puedeGestionar && (
-                  <>
-                    <Box>
-                      <Typography fontWeight={900} mb={1} sx={{ fontSize: 14 }}>
-                        Agregar agente
-                      </Typography>
-
-                      <Grid container spacing={1.5} alignItems="center">
-                        <Grid item xs={12} md={8}>
-                          <TextField
-                            select
-                            fullWidth
-                            size="small"
-                            label="Selecciona un agente"
-                            value={agenteSeleccionado[grupo.id] || ""}
-                            onChange={(e) =>
-                              cambiarAgenteGrupo(grupo.id, e.target.value)
-                            }
-                            disabled={agentes.length === 0}
-                          >
-                            <MenuItem value="">Selecciona un agente</MenuItem>
-
-                            {agentes.map((agente) => (
-                              <MenuItem key={agente.id} value={agente.id}>
-                                {nombreAgente(agente)}
-                              </MenuItem>
-                            ))}
-                          </TextField>
-                        </Grid>
-
-                        <Grid item xs={12} md={4}>
-                          <Button
-                            fullWidth
-                            variant="outlined"
-                            onClick={() => agregarAgente(grupo.id)}
-                            disabled={agentes.length === 0}
-                            sx={{
-                              borderRadius: 2,
-                              textTransform: "none",
-                              fontWeight: 800,
-                              minHeight: 40,
-                            }}
-                          >
-                            Agregar
-                          </Button>
-                        </Grid>
-                      </Grid>
-                    </Box>
-
-                    <Divider />
-                  </>
-                )}
-
-                <Box sx={{ flex: 1, minHeight: 0 }}>
-                  <Typography fontWeight={900} mb={1} sx={{ fontSize: 14 }}>
-                    Agentes del grupo
-                  </Typography>
-
-                  {grupo.agents && grupo.agents.length > 0 ? (
-                    <Stack
-                      spacing={1}
-                      sx={{
-                        maxHeight: { xs: 260, md: 310 },
-                        overflowY: "auto",
-                        pr: 0.3,
-                      }}
-                    >
-                      {grupo.agents.map((agente) => (
-                        <Box
-                          key={agente.id}
-                          sx={{
-                            display: "flex",
-                            flexDirection: { xs: "column", sm: "row" },
-                            justifyContent: "space-between",
-                            alignItems: { xs: "stretch", sm: "center" },
-                            gap: 1.2,
-                            border: "1px solid #e5e7eb",
-                            borderRadius: 2.5,
-                            p: 1.2,
-                            bgcolor: "#f8fafc",
-                          }}
-                        >
+                        <Box>
                           <Stack
                             direction="row"
-                            spacing={1.2}
-                            alignItems="center"
-                            sx={{ minWidth: 0 }}
+                            justifyContent="space-between"
+                            alignItems="flex-start"
+                            spacing={1.5}
+                            mb={1}
                           >
-                            <Box
-                              sx={{
-                                width: 34,
-                                height: 34,
-                                borderRadius: "50%",
-                                bgcolor: "#dbeafe",
-                                color: "#1d4ed8",
-                                display: "flex",
-                                alignItems: "center",
-                                justifyContent: "center",
-                                fontWeight: 900,
-                                flexShrink: 0,
-                              }}
-                            >
-                              {inicialAgente(agente)}
-                            </Box>
-
-                            <Box sx={{ minWidth: 0 }}>
+                            <Box sx={{ minWidth: 0, flex: 1 }}>
                               <Typography
-                                variant="body2"
-                                fontWeight={800}
+                                fontWeight={900}
                                 sx={{
+                                  fontSize: { xs: 17, md: 18 },
+                                  lineHeight: 1.25,
                                   wordBreak: "break-word",
-                                  lineHeight: 1.3,
                                 }}
                               >
-                                {nombreAgente(agente)}
+                                {grupo.nombre}
                               </Typography>
 
-                              {agente.email && (
-                                <Typography
-                                  variant="caption"
-                                  color="text.secondary"
-                                  noWrap
-                                  display="block"
-                                >
-                                  {agente.email}
-                                </Typography>
-                              )}
+                              <Typography
+                                variant="caption"
+                                color="text.secondary"
+                                display="block"
+                                mt={0.4}
+                              >
+                                ID: {grupo.id}
+                              </Typography>
                             </Box>
-                          </Stack>
 
-                          {puedeGestionar && (
-                            <Button
+                            <Chip
                               size="small"
-                              color="error"
-                              variant="outlined"
-                              onClick={() =>
-                                quitarAgente(grupo.id, agente.id)
-                              }
-                              fullWidth
+                              label={`${grupo.agents?.length || 0} agentes`}
+                              color="primary"
                               sx={{
-                                borderRadius: 2,
-                                textTransform: "none",
                                 fontWeight: 800,
-                                maxWidth: { xs: "100%", sm: 100 },
                                 flexShrink: 0,
                               }}
+                            />
+                          </Stack>
+
+                          <Typography
+                            variant="body2"
+                            color="text.secondary"
+                            sx={{
+                              lineHeight: 1.55,
+                              display: "-webkit-box",
+                              WebkitLineClamp: { xs: 2, md: 3 },
+                              WebkitBoxOrient: "vertical",
+                              overflow: "hidden",
+                            }}
+                          >
+                            {grupo.descripcion || "Sin descripción"}
+                          </Typography>
+                        </Box>
+
+                        <Divider />
+
+                        {puedeGestionar && (
+                          <>
+                            <Box>
+                              <Typography
+                                fontWeight={900}
+                                mb={1}
+                                sx={{ fontSize: 14 }}
+                              >
+                                Agregar agente
+                              </Typography>
+
+                              <Grid container spacing={1.5} alignItems="center">
+                                <Grid item xs={12} md={8}>
+                                  <TextField
+                                    select
+                                    fullWidth
+                                    size="small"
+                                    label="Selecciona un agente"
+                                    value={agenteSeleccionado[grupo.id] || ""}
+                                    onChange={(e) =>
+                                      cambiarAgenteGrupo(
+                                        grupo.id,
+                                        e.target.value,
+                                      )
+                                    }
+                                    disabled={agentes.length === 0}
+                                  >
+                                    <MenuItem value="">
+                                      Selecciona un agente
+                                    </MenuItem>
+
+                                    {agentes.map((agente) => (
+                                      <MenuItem key={agente.id} value={agente.id}>
+                                        {nombreAgente(agente)}
+                                      </MenuItem>
+                                    ))}
+                                  </TextField>
+                                </Grid>
+
+                                <Grid item xs={12} md={4}>
+                                  <Button
+                                    fullWidth
+                                    variant="outlined"
+                                    onClick={() => agregarAgente(grupo.id)}
+                                    disabled={agentes.length === 0}
+                                    sx={{
+                                      borderRadius: 2,
+                                      textTransform: "none",
+                                      fontWeight: 800,
+                                      minHeight: 40,
+                                    }}
+                                  >
+                                    Agregar
+                                  </Button>
+                                </Grid>
+                              </Grid>
+                            </Box>
+
+                            <Divider />
+                          </>
+                        )}
+
+                        <Box sx={{ flex: 1, minHeight: 0 }}>
+                          <Typography fontWeight={900} mb={1} sx={{ fontSize: 14 }}>
+                            Agentes del grupo
+                          </Typography>
+
+                          {grupo.agents && grupo.agents.length > 0 ? (
+                            <Stack
+                              spacing={1}
+                              sx={{
+                                maxHeight: { xs: 260, md: 310 },
+                                overflowY: "auto",
+                                pr: 0.3,
+                              }}
                             >
-                              Quitar
-                            </Button>
+                              {grupo.agents.map((agente) => (
+                                <Box
+                                  key={agente.id}
+                                  sx={{
+                                    display: "flex",
+                                    justifyContent: "space-between",
+                                    alignItems: "center",
+                                    gap: 1.2,
+                                    border: "1px solid #e5e7eb",
+                                    borderRadius: 2.5,
+                                    p: 1.2,
+                                    bgcolor: "#f8fafc",
+                                  }}
+                                >
+                                  <Stack
+                                    direction="row"
+                                    spacing={1.2}
+                                    alignItems="center"
+                                    sx={{ minWidth: 0, flex: 1 }}
+                                  >
+                                    <Box
+                                      sx={{
+                                        width: 34,
+                                        height: 34,
+                                        borderRadius: "50%",
+                                        bgcolor: "#dbeafe",
+                                        color: "#1d4ed8",
+                                        display: "flex",
+                                        alignItems: "center",
+                                        justifyContent: "center",
+                                        fontWeight: 900,
+                                        flexShrink: 0,
+                                      }}
+                                    >
+                                      {inicialAgente(agente)}
+                                    </Box>
+
+                                    <Box sx={{ minWidth: 0 }}>
+                                      <Typography
+                                        variant="body2"
+                                        fontWeight={800}
+                                        sx={{
+                                          wordBreak: "break-word",
+                                          lineHeight: 1.3,
+                                        }}
+                                      >
+                                        {nombreAgente(agente)}
+                                      </Typography>
+
+                                      {agente.email && (
+                                        <Typography
+                                          variant="caption"
+                                          color="text.secondary"
+                                          noWrap
+                                          display="block"
+                                        >
+                                          {agente.email}
+                                        </Typography>
+                                      )}
+                                    </Box>
+                                  </Stack>
+
+                                  {puedeGestionar && (
+                                    <Tooltip title="Quitar agente" arrow>
+                                      <IconButton
+                                        size="small"
+                                        color="error"
+                                        onClick={() =>
+                                          quitarAgente(grupo.id, agente.id)
+                                        }
+                                        sx={{
+                                          width: 36,
+                                          height: 36,
+                                          border: "1px solid #fecaca",
+                                          bgcolor: "#fef2f2",
+                                          flexShrink: 0,
+                                          "&:hover": {
+                                            bgcolor: "#fee2e2",
+                                          },
+                                        }}
+                                      >
+                                        <DeleteIcon fontSize="small" />
+                                      </IconButton>
+                                    </Tooltip>
+                                  )}
+                                </Box>
+                              ))}
+                            </Stack>
+                          ) : (
+                            <Box
+                              sx={{
+                                border: "1px dashed #cbd5e1",
+                                borderRadius: 2.5,
+                                bgcolor: "#f8fafc",
+                                p: 2,
+                                textAlign: "center",
+                              }}
+                            >
+                              <Typography variant="body2" color="text.secondary">
+                                Este grupo no tiene agentes asignados.
+                              </Typography>
+                            </Box>
                           )}
                         </Box>
-                      ))}
-                    </Stack>
-                  ) : (
-                    <Box
-                      sx={{
-                        border: "1px dashed #cbd5e1",
-                        borderRadius: 2.5,
-                        bgcolor: "#f8fafc",
-                        p: 2,
-                        textAlign: "center",
-                      }}
-                    >
-                      <Typography variant="body2" color="text.secondary">
-                        Este grupo no tiene agentes asignados.
-                      </Typography>
-                    </Box>
-                  )}
-                </Box>
-              </Paper>
-            </Grid>
-          ))}
-        </Grid>
+                      </Paper>
+                    </Grid>
+                  ))}
+                </Grid>
+
+                <Paper
+                  sx={{
+                    borderRadius: 2,
+                    border: "1px solid #e5e7eb",
+                    overflow: "hidden",
+                    boxShadow: "none",
+                  }}
+                >
+                  <PaginacionGrupos />
+                </Paper>
+              </>
+            )}
+          </Stack>
+        </Paper>
       )}
     </Box>
   );
