@@ -50,6 +50,21 @@ const TEST_ENDPOINTS = [
     defaultBody: null,
   },
   {
+    key: "list-customer-tickets",
+    label: "Listar tickets del cliente",
+    method: "GET",
+    path: "/external/customers/{external_customer_id}/tickets",
+    bodyMode: null,
+    needsFolio: false,
+    needsExternalCustomerId: true,
+    needsFile: false,
+    buildUrl: ({ externalCustomerId }) =>
+      `${API_BASE_URL}/external/customers/${encodeURIComponent(
+        externalCustomerId,
+      )}/tickets?per_page=20&page=1`,
+    defaultBody: null,
+  },
+  {
     key: "create-ticket",
     label: "Crear ticket",
     method: "POST",
@@ -83,10 +98,12 @@ const TEST_ENDPOINTS = [
     path: "/external/tickets/{folio}",
     bodyMode: null,
     needsFolio: true,
-    needsExternalCustomerId: false,
+    needsExternalCustomerId: true,
     needsFile: false,
-    buildUrl: ({ folio }) =>
-      `${API_BASE_URL}/external/tickets/${encodeURIComponent(folio)}`,
+    buildUrl: ({ folio, externalCustomerId }) =>
+      `${API_BASE_URL}/external/tickets/${encodeURIComponent(
+        folio,
+      )}?external_customer_id=${encodeURIComponent(externalCustomerId)}`,
     defaultBody: null,
   },
   {
@@ -96,7 +113,8 @@ const TEST_ENDPOINTS = [
     path: "/external/tickets/{folio}/comments",
     bodyMode: "json",
     needsFolio: true,
-    needsExternalCustomerId: false,
+    needsExternalCustomerId: true,
+    sendExternalCustomerIdInBody: true,
     needsFile: false,
     buildUrl: ({ folio }) =>
       `${API_BASE_URL}/external/tickets/${encodeURIComponent(folio)}/comments`,
@@ -113,7 +131,8 @@ const TEST_ENDPOINTS = [
     path: "/external/tickets/{folio}/attachments",
     bodyMode: "json",
     needsFolio: true,
-    needsExternalCustomerId: false,
+    needsExternalCustomerId: true,
+    sendExternalCustomerIdInBody: true,
     needsFile: false,
     buildUrl: ({ folio }) =>
       `${API_BASE_URL}/external/tickets/${encodeURIComponent(
@@ -139,7 +158,8 @@ const TEST_ENDPOINTS = [
     path: "/external/tickets/{folio}/attachments",
     bodyMode: "multipart",
     needsFolio: true,
-    needsExternalCustomerId: false,
+    needsExternalCustomerId: true,
+    sendExternalCustomerIdInBody: true,
     needsFile: true,
     buildUrl: ({ folio }) =>
       `${API_BASE_URL}/external/tickets/${encodeURIComponent(
@@ -295,13 +315,32 @@ export default function ExternalApiTester() {
 
       if (selectedEndpoint.bodyMode === "json") {
         headers["Content-Type"] = "application/json";
-        options.body = JSON.stringify(parsedBody);
+
+        const requestBody = {
+          ...(parsedBody || {}),
+        };
+
+        if (selectedEndpoint.sendExternalCustomerIdInBody) {
+          requestBody.external_customer_id =
+            externalCustomerId.trim();
+        }
+
+        options.body = JSON.stringify(requestBody);
       }
 
       if (selectedEndpoint.bodyMode === "multipart") {
         const formData = new FormData();
 
-        Object.entries(parsedBody || {}).forEach(([key, value]) => {
+        const requestBody = {
+          ...(parsedBody || {}),
+        };
+
+        if (selectedEndpoint.sendExternalCustomerIdInBody) {
+          requestBody.external_customer_id =
+            externalCustomerId.trim();
+        }
+
+        Object.entries(requestBody).forEach(([key, value]) => {
           if (value === null || value === undefined) return;
 
           if (typeof value === "object") {
@@ -459,8 +498,11 @@ export default function ExternalApiTester() {
                 fullWidth
                 label="external_customer_id"
                 value={externalCustomerId}
-                onChange={(event) => setExternalCustomerId(event.target.value)}
+                onChange={(event) =>
+                  setExternalCustomerId(event.target.value)
+                }
                 placeholder="demo-client-001"
+                helperText="Identificador estable del cliente dentro del sistema externo."
               />
             )}
 

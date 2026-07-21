@@ -84,6 +84,67 @@ const endpoints = [
     ],
   },
   {
+    label: "Listar tickets del cliente",
+    method: "GET",
+    path: "/external/customers/{external_customer_id}/tickets",
+    url: `${API_BASE_URL}/external/customers/${demoExternalCustomerId}/tickets?per_page=20&page=1`,
+    description:
+      "Consulta únicamente los tickets asociados al cliente externo indicado.",
+    headers: {
+      Accept: "application/json",
+      Authorization: `Bearer ${demoToken}`,
+    },
+    body: null,
+    response: {
+      ok: true,
+      customer: {
+        external_customer_id: demoExternalCustomerId,
+        name: "Cliente Demo API",
+        email: "cliente.demo.api@example.com",
+        phone: "7441234567",
+      },
+      tickets: [
+        {
+          folio: demoFolio,
+          subject: "Error al procesar una operación",
+          description:
+            "El usuario intentó completar una operación, pero el sistema mostró un error inesperado.",
+          tracking_url:
+            "https://facturas.thebusinessticket.com/public/tickets/PUB-YYYYMMDD-XXXXXXXX",
+          status: {
+            id: 1,
+            name: "Reciente",
+            color: "#2563eb",
+          },
+          priority: {
+            id: 1,
+            name: "Baja",
+            color: "#16a34a",
+          },
+          section: {
+            id: 1,
+            name: "Soporte general",
+          },
+          created_at: "YYYY-MM-DD HH:mm:ss",
+          updated_at: "YYYY-MM-DD HH:mm:ss",
+          resolved_at: null,
+        },
+      ],
+      meta: {
+        current_page: 1,
+        per_page: 20,
+        last_page: 1,
+        total: 1,
+      },
+    },
+    notes: [
+      "La consulta se filtra por system_id y external_customer_id.",
+      "Una integración no puede listar tickets pertenecientes a otro cliente externo.",
+      "tracking_url permite abrir la vista pública o copiar el enlace de seguimiento.",
+      "per_page acepta valores de 1 a 50 y page indica la página solicitada.",
+    ],
+  },
+  {
     label: "Crear ticket",
     method: "POST",
     path: "/external/tickets",
@@ -133,9 +194,9 @@ const endpoints = [
     label: "Consultar ticket",
     method: "GET",
     path: "/external/tickets/{folio}",
-    url: `${API_BASE_URL}/external/tickets/${demoFolio}`,
+    url: `${API_BASE_URL}/external/tickets/${demoFolio}?external_customer_id=${demoExternalCustomerId}`,
     description:
-      "Consulta el estado de un ticket previamente creado por el sistema autorizado.",
+      "Consulta un ticket validando que pertenezca al cliente externo indicado.",
     headers: {
       Accept: "application/json",
       Authorization: `Bearer ${demoToken}`,
@@ -153,7 +214,9 @@ const endpoints = [
       },
     },
     notes: [
-      "Solo se pueden consultar tickets asociados al sistema del token.",
+      "external_customer_id es obligatorio y puede enviarse como query o en X-External-Customer-ID.",
+      "El ticket debe pertenecer al sistema del token y al cliente externo indicado.",
+      "La API responde 404 si el folio no pertenece al cliente y 422 si falta external_customer_id.",
       "El folio lo devuelve la API al crear el ticket.",
     ],
   },
@@ -170,6 +233,7 @@ const endpoints = [
       Authorization: `Bearer ${demoToken}`,
     },
     body: {
+      external_customer_id: demoExternalCustomerId,
       message: "El usuario informa que el problema continúa.",
       author_name: "Sistema Integral Demo",
       external_reference: "demo-comment-1001",
@@ -184,9 +248,10 @@ const endpoints = [
       },
     },
     notes: [
-      "El comentario queda asociado al ticket.",
+      "external_customer_id es obligatorio para validar la propiedad del ticket.",
+      "El comentario queda asociado únicamente al ticket del cliente indicado.",
+      "La API responde 404 si el ticket no pertenece al cliente y 422 si falta external_customer_id.",
       "external_reference ayuda a relacionar el comentario con el sistema origen.",
-      "El folio debe pertenecer al mismo sistema asociado al token.",
     ],
   },
   {
@@ -202,6 +267,7 @@ const endpoints = [
       Authorization: `Bearer ${demoToken}`,
     },
     body: {
+      external_customer_id: demoExternalCustomerId,
       message: "Se adjunta evidencia del error.",
       author_name: "Sistema Integral Demo",
       external_reference: "demo-attachment-1001",
@@ -229,8 +295,10 @@ const endpoints = [
       },
     },
     notes: [
+      "external_customer_id es obligatorio para validar la propiedad del ticket.",
+      "La API responde 404 si el ticket no pertenece al cliente y 422 si falta external_customer_id.",
       "Extensiones permitidas: jpg, jpeg, png, webp, pdf, doc, docx, xls, xlsx, txt, zip.",
-      "Tamaño máximo recomendado por archivo: 10 MB.",
+      "Tamaño máximo por archivo: 10 MB.",
       "Para pruebas en Postman Web puede usarse base64.",
       "Para backend real también puede usarse multipart/form-data con attachments[].",
     ],
