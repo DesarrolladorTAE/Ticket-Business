@@ -19,6 +19,22 @@ const demoToken = "TOKEN_DEL_SISTEMA_DEMO";
 const demoFolio = "TBT-YYYYMMDD-XXXXXX";
 const demoExternalCustomerId = "demo-client-001";
 
+const ACTIVE_SECTION_CODES = [
+  "productos",
+  "almacenes",
+  "trabajadores",
+  "categorias",
+  "punto-de-venta",
+  "reportes",
+  "entradas-producto",
+  "personaliza-tu-ticket",
+  "sitio-web",
+  "marca-blanca",
+  "complementos",
+  "suscripciones",
+  "mi-cuenta",
+];
+
 const endpoints = [
   {
     label: "Crear cliente",
@@ -123,7 +139,7 @@ const endpoints = [
           },
           section: {
             id: 1,
-            name: "Soporte general",
+            name: "Reportes",
           },
           created_at: "YYYY-MM-DD HH:mm:ss",
           updated_at: "YYYY-MM-DD HH:mm:ss",
@@ -164,7 +180,7 @@ const endpoints = [
         external_customer_id: demoExternalCustomerId,
       },
       ticket: {
-        section_code: "soporte-general",
+        section_code: "reportes",
         priority_id: 1,
         subject: "Error al procesar una operación",
         description:
@@ -404,6 +420,29 @@ ${headers}${body}`;
           Estos ejemplos usan un sistema ficticio. Para una prueba real se debe
           reemplazar el token, folio, datos del cliente, sección y referencia
           externa por los datos del sistema autorizado.
+        </Alert>
+
+        <Alert severity="success">
+          <Typography fontWeight={900} sx={{ mb: 1 }}>
+            Secciones activas para Mi Tienda en Línea
+          </Typography>
+
+          <Stack direction="row" gap={1} flexWrap="wrap">
+            {ACTIVE_SECTION_CODES.map((code) => (
+              <Chip
+                key={code}
+                label={code}
+                size="small"
+                variant="outlined"
+              />
+            ))}
+          </Stack>
+
+          <Typography variant="body2" sx={{ mt: 1 }}>
+            Los códigos tienda-en-linea, pagos, ventas, inventario,
+            pedidos, clientes y facturacion están inactivos y no deben
+            utilizarse para crear tickets nuevos.
+          </Typography>
         </Alert>
 
         {copied && (

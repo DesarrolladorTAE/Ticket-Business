@@ -82,7 +82,7 @@ const TEST_ENDPOINTS = [
         external_customer_id: "demo-client-001",
       },
       ticket: {
-        section_code: "productos",
+        section_code: "reportes",
         priority_id: 1,
         subject: "Prueba desde panel de API externa",
         description:
