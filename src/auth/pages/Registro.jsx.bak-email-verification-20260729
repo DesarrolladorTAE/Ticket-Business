@@ -67,13 +67,10 @@ function Registro() {
     try {
       const respuesta = await axiosCliente.post("/register", formulario);
 
-      const verificationEmail =
-        respuesta.data.verification_email || formulario.email.trim();
+      localStorage.setItem("TOKEN", respuesta.data.token);
+      localStorage.setItem("USUARIO", JSON.stringify(respuesta.data.user));
 
-      navigate(
-        `/verificar-correo?email=${encodeURIComponent(verificationEmail)}`,
-        { replace: true },
-      );
+      navigate("/tickets/nuevo");
     } catch (error) {
       const errores = error.response?.data?.errors;
 

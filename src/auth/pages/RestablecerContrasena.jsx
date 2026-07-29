@@ -1,12 +1,15 @@
 import { useState } from "react";
-import { Link as RouterLink, useNavigate } from "react-router-dom";
+import {
+  Link as RouterLink,
+  useNavigate,
+  useSearchParams,
+} from "react-router-dom";
 import axiosCliente from "../../services/axiosCliente";
 
 import {
   Alert,
   Box,
   Button,
-  Chip,
   CircularProgress,
   InputAdornment,
   Paper,
@@ -15,21 +18,28 @@ import {
   Typography,
 } from "@mui/material";
 
-import EmailOutlinedIcon from "@mui/icons-material/EmailOutlined";
+import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import LockOutlinedIcon from "@mui/icons-material/LockOutlined";
-import SupportAgentIcon from "@mui/icons-material/SupportAgent";
-import LoginIcon from "@mui/icons-material/Login";
+import LockResetIcon from "@mui/icons-material/LockReset";
+import SaveOutlinedIcon from "@mui/icons-material/SaveOutlined";
 
-function IniciarSesion() {
+function RestablecerContrasena() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+
+  const token = searchParams.get("token") || "";
+  const email = searchParams.get("email") || "";
 
   const [formulario, setFormulario] = useState({
-    email: "",
     password: "",
+    password_confirmation: "",
   });
 
   const [error, setError] = useState("");
+  const [mensaje, setMensaje] = useState("");
   const [cargando, setCargando] = useState(false);
+
+  const enlaceValido = Boolean(token && email);
 
   const cambiarValor = (e) => {
     setFormulario({
@@ -38,61 +48,69 @@ function IniciarSesion() {
     });
   };
 
-  const iniciarSesion = async (e) => {
+  const restablecerContrasena = async (e) => {
     e.preventDefault();
 
     setError("");
+    setMensaje("");
+
+    if (!enlaceValido) {
+      setError(
+        "El enlace de recuperación está incompleto o no es válido.",
+      );
+      return;
+    }
+
+    if (formulario.password.length < 8) {
+      setError("La contraseña debe tener al menos 8 caracteres.");
+      return;
+    }
+
+    if (
+      formulario.password !==
+      formulario.password_confirmation
+    ) {
+      setError("Las contraseñas no coinciden.");
+      return;
+    }
+
     setCargando(true);
 
     try {
-      const respuesta = await axiosCliente.post("/login", formulario);
+      const respuesta = await axiosCliente.post("/reset-password", {
+        token,
+        email,
+        password: formulario.password,
+        password_confirmation:
+          formulario.password_confirmation,
+      });
 
-      const user = respuesta.data.user;
-      const company = respuesta.data.company;
-
-      let roles = Array.isArray(user.roles) ? [...user.roles] : [];
-
-      if (roles.length === 0 && company?.role) {
-        const mapaRoles = {
-          admin: "Administrador",
-          agent: "Agente",
-          supervisor: "Supervisor",
-          client: "Cliente",
-        };
-
-        const rolTraducido = mapaRoles[company.role];
-
-        if (rolTraducido) {
-          roles = [rolTraducido];
-        }
-      }
-
-      user.roles = roles;
-
-      localStorage.setItem("TOKEN", respuesta.data.token);
-      localStorage.setItem("USUARIO", JSON.stringify(user));
-
-      if (
-        roles.includes("Administrador") ||
-        roles.includes("Agente") ||
-        roles.includes("Supervisor")
-      ) {
-        navigate("/paneladministrador");
-        return;
-      }
-
-      if (roles.includes("Cliente")) {
-        navigate("/tickets/nuevo");
-        return;
-      }
-
-      setError(
-        "Tu usuario no tiene un rol asignado. Contacta al administrador.",
+      setMensaje(
+        respuesta.data?.message ||
+          "La contraseña fue actualizada correctamente.",
       );
+
+      setFormulario({
+        password: "",
+        password_confirmation: "",
+      });
+
+      setTimeout(() => {
+        navigate("/login", {
+          replace: true,
+        });
+      }, 2500);
     } catch (error) {
-      setError(
-        error.response?.data?.message || "Correo o contraseña incorrectos",
-      );
+      const errores = error.response?.data?.errors;
+
+      const mensajeValidacion =
+        errores?.password?.[0] ||
+        errores?.token?.[0] ||
+        errores?.email?.[0] ||
+        error.response?.data?.message ||
+        "No fue posible restablecer la contraseña.";
+
+      setError(mensajeValidacion);
     } finally {
       setCargando(false);
     }
@@ -118,7 +136,8 @@ function IniciarSesion() {
           borderRadius: 4,
           overflow: "hidden",
           border: "1px solid #e2e8f0",
-          boxShadow: "0 18px 45px rgba(15, 23, 42, 0.10)",
+          boxShadow:
+            "0 18px 45px rgba(15, 23, 42, 0.10)",
           bgcolor: "#ffffff",
         }}
       >
@@ -129,7 +148,11 @@ function IniciarSesion() {
             pb: 2,
           }}
         >
-          <Stack spacing={2} alignItems="center" textAlign="center">
+          <Stack
+            spacing={2}
+            alignItems="center"
+            textAlign="center"
+          >
             <Box
               sx={{
                 width: 58,
@@ -143,7 +166,7 @@ function IniciarSesion() {
                 border: "1px solid #bfdbfe",
               }}
             >
-              <SupportAgentIcon sx={{ fontSize: 32 }} />
+              <LockResetIcon sx={{ fontSize: 34 }} />
             </Box>
 
             <Box>
@@ -155,7 +178,7 @@ function IniciarSesion() {
                   lineHeight: 1.15,
                 }}
               >
-                The Business Ticket
+                Crear nueva contraseña
               </Typography>
 
               <Typography
@@ -166,21 +189,9 @@ function IniciarSesion() {
                   fontWeight: 600,
                 }}
               >
-                Panel de soporte y seguimiento de tickets
+                The Business Ticket
               </Typography>
             </Box>
-
-            <Chip
-              label="Acceso seguro"
-              size="small"
-              sx={{
-                bgcolor: "#ecfdf5",
-                color: "#047857",
-                fontWeight: 900,
-                borderRadius: 2,
-                border: "1px solid #bbf7d0",
-              }}
-            />
           </Stack>
         </Box>
 
@@ -190,27 +201,31 @@ function IniciarSesion() {
             py: { xs: 2.5, sm: 3 },
           }}
         >
-          <Box mb={2.5}>
-            <Typography
-              fontWeight={900}
-              sx={{
-                fontSize: { xs: 21, sm: 24 },
-                color: "#0f172a",
-              }}
-            >
-              Iniciar sesión
-            </Typography>
+          <Typography
+            variant="body2"
+            sx={{
+              color: "#64748b",
+              mb: 2.5,
+              lineHeight: 1.7,
+            }}
+          >
+            Escribe una nueva contraseña para la cuenta
+            asociada a <strong>{email || "tu correo"}</strong>.
+          </Typography>
 
-            <Typography
-              variant="body2"
+          {!enlaceValido && (
+            <Alert
+              severity="error"
               sx={{
-                color: "#64748b",
-                mt: 0.5,
+                mb: 2.5,
+                borderRadius: 2,
+                fontWeight: 700,
               }}
             >
-              Ingresa tu correo y contraseña para acceder al sistema.
-            </Typography>
-          </Box>
+              El enlace de recuperación está incompleto o no
+              es válido. Solicita uno nuevo.
+            </Alert>
+          )}
 
           {error && (
             <Alert
@@ -225,24 +240,41 @@ function IniciarSesion() {
             </Alert>
           )}
 
-          <Box component="form" onSubmit={iniciarSesion}>
+          {mensaje && (
+            <Alert
+              severity="success"
+              sx={{
+                mb: 2.5,
+                borderRadius: 2,
+                fontWeight: 700,
+              }}
+            >
+              {mensaje}
+            </Alert>
+          )}
+
+          <Box
+            component="form"
+            onSubmit={restablecerContrasena}
+          >
             <Stack spacing={2}>
               <TextField
                 fullWidth
-                type="email"
-                name="email"
-                label="Correo electrónico"
-                value={formulario.email}
+                type="password"
+                name="password"
+                label="Nueva contraseña"
+                value={formulario.password}
                 onChange={cambiarValor}
                 required
-                disabled={cargando}
-                autoComplete="email"
+                disabled={cargando || !enlaceValido}
+                autoComplete="new-password"
                 autoFocus
                 size="small"
+                helperText="Debe contener al menos 8 caracteres."
                 InputProps={{
                   startAdornment: (
                     <InputAdornment position="start">
-                      <EmailOutlinedIcon fontSize="small" />
+                      <LockOutlinedIcon fontSize="small" />
                     </InputAdornment>
                   ),
                 }}
@@ -252,13 +284,15 @@ function IniciarSesion() {
               <TextField
                 fullWidth
                 type="password"
-                name="password"
-                label="Contraseña"
-                value={formulario.password}
+                name="password_confirmation"
+                label="Confirmar nueva contraseña"
+                value={
+                  formulario.password_confirmation
+                }
                 onChange={cambiarValor}
                 required
-                disabled={cargando}
-                autoComplete="current-password"
+                disabled={cargando || !enlaceValido}
+                autoComplete="new-password"
                 size="small"
                 InputProps={{
                   startAdornment: (
@@ -270,58 +304,40 @@ function IniciarSesion() {
                 sx={inputStyle}
               />
 
-              <Box
-                sx={{
-                  display: "flex",
-                  justifyContent: "flex-end",
-                  mt: -0.5,
-                }}
-              >
-                <Box
-                  component={RouterLink}
-                  to="/olvide-contrasena"
-                  sx={{
-                    color: "#1d4ed8",
-                    fontSize: 13,
-                    fontWeight: 800,
-                    textDecoration: "none",
-                    "&:hover": {
-                      textDecoration: "underline",
-                    },
-                  }}
-                >
-                  ¿Olvidaste tu contraseña?
-                </Box>
-              </Box>
-
               <Button
                 fullWidth
                 type="submit"
                 variant="contained"
-                disabled={cargando}
+                disabled={cargando || !enlaceValido}
                 size="large"
                 startIcon={
                   cargando ? (
-                    <CircularProgress size={18} sx={{ color: "#ffffff" }} />
+                    <CircularProgress
+                      size={18}
+                      sx={{ color: "#ffffff" }}
+                    />
                   ) : (
-                    <LoginIcon />
+                    <SaveOutlinedIcon />
                   )
                 }
                 sx={{
-                  mt: 0.5,
                   minHeight: 46,
                   borderRadius: 2.5,
                   textTransform: "none",
                   fontWeight: 900,
                   bgcolor: "#2563eb",
-                  boxShadow: "0 10px 20px rgba(37, 99, 235, 0.25)",
+                  boxShadow:
+                    "0 10px 20px rgba(37, 99, 235, 0.25)",
                   "&:hover": {
                     bgcolor: "#1d4ed8",
-                    boxShadow: "0 12px 24px rgba(37, 99, 235, 0.32)",
+                    boxShadow:
+                      "0 12px 24px rgba(37, 99, 235, 0.32)",
                   },
                 }}
               >
-                {cargando ? "Entrando..." : "Entrar"}
+                {cargando
+                  ? "Actualizando..."
+                  : "Guardar nueva contraseña"}
               </Button>
             </Stack>
           </Box>
@@ -336,29 +352,24 @@ function IniciarSesion() {
             textAlign: "center",
           }}
         >
-          <Typography
-            variant="body2"
+          <Box
+            component={RouterLink}
+            to="/login"
             sx={{
-              color: "#64748b",
-              fontWeight: 600,
+              color: "#1d4ed8",
+              fontWeight: 900,
+              textDecoration: "none",
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 0.7,
+              "&:hover": {
+                textDecoration: "underline",
+              },
             }}
           >
-            ¿No tienes cuenta?{" "}
-            <Box
-              component={RouterLink}
-              to="/registro"
-              sx={{
-                color: "#1d4ed8",
-                fontWeight: 900,
-                textDecoration: "none",
-                "&:hover": {
-                  textDecoration: "underline",
-                },
-              }}
-            >
-              Crear cuenta
-            </Box>
-          </Typography>
+            <ArrowBackIcon fontSize="small" />
+            Volver al inicio de sesión
+          </Box>
         </Box>
       </Paper>
     </Box>
@@ -376,4 +387,4 @@ const inputStyle = {
   },
 };
 
-export default IniciarSesion;
+export default RestablecerContrasena;

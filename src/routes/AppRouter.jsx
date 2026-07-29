@@ -2,6 +2,9 @@ import { Routes, Route, Navigate } from "react-router-dom";
 
 import IniciarSesion from "../auth/pages/IniciarSesion";
 import Registro from "../auth/pages/Registro";
+import OlvideContrasena from "../auth/pages/OlvideContrasena";
+import RestablecerContrasena from "../auth/pages/RestablecerContrasena";
+import VerificarCorreo from "../auth/pages/VerificarCorreo";
 
 import Dashboard from "../modules/tickets/pages/Dashboard";
 
@@ -48,11 +51,7 @@ function RutaPorRol({ roles, children }) {
 
   const rolesBase = Array.isArray(usuario?.roles) ? usuario.roles : [];
 
-  const userRoles = [
-    ...rolesBase,
-    usuario?.role,
-    usuario?.company_role,
-  ]
+  const userRoles = [...rolesBase, usuario?.role, usuario?.company_role]
     .filter(Boolean)
     .map((rol) => normalizarRol(rol));
 
@@ -76,6 +75,20 @@ function AppRouter() {
       <Route path="/" element={<Navigate to="/login" replace />} />
       <Route path="/login" element={<IniciarSesion />} />
       <Route path="/registro" element={<Registro />} />
+
+      <Route path="/olvide-contrasena" 
+        element={<OlvideContrasena />} 
+      />
+
+      <Route
+        path="/restablecer-contrasena"
+        element={<RestablecerContrasena />}
+      />
+
+      <Route
+        path="/verificar-correo"
+        element={<VerificarCorreo />}
+      />
 
       <Route
         path="/public/s/:systemId/:prefix"
@@ -210,12 +223,7 @@ function AppRouter() {
           path="/agentes"
           element={
             <RutaPorRol
-              roles={[
-                "Administrador",
-                "admin",
-                "Supervisor",
-                "supervisor",
-              ]}
+              roles={["Administrador", "admin", "Supervisor", "supervisor"]}
             >
               <Agentes />
             </RutaPorRol>
@@ -227,12 +235,7 @@ function AppRouter() {
           path="/agents/nuevo"
           element={
             <RutaPorRol
-              roles={[
-                "Administrador",
-                "admin",
-                "Supervisor",
-                "supervisor",
-              ]}
+              roles={["Administrador", "admin", "Supervisor", "supervisor"]}
             >
               <CrearAgente />
             </RutaPorRol>
@@ -254,12 +257,7 @@ function AppRouter() {
           path="/secciones"
           element={
             <RutaPorRol
-              roles={[
-                "Administrador",
-                "admin",
-                "Supervisor",
-                "supervisor",
-              ]}
+              roles={["Administrador", "admin", "Supervisor", "supervisor"]}
             >
               <Secciones />
             </RutaPorRol>
@@ -271,12 +269,7 @@ function AppRouter() {
           path="/grupos-soporte"
           element={
             <RutaPorRol
-              roles={[
-                "Administrador",
-                "admin",
-                "Supervisor",
-                "supervisor",
-              ]}
+              roles={["Administrador", "admin", "Supervisor", "supervisor"]}
             >
               <GruposSoporte />
             </RutaPorRol>
