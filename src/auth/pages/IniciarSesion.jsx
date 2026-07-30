@@ -90,9 +90,20 @@ function IniciarSesion() {
         "Tu usuario no tiene un rol asignado. Contacta al administrador.",
       );
     } catch (error) {
-      setError(
-        error.response?.data?.message || "Correo o contraseña incorrectos",
-      );
+      const data = error.response?.data;
+
+      if (data?.requires_email_verification && data?.verification_email) {
+        navigate(
+          `/verificar-correo?email=${encodeURIComponent(
+            data.verification_email,
+          )}`,
+          { replace: true },
+        );
+
+        return;
+      }
+
+      setError(data?.message || "Correo o contraseña incorrectos");
     } finally {
       setCargando(false);
     }

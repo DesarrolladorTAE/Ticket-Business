@@ -43,7 +43,8 @@ const drawerCollapsedWidth = 78;
 
 // Cuando ya tengas el logo, guárdalo en public/logo.png
 // y cambia esta línea por: const logoUrl = "/logo.png";
-const logoUrl = "";
+const logoUrl =
+  "https://api.thebusinessticket.com/images/email/the-business-ticket.png";
 
 const normalizarRol = (role) => {
   return String(role || "")
