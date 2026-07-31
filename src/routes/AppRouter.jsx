@@ -22,6 +22,7 @@ import ExternalApiLogs from "../modules/tickets/pages/ExternalApiLogs";
 import ExternalApiTokens from "../modules/tickets/pages/ExternalApiTokens";
 import ExternalApiDashboard from "../modules/tickets/pages/ExternalApiDashboard";
 import GeneralMetricsDashboard from "../modules/metrics/pages/GeneralMetricsDashboard";
+import MiPerfil from "../modules/profile/pages/MiPerfil";
 
 import GruposSoporte from "../modules/support-groups/pages/GruposSoporte";
 
@@ -193,6 +194,25 @@ function AppRouter() {
               ]}
             >
               <MisTickets />
+            </RutaPorRol>
+          }
+        />
+
+                {/* MI PERFIL */}
+        <Route
+          path="/mi-perfil"
+          element={
+            <RutaPorRol
+              roles={[
+                "Administrador",
+                "admin",
+                "Agente",
+                "agent",
+                "Supervisor",
+                "supervisor",
+              ]}
+            >
+              <MiPerfil />
             </RutaPorRol>
           }
         />
