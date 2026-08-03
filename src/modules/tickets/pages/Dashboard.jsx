@@ -25,6 +25,7 @@ import ConfirmationNumberIcon from "@mui/icons-material/ConfirmationNumber";
 import PendingActionsIcon from "@mui/icons-material/PendingActions";
 import AutorenewIcon from "@mui/icons-material/Autorenew";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
+import AccessTimeIcon from "@mui/icons-material/AccessTime";
 
 import {
   LineChart,
@@ -78,6 +79,17 @@ function Dashboard() {
     cargarDashboard();
   };
 
+  const abrirTicket = (ticket) => {
+    navigate(`/tickets/${ticket.id}`);
+  };
+
+  const manejarTecladoTicket = (event, ticket) => {
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      abrirTicket(ticket);
+    }
+  };
+
   const colorEstado = (estado) => {
     const valor = String(estado || "").toLowerCase();
 
@@ -91,11 +103,56 @@ function Dashboard() {
     return "default";
   };
 
+  const colorVigencia = (ticket) => {
+    switch (ticket.due_status) {
+      case "overdue":
+        return "error";
+
+      case "due_today":
+        return "error";
+
+      case "warning":
+        return "warning";
+
+      case "normal":
+        return "success";
+
+      case "finalized":
+        return "default";
+
+      default:
+        return "default";
+    }
+  };
+
   const nombreEstado = (ticket) =>
-    ticket.status?.nombre || ticket.status?.name || ticket.status || "Abierto";
+    ticket.status?.nombre ||
+    ticket.status?.name ||
+    ticket.status_nombre ||
+    ticket.status ||
+    "Abierto";
 
   const nombreSistema = (ticket) =>
-    ticket.system?.nombre || ticket.sistema?.nombre || "Sin sistema";
+    ticket.system?.nombre ||
+    ticket.sistema?.nombre ||
+    ticket.system_nombre ||
+    "Sin sistema";
+
+  const nombreAgente = (ticket) => {
+    if (ticket.agente_nombre) {
+      return ticket.agente_nombre;
+    }
+
+    if (!ticket.responsable) {
+      return "Sin asignar";
+    }
+
+    return `${ticket.responsable.name || ""} ${
+      ticket.responsable.apellido_paterno || ""
+    } ${ticket.responsable.apellido_materno || ""}`
+      .trim()
+      .replace(/\s+/g, " ");
+  };
 
   const folioTicket = (ticket) => {
     if (ticket.folio) return ticket.folio;
@@ -119,6 +176,7 @@ function Dashboard() {
 
   const stats = data?.stats || {};
   const chart = data?.chart || [];
+  const vigencias = data?.vigencias || [];
 
   const total = stats.total ?? 0;
   const abiertos = stats.abiertos ?? 0;
@@ -151,7 +209,7 @@ function Dashboard() {
           </Typography>
 
           <Typography variant="body2" color="text.secondary">
-            Resumen general de tickets registrados en el sistema.
+            Resumen general y control de vigencia de los tickets.
           </Typography>
         </Box>
 
@@ -229,10 +287,10 @@ function Dashboard() {
           display: "grid",
           gridTemplateColumns: {
             xs: "1fr",
-            md: "minmax(620px, 780px) 1fr",
+            lg: "minmax(0, 1.65fr) minmax(310px, 0.85fr)",
           },
           gap: { xs: 2, md: 3 },
-          alignItems: "start",
+          alignItems: "stretch",
         }}
       >
         <Paper sx={chartSectionStyle}>
@@ -364,7 +422,193 @@ function Dashboard() {
           )}
         </Paper>
 
-        <Box sx={{ display: { xs: "none", md: "block" } }} />
+        <Paper sx={vigenciasSectionStyle}>
+          <Box
+            mb={2}
+            display="flex"
+            justifyContent="space-between"
+            alignItems="flex-start"
+            gap={1}
+          >
+            <Stack direction="row" spacing={1.2} alignItems="center">
+              <Box
+                sx={{
+                  width: 38,
+                  height: 38,
+                  borderRadius: 2,
+                  bgcolor: "#fff7ed",
+                  color: "#ea580c",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  flexShrink: 0,
+                }}
+              >
+                <AccessTimeIcon />
+              </Box>
+
+              <Box sx={{ minWidth: 0 }}>
+                <Typography
+                  fontWeight={900}
+                  sx={{ fontSize: { xs: 18, md: 20 } }}
+                >
+                  Vigencias próximas
+                </Typography>
+
+                <Typography variant="body2" color="text.secondary">
+                  Tickets activos ordenados por vencimiento.
+                </Typography>
+              </Box>
+            </Stack>
+
+            <Chip
+              size="small"
+              label={vigencias.length}
+              color="warning"
+              sx={{
+                fontWeight: 900,
+                flexShrink: 0,
+              }}
+            />
+          </Box>
+
+          <Divider sx={{ mb: 1.5 }} />
+
+          {vigencias.length > 0 ? (
+            <Stack
+              spacing={1}
+              sx={{
+                maxHeight: { xs: "none", lg: 455 },
+                overflowY: { xs: "visible", lg: "auto" },
+                pr: { xs: 0, lg: 0.5 },
+              }}
+            >
+              {vigencias.map((ticket) => (
+                <Paper
+                  key={ticket.id}
+                  variant="outlined"
+                  tabIndex={0}
+                  role="button"
+                  onClick={() => abrirTicket(ticket)}
+                  onKeyDown={(event) =>
+                    manejarTecladoTicket(event, ticket)
+                  }
+                  sx={{
+                    p: 1.35,
+                    borderRadius: 2,
+                    borderColor: "#e5e7eb",
+                    cursor: "pointer",
+                    transition:
+                      "border-color 0.15s ease, background-color 0.15s ease",
+                    "&:hover": {
+                      borderColor: "primary.main",
+                      bgcolor: "#f8fafc",
+                    },
+                    "&:focus-visible": {
+                      outline: "2px solid",
+                      outlineColor: "primary.main",
+                      outlineOffset: 1,
+                    },
+                  }}
+                >
+                  <Stack spacing={1}>
+                    <Stack
+                      direction="row"
+                      justifyContent="space-between"
+                      alignItems="flex-start"
+                      spacing={1}
+                    >
+                      <Box sx={{ minWidth: 0, flex: 1 }}>
+                        <Typography
+                          variant="caption"
+                          color="primary"
+                          fontWeight={900}
+                          display="block"
+                          noWrap
+                        >
+                          {folioTicket(ticket)}
+                        </Typography>
+
+                        <Typography
+                          fontWeight={900}
+                          sx={{
+                            fontSize: 14,
+                            lineHeight: 1.3,
+                            mt: 0.2,
+                            wordBreak: "break-word",
+                          }}
+                        >
+                          {ticket.titulo || "Sin título"}
+                        </Typography>
+                      </Box>
+
+                      <Chip
+                        size="small"
+                        label={ticket.due_label || "Sin vigencia"}
+                        color={colorVigencia(ticket)}
+                        sx={{
+                          fontWeight: 800,
+                          flexShrink: 0,
+                          maxWidth: 145,
+                          "& .MuiChip-label": {
+                            overflow: "hidden",
+                            textOverflow: "ellipsis",
+                          },
+                        }}
+                      />
+                    </Stack>
+
+                    <Stack
+                      direction={{ xs: "column", sm: "row", lg: "column" }}
+                      spacing={{ xs: 0.3, sm: 1.5, lg: 0.3 }}
+                    >
+                      <Typography variant="caption" color="text.secondary">
+                        Sistema:{" "}
+                        <Box component="span" fontWeight={800}>
+                          {nombreSistema(ticket)}
+                        </Box>
+                      </Typography>
+
+                      <Typography variant="caption" color="text.secondary">
+                        Agente:{" "}
+                        <Box component="span" fontWeight={800}>
+                          {nombreAgente(ticket)}
+                        </Box>
+                      </Typography>
+
+                      <Typography variant="caption" color="text.secondary">
+                        Fecha límite:{" "}
+                        <Box component="span" fontWeight={900}>
+                          {ticket.due_date || "Sin fecha"}
+                        </Box>
+                      </Typography>
+                    </Stack>
+                  </Stack>
+                </Paper>
+              ))}
+            </Stack>
+          ) : (
+            <EmptyBox
+              texto="No hay tickets activos con vigencia pendiente."
+              height={210}
+            />
+          )}
+
+          {vigencias.length > 0 && (
+            <Button
+              fullWidth
+              variant="text"
+              onClick={() => navigate("/tickets")}
+              sx={{
+                mt: 1.5,
+                textTransform: "none",
+                fontWeight: 900,
+              }}
+            >
+              Ver todos los tickets
+            </Button>
+          )}
+        </Paper>
       </Box>
 
       <Box mt={3}>
@@ -469,7 +713,7 @@ function Dashboard() {
                           <Button
                             size="small"
                             variant="outlined"
-                            onClick={() => navigate(`/tickets/${ticket.id}`)}
+                            onClick={() => abrirTicket(ticket)}
                             sx={{
                               borderRadius: 2,
                               textTransform: "none",
@@ -537,18 +781,16 @@ function Dashboard() {
                         />
                       </Stack>
 
-                      <Box>
-                        <Typography
-                          fontWeight={900}
-                          sx={{
-                            fontSize: 15,
-                            lineHeight: 1.35,
-                            wordBreak: "break-word",
-                          }}
-                        >
-                          {ticket.titulo || "Sin título"}
-                        </Typography>
-                      </Box>
+                      <Typography
+                        fontWeight={900}
+                        sx={{
+                          fontSize: 15,
+                          lineHeight: 1.35,
+                          wordBreak: "break-word",
+                        }}
+                      >
+                        {ticket.titulo || "Sin título"}
+                      </Typography>
 
                       <Divider />
 
@@ -558,7 +800,7 @@ function Dashboard() {
                         fullWidth
                         size="small"
                         variant="outlined"
-                        onClick={() => navigate(`/tickets/${ticket.id}`)}
+                        onClick={() => abrirTicket(ticket)}
                         sx={{
                           borderRadius: 2,
                           textTransform: "none",
@@ -757,11 +999,24 @@ const chipStyle = {
 
 const chartSectionStyle = {
   width: "100%",
+  height: "100%",
   minWidth: 0,
   p: { xs: 2, sm: 3, md: 4 },
   borderRadius: 3,
   boxShadow: 1,
   border: "1px solid #dbeafe",
+  bgcolor: "#ffffff",
+  overflow: "hidden",
+};
+
+const vigenciasSectionStyle = {
+  width: "100%",
+  height: "100%",
+  minWidth: 0,
+  p: { xs: 1.5, sm: 2, md: 2.5 },
+  borderRadius: 3,
+  boxShadow: 1,
+  border: "1px solid #fed7aa",
   bgcolor: "#ffffff",
   overflow: "hidden",
 };

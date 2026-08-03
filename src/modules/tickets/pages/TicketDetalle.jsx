@@ -14,6 +14,7 @@ import {
   Alert,
   Box,
   Button,
+  Chip,
   CircularProgress,
   FormControl,
   InputLabel,
@@ -26,6 +27,7 @@ import {
 
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 import OpenInNewIcon from "@mui/icons-material/OpenInNew";
+import AccessTimeIcon from "@mui/icons-material/AccessTime";
 
 const STORAGE_URL = "https://api.thebusinessticket.com/storage";
 const PUBLIC_TICKET_BASE_PATH = "/public/tickets";
@@ -420,6 +422,69 @@ const puedeAsignarResponsable = isAdmin || isSupervisor;
     return `${minutos} minuto(s)`;
   };
 
+  const colorVigencia = () => {
+    switch (ticket?.due_status) {
+      case "overdue":
+      case "due_today":
+        return "error";
+
+      case "warning":
+        return "warning";
+
+      case "normal":
+        return "success";
+
+      case "finalized":
+      default:
+        return "default";
+    }
+  };
+
+  const estiloVigencia = () => {
+    switch (ticket?.due_status) {
+      case "overdue":
+      case "due_today":
+        return {
+          borderColor: "#fecaca",
+          bgcolor: "#fff7f7",
+          iconBg: "#fee2e2",
+          iconColor: "#dc2626",
+        };
+
+      case "warning":
+        return {
+          borderColor: "#fed7aa",
+          bgcolor: "#fffaf5",
+          iconBg: "#ffedd5",
+          iconColor: "#ea580c",
+        };
+
+      case "normal":
+        return {
+          borderColor: "#bbf7d0",
+          bgcolor: "#f7fff9",
+          iconBg: "#dcfce7",
+          iconColor: "#16a34a",
+        };
+
+      case "finalized":
+        return {
+          borderColor: "#e5e7eb",
+          bgcolor: "#f8fafc",
+          iconBg: "#e2e8f0",
+          iconColor: "#64748b",
+        };
+
+      default:
+        return {
+          borderColor: "#e5e7eb",
+          bgcolor: "#ffffff",
+          iconBg: "#f1f5f9",
+          iconColor: "#64748b",
+        };
+    }
+  };
+
   const enviarMensaje = async (visibility = "public") => {
     if (!text.trim() && !archivo) return;
 
@@ -789,6 +854,79 @@ const puedeAsignarResponsable = isAdmin || isSupervisor;
           Info={TicketInfoItem}
         />
       </Box>
+
+      <Paper
+        sx={{
+          p: { xs: 1.5, sm: 2 },
+          mb: 2,
+          borderRadius: 3,
+          border: "1px solid",
+          borderColor: estiloVigencia().borderColor,
+          bgcolor: estiloVigencia().bgcolor,
+          boxShadow: "none",
+        }}
+      >
+        <Stack
+          direction={{ xs: "column", sm: "row" }}
+          justifyContent="space-between"
+          alignItems={{ xs: "stretch", sm: "center" }}
+          spacing={1.5}
+        >
+          <Stack direction="row" spacing={1.25} alignItems="center">
+            <Box
+              sx={{
+                width: 40,
+                height: 40,
+                borderRadius: 2,
+                bgcolor: estiloVigencia().iconBg,
+                color: estiloVigencia().iconColor,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                flexShrink: 0,
+              }}
+            >
+              <AccessTimeIcon />
+            </Box>
+
+            <Box sx={{ minWidth: 0 }}>
+              <Typography
+                variant="subtitle1"
+                sx={{
+                  fontWeight: 900,
+                  color: "#0f172a",
+                  lineHeight: 1.25,
+                }}
+              >
+                Vigencia del ticket
+              </Typography>
+
+              <Typography
+                variant="body2"
+                sx={{
+                  color: "#64748b",
+                  mt: 0.25,
+                }}
+              >
+                {ticket?.due_status === "finalized"
+                  ? `Fecha límite original: ${ticket?.due_date || "Sin fecha"}`
+                  : `Fecha límite: ${ticket?.due_date || "Sin fecha"}`}
+              </Typography>
+            </Box>
+          </Stack>
+
+          <Chip
+            label={ticket?.due_label || "Sin vigencia"}
+            color={colorVigencia()}
+            sx={{
+              alignSelf: { xs: "flex-start", sm: "center" },
+              fontWeight: 900,
+              borderRadius: 2,
+              maxWidth: "100%",
+            }}
+          />
+        </Stack>
+      </Paper>
 
       {puedeAsignarResponsable && (
         <Paper

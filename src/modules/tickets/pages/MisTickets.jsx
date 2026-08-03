@@ -69,6 +69,17 @@ function MisTickets() {
     }
   };
 
+  const abrirTicket = (ticket) => {
+    navigate(`/tickets/${ticket.id}`);
+  };
+
+  const manejarTecladoTicket = (event, ticket) => {
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      abrirTicket(ticket);
+    }
+  };
+
   const nombreEstado = (ticket) =>
     ticket.status?.nombre || ticket.status?.name || ticket.status || "Abierto";
 
@@ -149,6 +160,31 @@ function MisTickets() {
     return "default";
   };
 
+  const etiquetaVigencia = (ticket) =>
+    ticket.due_label || ticket.due_date || "Sin vigencia";
+
+  const colorVigencia = (ticket) => {
+    switch (ticket.due_status) {
+      case "overdue":
+        return "error";
+
+      case "due_today":
+        return "error";
+
+      case "warning":
+        return "warning";
+
+      case "normal":
+        return "success";
+
+      case "finalized":
+        return "default";
+
+      default:
+        return "default";
+    }
+  };
+
   const ticketsFiltrados = useMemo(() => {
     const texto = busqueda.trim().toLowerCase();
 
@@ -167,6 +203,8 @@ function MisTickets() {
         nombreProblema(ticket),
         nombrePrioridad(ticket),
         nombreAgente(ticket),
+        ticket.due_date,
+        ticket.due_label,
       ]
         .join(" ")
         .toLowerCase();
@@ -192,24 +230,6 @@ function MisTickets() {
     setRowsPerPage(Number(event.target.value));
     setPage(0);
   };
-
-  const BotonVer = ({ ticket, compacto = false }) => (
-    <Button
-      size="small"
-      variant="outlined"
-      fullWidth={compacto}
-      onClick={() => navigate(`/tickets/${ticket.id}`)}
-      sx={{
-        borderRadius: 2,
-        textTransform: "none",
-        fontWeight: 800,
-        minWidth: compacto ? "100%" : 82,
-        whiteSpace: "nowrap",
-      }}
-    >
-      Ver
-    </Button>
-  );
 
   const LogoSistema = ({ ticket, size = 42 }) => {
     const logo = obtenerLogoSistema(ticket);
@@ -241,8 +261,8 @@ function MisTickets() {
         component="img"
         src={logo}
         alt={nombreSistema(ticket)}
-        onError={(e) => {
-          e.currentTarget.style.display = "none";
+        onError={(event) => {
+          event.currentTarget.style.display = "none";
         }}
         sx={{
           width: size,
@@ -257,6 +277,37 @@ function MisTickets() {
       />
     );
   };
+
+  const VigenciaTicket = ({ ticket }) => (
+    <Stack spacing={0.5} alignItems="flex-start">
+      <Chip
+        size="small"
+        label={etiquetaVigencia(ticket)}
+        color={colorVigencia(ticket)}
+        sx={{
+          fontWeight: 800,
+          maxWidth: "100%",
+          "& .MuiChip-label": {
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+          },
+        }}
+      />
+
+      {ticket.due_date && ticket.due_status !== "finalized" && (
+        <Typography
+          variant="caption"
+          color="text.secondary"
+          sx={{
+            lineHeight: 1.2,
+            whiteSpace: "nowrap",
+          }}
+        >
+          Hasta {ticket.due_date}
+        </Typography>
+      )}
+    </Stack>
+  );
 
   const PaginacionTickets = () => (
     <TablePagination
@@ -311,8 +362,7 @@ function MisTickets() {
           </Typography>
 
           <Typography variant="body2" color="text.secondary">
-            Consulta tickets, estado actual, problema, prioridad y agente
-            asignado.
+            Consulta tickets, estado, prioridad, vigencia y agente asignado.
           </Typography>
         </Box>
 
@@ -351,8 +401,8 @@ function MisTickets() {
               size="small"
               label="Buscar"
               value={busqueda}
-              onChange={(e) => setBusqueda(e.target.value)}
-              placeholder="Folio, título, sistema, problema, prioridad o agente"
+              onChange={(event) => setBusqueda(event.target.value)}
+              placeholder="Folio, título, sistema, prioridad, agente o vigencia"
             />
           </Grid>
 
@@ -363,7 +413,7 @@ function MisTickets() {
               size="small"
               label="Estado"
               value={estadoFiltro}
-              onChange={(e) => setEstadoFiltro(e.target.value)}
+              onChange={(event) => setEstadoFiltro(event.target.value)}
             >
               <MenuItem value="todos">Todos</MenuItem>
               <MenuItem value="abiert">Abiertos</MenuItem>
@@ -388,7 +438,7 @@ function MisTickets() {
             </Typography>
 
             <Typography variant="body2" color="text.secondary">
-              Mostrando {ticketsFiltrados.length} resultado(s).
+              Selecciona cualquier fila para abrir el detalle.
             </Typography>
           </Box>
 
@@ -427,7 +477,7 @@ function MisTickets() {
                   stickyHeader
                   sx={{
                     tableLayout: "fixed",
-                    minWidth: 980,
+                    minWidth: 1080,
                     width: "100%",
                   }}
                 >
@@ -437,34 +487,49 @@ function MisTickets() {
                         Folio
                       </TableCell>
 
-                      <TableCell sx={{ ...headCell, width: 280 }}>
+                      <TableCell sx={{ ...headCell, width: 255 }}>
                         Problema
                       </TableCell>
 
-                      <TableCell sx={{ ...headCell, width: 170 }}>
+                      <TableCell sx={{ ...headCell, width: 155 }}>
                         Sección
                       </TableCell>
 
-                      <TableCell sx={{ ...headCell, width: 180 }}>
+                      <TableCell sx={{ ...headCell, width: 165 }}>
                         Prioridad / Estado
                       </TableCell>
 
-                      <TableCell sx={{ ...headCell, width: 170 }}>
-                        Agente
+                      <TableCell sx={{ ...headCell, width: 175 }}>
+                        Vigencia
                       </TableCell>
 
-                      <TableCell
-                        sx={{ ...headCell, width: 95 }}
-                        align="center"
-                      >
-                        Acciones
+                      <TableCell sx={{ ...headCell, width: 165 }}>
+                        Agente
                       </TableCell>
                     </TableRow>
                   </TableHead>
 
                   <TableBody>
                     {ticketsPaginados.map((ticket) => (
-                      <TableRow key={ticket.id} hover>
+                      <TableRow
+                        key={ticket.id}
+                        hover
+                        tabIndex={0}
+                        role="button"
+                        onClick={() => abrirTicket(ticket)}
+                        onKeyDown={(event) =>
+                          manejarTecladoTicket(event, ticket)
+                        }
+                        sx={{
+                          cursor: "pointer",
+                          transition: "background-color 0.15s ease",
+                          "&:focus-visible": {
+                            outline: "2px solid",
+                            outlineColor: "primary.main",
+                            outlineOffset: -2,
+                          },
+                        }}
+                      >
                         <TableCell sx={bodyCell}>
                           <Stack
                             direction="row"
@@ -488,9 +553,7 @@ function MisTickets() {
 
                               <Typography
                                 variant="caption"
-                                sx={{
-                                  wordBreak: "break-word",
-                                }}
+                                sx={{ wordBreak: "break-word" }}
                               >
                                 {ticket.folio_numero || ticket.id}
                               </Typography>
@@ -555,6 +618,10 @@ function MisTickets() {
                         </TableCell>
 
                         <TableCell sx={bodyCell}>
+                          <VigenciaTicket ticket={ticket} />
+                        </TableCell>
+
+                        <TableCell sx={bodyCell}>
                           <Typography
                             variant="body2"
                             sx={{
@@ -564,10 +631,6 @@ function MisTickets() {
                           >
                             {nombreAgente(ticket)}
                           </Typography>
-                        </TableCell>
-
-                        <TableCell align="center" sx={bodyCell}>
-                          <BotonVer ticket={ticket} />
                         </TableCell>
                       </TableRow>
                     ))}
@@ -589,11 +652,27 @@ function MisTickets() {
                 <Paper
                   key={ticket.id}
                   variant="outlined"
+                  tabIndex={0}
+                  role="button"
+                  onClick={() => abrirTicket(ticket)}
+                  onKeyDown={(event) => manejarTecladoTicket(event, ticket)}
                   sx={{
                     p: 1.5,
                     borderRadius: 3,
                     bgcolor: "#ffffff",
                     borderColor: "#e5e7eb",
+                    cursor: "pointer",
+                    transition:
+                      "border-color 0.15s ease, background-color 0.15s ease",
+                    "&:hover": {
+                      borderColor: "primary.main",
+                      bgcolor: "#f8fafc",
+                    },
+                    "&:focus-visible": {
+                      outline: "2px solid",
+                      outlineColor: "primary.main",
+                      outlineOffset: 2,
+                    },
                   }}
                 >
                   <Stack spacing={1.4}>
@@ -626,18 +705,16 @@ function MisTickets() {
                       />
                     </Stack>
 
-                    <Box>
-                      <Typography
-                        fontWeight={900}
-                        sx={{
-                          fontSize: 16,
-                          lineHeight: 1.35,
-                          wordBreak: "break-word",
-                        }}
-                      >
-                        {ticket.titulo}
-                      </Typography>
-                    </Box>
+                    <Typography
+                      fontWeight={900}
+                      sx={{
+                        fontSize: 16,
+                        lineHeight: 1.35,
+                        wordBreak: "break-word",
+                      }}
+                    >
+                      {ticket.titulo}
+                    </Typography>
 
                     <Divider />
 
@@ -656,12 +733,38 @@ function MisTickets() {
                         />
                       </Grid>
 
-                      <Grid item xs={12}>
-                        <InfoItem label="Agente" value={nombreAgente(ticket)} />
+                      <Grid item xs={12} sm={6}>
+                        <Box>
+                          <Typography
+                            variant="caption"
+                            color="text.secondary"
+                            fontWeight={800}
+                            display="block"
+                            sx={{ mb: 0.5 }}
+                          >
+                            Vigencia
+                          </Typography>
+
+                          <VigenciaTicket ticket={ticket} />
+                        </Box>
+                      </Grid>
+
+                      <Grid item xs={12} sm={6}>
+                        <InfoItem
+                          label="Agente"
+                          value={nombreAgente(ticket)}
+                        />
                       </Grid>
                     </Grid>
 
-                    <BotonVer ticket={ticket} compacto />
+                    <Typography
+                      variant="caption"
+                      color="primary"
+                      fontWeight={800}
+                      textAlign="right"
+                    >
+                      Presiona para ver el ticket
+                    </Typography>
                   </Stack>
                 </Paper>
               ))}
