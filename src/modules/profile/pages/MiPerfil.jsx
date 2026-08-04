@@ -7,6 +7,8 @@ import {
   Button,
   CircularProgress,
   Divider,
+  IconButton,
+  InputAdornment,
   Paper,
   Stack,
   TextField,
@@ -16,6 +18,8 @@ import {
 import AccountCircleIcon from "@mui/icons-material/AccountCircle";
 import LockResetIcon from "@mui/icons-material/LockReset";
 import SaveIcon from "@mui/icons-material/Save";
+import VisibilityOutlinedIcon from "@mui/icons-material/VisibilityOutlined";
+import VisibilityOffOutlinedIcon from "@mui/icons-material/VisibilityOffOutlined";
 
 import axiosCliente from "../../../services/axiosCliente";
 
@@ -62,6 +66,21 @@ export default function MiPerfil() {
 
   const [contrasena, setContrasena] = useState(contrasenaInicial);
 
+  const [
+    mostrarContrasenaActual,
+    setMostrarContrasenaActual,
+  ] = useState(false);
+
+  const [
+    mostrarNuevaContrasena,
+    setMostrarNuevaContrasena,
+  ] = useState(false);
+
+  const [
+    mostrarConfirmacionContrasena,
+    setMostrarConfirmacionContrasena,
+  ] = useState(false);
+
   const [cargando, setCargando] = useState(true);
   const [guardandoContacto, setGuardandoContacto] = useState(false);
   const [guardandoContrasena, setGuardandoContrasena] = useState(false);
@@ -102,7 +121,9 @@ export default function MiPerfil() {
     const { name, value } = event.target;
 
     if (name === "telefono") {
-      const telefonoLimpio = value.replace(/\D/g, "").slice(0, 10);
+      const telefonoLimpio = value
+        .replace(/\D/g, "")
+        .slice(0, 10);
 
       setContacto((prev) => ({
         ...prev,
@@ -125,6 +146,10 @@ export default function MiPerfil() {
       ...prev,
       [name]: value,
     }));
+  };
+
+  const evitarPerderFocoContrasena = (event) => {
+    event.preventDefault();
   };
 
   const guardarContacto = async (event) => {
@@ -191,7 +216,9 @@ export default function MiPerfil() {
 
       setMensajeContacto({
         type: "success",
-        text: data?.message || "Perfil actualizado correctamente.",
+        text:
+          data?.message ||
+          "Perfil actualizado correctamente.",
       });
     } catch (error) {
       setMensajeContacto({
@@ -224,16 +251,21 @@ export default function MiPerfil() {
     if (contrasena.password.length < 8) {
       setMensajeContrasena({
         type: "error",
-        text: "La nueva contraseña debe tener al menos 8 caracteres.",
+        text:
+          "La nueva contraseña debe tener al menos 8 caracteres.",
       });
 
       return;
     }
 
-    if (contrasena.password !== contrasena.password_confirmation) {
+    if (
+      contrasena.password !==
+      contrasena.password_confirmation
+    ) {
       setMensajeContrasena({
         type: "error",
-        text: "La confirmación de la contraseña no coincide.",
+        text:
+          "La confirmación de la contraseña no coincide.",
       });
 
       return;
@@ -242,17 +274,27 @@ export default function MiPerfil() {
     setGuardandoContrasena(true);
 
     try {
-      const { data } = await axiosCliente.put("/profile/password", {
-        current_password: contrasena.current_password,
-        password: contrasena.password,
-        password_confirmation: contrasena.password_confirmation,
-      });
+      const { data } = await axiosCliente.put(
+        "/profile/password",
+        {
+          current_password: contrasena.current_password,
+          password: contrasena.password,
+          password_confirmation:
+            contrasena.password_confirmation,
+        },
+      );
 
       setContrasena(contrasenaInicial);
 
+      setMostrarContrasenaActual(false);
+      setMostrarNuevaContrasena(false);
+      setMostrarConfirmacionContrasena(false);
+
       setMensajeContrasena({
         type: "success",
-        text: data?.message || "Contraseña actualizada correctamente.",
+        text:
+          data?.message ||
+          "Contraseña actualizada correctamente.",
       });
     } catch (error) {
       setMensajeContrasena({
@@ -284,6 +326,7 @@ export default function MiPerfil() {
       >
         <Stack spacing={2} alignItems="center">
           <CircularProgress />
+
           <Typography color="text.secondary">
             Cargando perfil...
           </Typography>
@@ -298,7 +341,10 @@ export default function MiPerfil() {
         width: "100%",
         maxWidth: 1100,
         mx: "auto",
-        py: { xs: 1, md: 2 },
+        py: {
+          xs: 1,
+          md: 2,
+        },
       }}
     >
       <Stack spacing={3}>
@@ -308,30 +354,48 @@ export default function MiPerfil() {
             component="h1"
             sx={{
               fontWeight: 800,
-              fontSize: { xs: "1.7rem", md: "2.1rem" },
+              fontSize: {
+                xs: "1.7rem",
+                md: "2.1rem",
+              },
             }}
           >
             Mi perfil
           </Typography>
 
-          <Typography color="text.secondary" sx={{ mt: 0.5 }}>
-            Consulta tus datos y actualiza tu información de acceso.
+          <Typography
+            color="text.secondary"
+            sx={{
+              mt: 0.5,
+            }}
+          >
+            Consulta tus datos y actualiza tu información de
+            acceso.
           </Typography>
         </Box>
 
         <Paper
           elevation={0}
           sx={{
-            p: { xs: 2, md: 3 },
+            p: {
+              xs: 2,
+              md: 3,
+            },
             borderRadius: 3,
             border: "1px solid",
             borderColor: "divider",
           }}
         >
           <Stack
-            direction={{ xs: "column", sm: "row" }}
+            direction={{
+              xs: "column",
+              sm: "row",
+            }}
             spacing={2}
-            alignItems={{ xs: "flex-start", sm: "center" }}
+            alignItems={{
+              xs: "flex-start",
+              sm: "center",
+            }}
           >
             <Avatar
               sx={{
@@ -340,11 +404,20 @@ export default function MiPerfil() {
                 bgcolor: "primary.main",
               }}
             >
-              <AccountCircleIcon sx={{ fontSize: 42 }} />
+              <AccountCircleIcon
+                sx={{
+                  fontSize: 42,
+                }}
+              />
             </Avatar>
 
             <Box>
-              <Typography variant="h6" sx={{ fontWeight: 700 }}>
+              <Typography
+                variant="h6"
+                sx={{
+                  fontWeight: 700,
+                }}
+              >
                 {nombreCompleto || "Usuario"}
               </Typography>
 
@@ -371,7 +444,10 @@ export default function MiPerfil() {
             onSubmit={guardarContacto}
             elevation={0}
             sx={{
-              p: { xs: 2, md: 3 },
+              p: {
+                xs: 2,
+                md: 3,
+              },
               borderRadius: 3,
               border: "1px solid",
               borderColor: "divider",
@@ -379,16 +455,24 @@ export default function MiPerfil() {
           >
             <Stack spacing={2.5}>
               <Box>
-                <Typography variant="h6" sx={{ fontWeight: 700 }}>
+                <Typography
+                  variant="h6"
+                  sx={{
+                    fontWeight: 700,
+                  }}
+                >
                   Datos de contacto
                 </Typography>
 
                 <Typography
                   variant="body2"
                   color="text.secondary"
-                  sx={{ mt: 0.5 }}
+                  sx={{
+                    mt: 0.5,
+                  }}
                 >
-                  Puedes actualizar únicamente tu correo y teléfono.
+                  Puedes actualizar únicamente tu correo y
+                  teléfono.
                 </Typography>
               </Box>
 
@@ -456,7 +540,10 @@ export default function MiPerfil() {
                 disabled={guardandoContacto}
                 startIcon={
                   guardandoContacto ? (
-                    <CircularProgress size={18} color="inherit" />
+                    <CircularProgress
+                      size={18}
+                      color="inherit"
+                    />
                   ) : (
                     <SaveIcon />
                   )
@@ -474,7 +561,10 @@ export default function MiPerfil() {
             onSubmit={guardarContrasena}
             elevation={0}
             sx={{
-              p: { xs: 2, md: 3 },
+              p: {
+                xs: 2,
+                md: 3,
+              },
               borderRadius: 3,
               border: "1px solid",
               borderColor: "divider",
@@ -482,17 +572,24 @@ export default function MiPerfil() {
           >
             <Stack spacing={2.5}>
               <Box>
-                <Typography variant="h6" sx={{ fontWeight: 700 }}>
+                <Typography
+                  variant="h6"
+                  sx={{
+                    fontWeight: 700,
+                  }}
+                >
                   Cambiar contraseña
                 </Typography>
 
                 <Typography
                   variant="body2"
                   color="text.secondary"
-                  sx={{ mt: 0.5 }}
+                  sx={{
+                    mt: 0.5,
+                  }}
                 >
-                  Debes confirmar tu contraseña actual antes de establecer una
-                  nueva.
+                  Debes confirmar tu contraseña actual antes de
+                  establecer una nueva.
                 </Typography>
               </Box>
 
@@ -507,35 +604,158 @@ export default function MiPerfil() {
               <TextField
                 label="Contraseña actual"
                 name="current_password"
-                type="password"
+                type={
+                  mostrarContrasenaActual
+                    ? "text"
+                    : "password"
+                }
                 value={contrasena.current_password}
                 onChange={actualizarContrasena}
                 autoComplete="current-password"
                 fullWidth
                 required
+                disabled={guardandoContrasena}
+                slotProps={{
+                  input: {
+                    endAdornment: (
+                      <InputAdornment position="end">
+                        <IconButton
+                          type="button"
+                          edge="end"
+                          disabled={guardandoContrasena}
+                          onClick={() =>
+                            setMostrarContrasenaActual(
+                              (valorActual) =>
+                                !valorActual,
+                            )
+                          }
+                          onMouseDown={
+                            evitarPerderFocoContrasena
+                          }
+                          aria-label={
+                            mostrarContrasenaActual
+                              ? "Ocultar contraseña actual"
+                              : "Mostrar contraseña actual"
+                          }
+                          aria-pressed={
+                            mostrarContrasenaActual
+                          }
+                        >
+                          {mostrarContrasenaActual ? (
+                            <VisibilityOffOutlinedIcon />
+                          ) : (
+                            <VisibilityOutlinedIcon />
+                          )}
+                        </IconButton>
+                      </InputAdornment>
+                    ),
+                  },
+                }}
               />
 
               <TextField
                 label="Nueva contraseña"
                 name="password"
-                type="password"
+                type={
+                  mostrarNuevaContrasena
+                    ? "text"
+                    : "password"
+                }
                 value={contrasena.password}
                 onChange={actualizarContrasena}
                 autoComplete="new-password"
                 fullWidth
                 required
+                disabled={guardandoContrasena}
                 helperText="Debe contener al menos 8 caracteres."
+                slotProps={{
+                  input: {
+                    endAdornment: (
+                      <InputAdornment position="end">
+                        <IconButton
+                          type="button"
+                          edge="end"
+                          disabled={guardandoContrasena}
+                          onClick={() =>
+                            setMostrarNuevaContrasena(
+                              (valorActual) =>
+                                !valorActual,
+                            )
+                          }
+                          onMouseDown={
+                            evitarPerderFocoContrasena
+                          }
+                          aria-label={
+                            mostrarNuevaContrasena
+                              ? "Ocultar nueva contraseña"
+                              : "Mostrar nueva contraseña"
+                          }
+                          aria-pressed={
+                            mostrarNuevaContrasena
+                          }
+                        >
+                          {mostrarNuevaContrasena ? (
+                            <VisibilityOffOutlinedIcon />
+                          ) : (
+                            <VisibilityOutlinedIcon />
+                          )}
+                        </IconButton>
+                      </InputAdornment>
+                    ),
+                  },
+                }}
               />
 
               <TextField
                 label="Confirmar nueva contraseña"
                 name="password_confirmation"
-                type="password"
+                type={
+                  mostrarConfirmacionContrasena
+                    ? "text"
+                    : "password"
+                }
                 value={contrasena.password_confirmation}
                 onChange={actualizarContrasena}
                 autoComplete="new-password"
                 fullWidth
                 required
+                disabled={guardandoContrasena}
+                slotProps={{
+                  input: {
+                    endAdornment: (
+                      <InputAdornment position="end">
+                        <IconButton
+                          type="button"
+                          edge="end"
+                          disabled={guardandoContrasena}
+                          onClick={() =>
+                            setMostrarConfirmacionContrasena(
+                              (valorActual) =>
+                                !valorActual,
+                            )
+                          }
+                          onMouseDown={
+                            evitarPerderFocoContrasena
+                          }
+                          aria-label={
+                            mostrarConfirmacionContrasena
+                              ? "Ocultar confirmación de contraseña"
+                              : "Mostrar confirmación de contraseña"
+                          }
+                          aria-pressed={
+                            mostrarConfirmacionContrasena
+                          }
+                        >
+                          {mostrarConfirmacionContrasena ? (
+                            <VisibilityOffOutlinedIcon />
+                          ) : (
+                            <VisibilityOutlinedIcon />
+                          )}
+                        </IconButton>
+                      </InputAdornment>
+                    ),
+                  },
+                }}
               />
 
               <Button
@@ -545,7 +765,10 @@ export default function MiPerfil() {
                 disabled={guardandoContrasena}
                 startIcon={
                   guardandoContrasena ? (
-                    <CircularProgress size={18} color="inherit" />
+                    <CircularProgress
+                      size={18}
+                      color="inherit"
+                    />
                   ) : (
                     <LockResetIcon />
                   )

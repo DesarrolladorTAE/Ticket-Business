@@ -306,7 +306,7 @@ function normalizarEstadoVisual(ticket) {
 
   const id = Number(ticket?.status_id || ticket?.status?.id || 0);
 
-  if (nombre.includes("cerr")) {
+  if (nombre.includes("cerr") || id === 4) {
     return {
       label: "Cerrado",
       bg: "#334155",
@@ -439,6 +439,18 @@ function TicketPublicoHistorial() {
   const [archivoPreview, setArchivoPreview] = useState(null);
   const [refrescando, setRefrescando] = useState(false);
 
+  const ticketCerrado =
+    Number(ticket?.status_id || ticket?.status?.id || 0) === 4 ||
+    String(
+      ticket?.status?.nombre ||
+        ticket?.status_nombre ||
+        ticket?.estado ||
+        "",
+    )
+      .trim()
+      .toLowerCase()
+      .includes("cerr");
+
   useEffect(() => {
     cargarHistorial();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -447,6 +459,13 @@ function TicketPublicoHistorial() {
   useEffect(() => {
     scrollAlFinal();
   }, [messages]);
+
+  useEffect(() => {
+    if (ticketCerrado) {
+      setMessage("");
+      setArchivos([]);
+    }
+  }, [ticketCerrado]);
 
   const cargarHistorial = async () => {
     setLoading(true);
@@ -490,6 +509,11 @@ function TicketPublicoHistorial() {
   };
 
   const seleccionarArchivos = (e) => {
+    if (ticketCerrado) {
+      e.target.value = "";
+      return;
+    }
+
     const files = Array.from(e.target.files || []);
 
     if (!files.length) return;
@@ -504,6 +528,14 @@ function TicketPublicoHistorial() {
   };
 
   const enviarMensaje = async () => {
+    if (ticketCerrado) {
+      setError(
+        "Este ticket está cerrado y ya no acepta mensajes ni archivos.",
+      );
+      setOk("");
+      return;
+    }
+
     if (!message.trim() && archivos.length === 0) return;
 
     setEnviando(true);
@@ -568,6 +600,8 @@ function TicketPublicoHistorial() {
   };
 
   const manejarEnter = (e) => {
+    if (ticketCerrado) return;
+
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       enviarMensaje();
@@ -770,8 +804,9 @@ function TicketPublicoHistorial() {
                   lineHeight: 1.45,
                 }}
               >
-                Consulta el avance del ticket y las respuestas públicas del
-                cliente y del área de soporte.
+                {ticketCerrado
+                  ? "Este ticket está cerrado. Puedes consultar su historial, pero ya no acepta mensajes ni archivos."
+                  : "Consulta el avance del ticket y las respuestas públicas del cliente y del área de soporte."}
               </Typography>
             </Box>
 
@@ -1129,138 +1164,175 @@ function TicketPublicoHistorial() {
             flexShrink: 0,
           }}
         >
-          {archivos.length > 0 && (
-            <Stack
-              spacing={1}
-              mb={1.2}
+          {ticketCerrado ? (
+            <Alert
+              severity="info"
+              variant="outlined"
               sx={{
-                maxHeight: { xs: 120, md: 170 },
-                overflowY: "auto",
-                pr: 0.5,
+                borderRadius: 2.5,
+                bgcolor: "#f8fafc",
+                borderColor: "#94a3b8",
+                color: "#334155",
+                alignItems: "center",
+                "& .MuiAlert-icon": {
+                  color: "#475569",
+                },
               }}
             >
-              {archivos.map((archivo, index) => (
-                <Box
-                  key={`${archivo.name}-${index}`}
-                  sx={{
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "space-between",
-                    gap: 1,
-                    p: 1,
-                    borderRadius: 2,
-                    bgcolor: "#f8fafc",
-                    border: "1px solid #e5e7eb",
-                  }}
-                >
-                  <Box
-                    display="flex"
-                    alignItems="center"
-                    gap={1}
-                    sx={{ minWidth: 0 }}
-                  >
-                    <InsertDriveFileIcon color="action" />
-
-                    <Box sx={{ minWidth: 0 }}>
-                      <Typography variant="body2" fontWeight={700} noWrap>
-                        {archivo.name}
-                      </Typography>
-
-                      <Typography variant="caption" color="text.secondary">
-                        {formatoPeso(archivo.size)}
-                      </Typography>
-                    </Box>
-                  </Box>
-
-                  <IconButton
-                    size="small"
-                    onClick={() => quitarArchivo(index)}
-                    disabled={enviando}
-                  >
-                    <CloseIcon fontSize="small" />
-                  </IconButton>
-                </Box>
-              ))}
-            </Stack>
-          )}
-
-          <Stack
-            direction="row"
-            spacing={{ xs: 0.8, md: 1.2 }}
-            alignItems="flex-end"
-          >
-            <Tooltip title="Adjuntar archivo">
-              <IconButton
-                component="label"
-                disabled={enviando}
+              <Typography
+                component="div"
                 sx={{
-                  width: { xs: 40, md: 42 },
-                  height: { xs: 40, md: 42 },
-                  border: "1px solid #d1d5db",
-                  bgcolor: "#f8fafc",
-                  flexShrink: 0,
+                  fontSize: { xs: 12.5, md: 14 },
+                  lineHeight: 1.55,
                 }}
               >
-                <AttachFileIcon fontSize="small" />
+                <strong>Este ticket está cerrado.</strong>{" "}
+                Puedes consultar el historial, pero ya no acepta mensajes ni
+                archivos.
+              </Typography>
+            </Alert>
+          ) : (
+            <>
+              {archivos.length > 0 && (
+                <Stack
+                  spacing={1}
+                  mb={1.2}
+                  sx={{
+                    maxHeight: { xs: 120, md: 170 },
+                    overflowY: "auto",
+                    pr: 0.5,
+                  }}
+                >
+                  {archivos.map((archivo, index) => (
+                    <Box
+                      key={`${archivo.name}-${index}`}
+                      sx={{
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                        gap: 1,
+                        p: 1,
+                        borderRadius: 2,
+                        bgcolor: "#f8fafc",
+                        border: "1px solid #e5e7eb",
+                      }}
+                    >
+                      <Box
+                        display="flex"
+                        alignItems="center"
+                        gap={1}
+                        sx={{ minWidth: 0 }}
+                      >
+                        <InsertDriveFileIcon color="action" />
 
-                <input
-                  type="file"
-                  hidden
-                  multiple
-                  onChange={seleccionarArchivos}
-                  accept=".jpg,.jpeg,.png,.webp,.pdf,.doc,.docx,.xls,.xlsx,.txt,.zip"
+                        <Box sx={{ minWidth: 0 }}>
+                          <Typography variant="body2" fontWeight={700} noWrap>
+                            {archivo.name}
+                          </Typography>
+
+                          <Typography
+                            variant="caption"
+                            color="text.secondary"
+                          >
+                            {formatoPeso(archivo.size)}
+                          </Typography>
+                        </Box>
+                      </Box>
+
+                      <IconButton
+                        size="small"
+                        onClick={() => quitarArchivo(index)}
+                        disabled={enviando}
+                      >
+                        <CloseIcon fontSize="small" />
+                      </IconButton>
+                    </Box>
+                  ))}
+                </Stack>
+              )}
+
+              <Stack
+                direction="row"
+                spacing={{ xs: 0.8, md: 1.2 }}
+                alignItems="flex-end"
+              >
+                <Tooltip title="Adjuntar archivo">
+                  <IconButton
+                    component="label"
+                    disabled={enviando}
+                    sx={{
+                      width: { xs: 40, md: 42 },
+                      height: { xs: 40, md: 42 },
+                      border: "1px solid #d1d5db",
+                      bgcolor: "#f8fafc",
+                      flexShrink: 0,
+                    }}
+                  >
+                    <AttachFileIcon fontSize="small" />
+
+                    <input
+                      type="file"
+                      hidden
+                      multiple
+                      onChange={seleccionarArchivos}
+                      accept=".jpg,.jpeg,.png,.webp,.pdf,.doc,.docx,.xls,.xlsx,.txt,.zip"
+                    />
+                  </IconButton>
+                </Tooltip>
+
+                <TextField
+                  placeholder="Escribir mensaje público"
+                  value={message}
+                  onChange={(e) => setMessage(e.target.value)}
+                  onKeyDown={manejarEnter}
+                  multiline
+                  minRows={1}
+                  maxRows={4}
+                  fullWidth
+                  disabled={enviando}
+                  size="small"
+                  sx={{
+                    "& .MuiOutlinedInput-root": {
+                      borderRadius: 4,
+                      bgcolor: "#f8fafc",
+                      fontSize: { xs: 13, md: 14 },
+                    },
+                  }}
                 />
-              </IconButton>
-            </Tooltip>
 
-            <TextField
-              placeholder="Escribir mensaje público"
-              value={message}
-              onChange={(e) => setMessage(e.target.value)}
-              onKeyDown={manejarEnter}
-              multiline
-              minRows={1}
-              maxRows={4}
-              fullWidth
-              disabled={enviando}
-              size="small"
-              sx={{
-                "& .MuiOutlinedInput-root": {
-                  borderRadius: 4,
-                  bgcolor: "#f8fafc",
-                  fontSize: { xs: 13, md: 14 },
-                },
-              }}
-            />
-
-            <Button
-              variant="contained"
-              onClick={enviarMensaje}
-              disabled={enviando || (!message.trim() && archivos.length === 0)}
-              endIcon={<SendIcon />}
-              sx={{
-                minWidth: { xs: 42, sm: 48, md: 150 },
-                width: { xs: 42, sm: 48, md: "auto" },
-                height: { xs: 40, md: 42 },
-                px: { xs: 0, md: 2 },
-                borderRadius: 4,
-                fontWeight: 900,
-                bgcolor: color,
-                flexShrink: 0,
-                "&:hover": {
-                  bgcolor: color,
-                  opacity: 0.92,
-                },
-                "& .MuiButton-endIcon": {
-                  m: { xs: 0, md: "0 0 0 8px" },
-                },
-              }}
-            >
-              <Box sx={{ display: { xs: "none", md: "block" } }}>
-                {enviando ? "Enviando" : "Enviar"}
-              </Box>
-            </Button>
-          </Stack>
+                <Button
+                  variant="contained"
+                  onClick={enviarMensaje}
+                  disabled={
+                    enviando ||
+                    (!message.trim() && archivos.length === 0)
+                  }
+                  endIcon={<SendIcon />}
+                  sx={{
+                    minWidth: { xs: 42, sm: 48, md: 150 },
+                    width: { xs: 42, sm: 48, md: "auto" },
+                    height: { xs: 40, md: 42 },
+                    px: { xs: 0, md: 2 },
+                    borderRadius: 4,
+                    fontWeight: 900,
+                    bgcolor: color,
+                    flexShrink: 0,
+                    "&:hover": {
+                      bgcolor: color,
+                      opacity: 0.92,
+                    },
+                    "& .MuiButton-endIcon": {
+                      m: { xs: 0, md: "0 0 0 8px" },
+                    },
+                  }}
+                >
+                  <Box sx={{ display: { xs: "none", md: "block" } }}>
+                    {enviando ? "Enviando" : "Enviar"}
+                  </Box>
+                </Button>
+              </Stack>
+            </>
+          )}
         </Box>
       </Paper>
 

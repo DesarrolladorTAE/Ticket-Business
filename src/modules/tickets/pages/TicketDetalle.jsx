@@ -36,38 +36,33 @@ export default function TicketDetalle() {
   const { id } = useParams();
   const navigate = useNavigate();
 
-const usuario = JSON.parse(localStorage.getItem("USUARIO") || "{}");
+  const usuario = JSON.parse(localStorage.getItem("USUARIO") || "{}");
 
-const rolesBase = Array.isArray(usuario?.roles) ? usuario.roles : [];
+  const rolesBase = Array.isArray(usuario?.roles) ? usuario.roles : [];
 
-const rolesNormalizados = [
-  ...rolesBase,
-  usuario?.role,
-  usuario?.company_role,
-]
-  .filter(Boolean)
-  .map((role) => String(role).trim().toLowerCase());
+  const rolesNormalizados = [...rolesBase, usuario?.role, usuario?.company_role]
+    .filter(Boolean)
+    .map((role) => String(role).trim().toLowerCase());
 
-const isAdmin =
-  rolesNormalizados.includes("administrador") ||
-  rolesNormalizados.includes("admin");
+  const isAdmin =
+    rolesNormalizados.includes("administrador") ||
+    rolesNormalizados.includes("admin");
 
-const isAgent =
-  rolesNormalizados.includes("agente") ||
-  rolesNormalizados.includes("agent");
+  const isAgent =
+    rolesNormalizados.includes("agente") || rolesNormalizados.includes("agent");
 
-const isSupervisor = rolesNormalizados.includes("supervisor");
+  const isSupervisor = rolesNormalizados.includes("supervisor");
 
-const isClient =
-  rolesNormalizados.includes("cliente") ||
-  rolesNormalizados.includes("client");
+  const isClient =
+    rolesNormalizados.includes("cliente") ||
+    rolesNormalizados.includes("client");
 
-const puedeCambiarEstado = isAdmin || isSupervisor;
-const puedeMensajear = isAdmin || isAgent || isSupervisor || isClient;
-const puedeGestionar = isAdmin || isAgent || isSupervisor;
-const puedeResolver = isAdmin || isSupervisor;
-const puedeEliminar = isAdmin;
-const puedeAsignarResponsable = isAdmin || isSupervisor;
+  const puedeCambiarEstado = isAdmin || isSupervisor;
+  const puedeMensajear = isAdmin || isAgent || isSupervisor || isClient;
+  const puedeGestionar = isAdmin || isAgent || isSupervisor;
+  const puedeResolver = isAdmin || isSupervisor;
+  const puedeEliminar = isAdmin;
+  const puedeAsignarResponsable = isAdmin || isSupervisor;
 
   const [ticket, setTicket] = useState(null);
   const [messages, setMessages] = useState([]);
@@ -87,6 +82,9 @@ const puedeAsignarResponsable = isAdmin || isSupervisor;
   const [cargandoAgentes, setCargandoAgentes] = useState(false);
   const [asignandoResponsable, setAsignandoResponsable] = useState(false);
 
+  const ticketCerrado =
+    Number(ticket?.status_id || ticket?.status?.id || 0) === 4;
+
   const chatRef = useRef(null);
 
   useEffect(() => {
@@ -102,6 +100,13 @@ const puedeAsignarResponsable = isAdmin || isSupervisor;
   useEffect(() => {
     scrollBottom();
   }, [messages]);
+
+  useEffect(() => {
+    if (ticketCerrado) {
+      setText("");
+      setArchivo(null);
+    }
+  }, [ticketCerrado]);
 
   const cargarTodo = async () => {
     setLoading(true);
@@ -204,10 +209,7 @@ const puedeAsignarResponsable = isAdmin || isSupervisor;
         showConfirmButton: false,
       });
     } catch (error) {
-      console.log(
-        "ERROR ASIGNAR RESPONSABLE:",
-        error.response?.data || error,
-      );
+      console.log("ERROR ASIGNAR RESPONSABLE:", error.response?.data || error);
 
       Swal.fire({
         icon: "error",
@@ -486,6 +488,17 @@ const puedeAsignarResponsable = isAdmin || isSupervisor;
   };
 
   const enviarMensaje = async (visibility = "public") => {
+    if (ticketCerrado) {
+      await Swal.fire({
+        icon: "info",
+        title: "Ticket cerrado",
+        text: "Este ticket está cerrado. Para continuar, un administrador o supervisor debe cambiarlo a En proceso.",
+        confirmButtonText: "Entendido",
+      });
+
+      return;
+    }
+
     if (!text.trim() && !archivo) return;
 
     setEnviando(true);
@@ -762,11 +775,17 @@ const puedeAsignarResponsable = isAdmin || isSupervisor;
               px: { xs: 1.3, sm: 2 },
             }}
           >
-            <Box component="span" sx={{ display: { xs: "none", sm: "inline" } }}>
+            <Box
+              component="span"
+              sx={{ display: { xs: "none", sm: "inline" } }}
+            >
               Volver
             </Box>
 
-            <Box component="span" sx={{ display: { xs: "inline", sm: "none" } }}>
+            <Box
+              component="span"
+              sx={{ display: { xs: "inline", sm: "none" } }}
+            >
               ←
             </Box>
           </Button>
@@ -779,11 +798,17 @@ const puedeAsignarResponsable = isAdmin || isSupervisor;
               px: { xs: 1.3, sm: 2 },
             }}
           >
-            <Box component="span" sx={{ display: { xs: "none", sm: "inline" } }}>
+            <Box
+              component="span"
+              sx={{ display: { xs: "none", sm: "inline" } }}
+            >
               Actualizar
             </Box>
 
-            <Box component="span" sx={{ display: { xs: "inline", sm: "none" } }}>
+            <Box
+              component="span"
+              sx={{ display: { xs: "inline", sm: "none" } }}
+            >
               ↻
             </Box>
           </Button>
@@ -971,8 +996,8 @@ const puedeAsignarResponsable = isAdmin || isSupervisor;
               agentesDisponibles.length === 0 &&
               (ticket?.supportGroup || ticket?.support_group_id) && (
                 <Alert severity="warning">
-                  No hay agentes activos disponibles para el grupo de soporte
-                  de este ticket.
+                  No hay agentes activos disponibles para el grupo de soporte de
+                  este ticket.
                 </Alert>
               )}
 
@@ -1092,7 +1117,35 @@ const puedeAsignarResponsable = isAdmin || isSupervisor;
         />
       </Paper>
 
-      {puedeMensajear && (
+      {ticketCerrado ? (
+        <Alert
+          severity="info"
+          variant="outlined"
+          sx={{
+            mb: 2,
+            borderRadius: 2,
+            bgcolor: "#f8fafc",
+            borderColor: "#94a3b8",
+            color: "#334155",
+            alignItems: "center",
+            "& .MuiAlert-icon": {
+              color: "#475569",
+            },
+          }}
+        >
+          <Typography
+            component="div"
+            sx={{
+              fontSize: 14,
+              lineHeight: 1.6,
+            }}
+          >
+            <strong>Este ticket está cerrado.</strong> Para continuar, un
+            administrador o supervisor debe cambiarlo a{" "}
+            <strong>En proceso</strong>.
+          </Typography>
+        </Alert>
+      ) : puedeMensajear ? (
         <Box
           sx={{
             position: { xs: "sticky", md: "static" },
@@ -1113,7 +1166,7 @@ const puedeAsignarResponsable = isAdmin || isSupervisor;
             enviarMensaje={enviarMensaje}
           />
         </Box>
-      )}
+      ) : null}
 
       <AttachmentPreview
         previewOpen={previewOpen}

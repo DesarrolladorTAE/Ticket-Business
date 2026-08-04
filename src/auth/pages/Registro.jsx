@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Link as RouterLink, useNavigate } from "react-router-dom";
+
 import axiosCliente from "../../services/axiosCliente";
 
 import {
@@ -8,10 +9,12 @@ import {
   Button,
   Chip,
   CircularProgress,
+  IconButton,
   InputAdornment,
   Paper,
   Stack,
   TextField,
+  Tooltip,
   Typography,
 } from "@mui/material";
 
@@ -22,6 +25,8 @@ import EmailOutlinedIcon from "@mui/icons-material/EmailOutlined";
 import LockOutlinedIcon from "@mui/icons-material/LockOutlined";
 import SupportAgentIcon from "@mui/icons-material/SupportAgent";
 import PersonAddAltIcon from "@mui/icons-material/PersonAddAlt";
+import VisibilityOutlinedIcon from "@mui/icons-material/VisibilityOutlined";
+import VisibilityOffOutlinedIcon from "@mui/icons-material/VisibilityOffOutlined";
 
 function Registro() {
   const navigate = useNavigate();
@@ -35,30 +40,45 @@ function Registro() {
     password: "",
   });
 
+  const [mostrarPassword, setMostrarPassword] = useState(false);
+
   const [error, setError] = useState("");
   const [cargando, setCargando] = useState(false);
 
-  const cambiarValor = (e) => {
-    setFormulario({
-      ...formulario,
-      [e.target.name]: e.target.value,
-    });
+  const cambiarValor = (event) => {
+    const { name, value } = event.target;
+
+    setFormulario((formularioActual) => ({
+      ...formularioActual,
+      [name]: value,
+    }));
   };
 
-  const cambiarTelefono = (e) => {
-    setFormulario({
-      ...formulario,
-      telefono: e.target.value.replace(/\D/g, "").slice(0, 10),
-    });
+  const cambiarTelefono = (event) => {
+    const telefono = event.target.value.replace(/\D/g, "").slice(0, 10);
+
+    setFormulario((formularioActual) => ({
+      ...formularioActual,
+      telefono,
+    }));
   };
 
-  const registrarUsuario = async (e) => {
-    e.preventDefault();
+  const alternarVisibilidadPassword = () => {
+    setMostrarPassword((valorActual) => !valorActual);
+  };
+
+  const evitarPerderFocoPassword = (event) => {
+    event.preventDefault();
+  };
+
+  const registrarUsuario = async (event) => {
+    event.preventDefault();
 
     setError("");
 
     if (formulario.telefono.length !== 10) {
       setError("El teléfono debe tener exactamente 10 dígitos");
+
       return;
     }
 
@@ -72,7 +92,9 @@ function Registro() {
 
       navigate(
         `/verificar-correo?email=${encodeURIComponent(verificationEmail)}`,
-        { replace: true },
+        {
+          replace: true,
+        },
       );
     } catch (error) {
       const errores = error.response?.data?.errors;
@@ -95,8 +117,14 @@ function Registro() {
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        px: { xs: 2, sm: 3 },
-        py: { xs: 3, md: 5 },
+        px: {
+          xs: 2,
+          sm: 3,
+        },
+        py: {
+          xs: 3,
+          md: 5,
+        },
       }}
     >
       <Paper
@@ -113,8 +141,14 @@ function Registro() {
       >
         <Box
           sx={{
-            px: { xs: 2.5, sm: 4 },
-            pt: { xs: 3, sm: 4 },
+            px: {
+              xs: 2.5,
+              sm: 4,
+            },
+            pt: {
+              xs: 3,
+              sm: 4,
+            },
             pb: 2,
           }}
         >
@@ -132,14 +166,21 @@ function Registro() {
                 border: "1px solid #bfdbfe",
               }}
             >
-              <SupportAgentIcon sx={{ fontSize: 32 }} />
+              <SupportAgentIcon
+                sx={{
+                  fontSize: 32,
+                }}
+              />
             </Box>
 
             <Box>
               <Typography
                 fontWeight={900}
                 sx={{
-                  fontSize: { xs: 24, sm: 27 },
+                  fontSize: {
+                    xs: 24,
+                    sm: 27,
+                  },
                   color: "#0f172a",
                   lineHeight: 1.15,
                 }}
@@ -175,8 +216,14 @@ function Registro() {
 
         <Box
           sx={{
-            px: { xs: 2.5, sm: 4 },
-            py: { xs: 2.5, sm: 3 },
+            px: {
+              xs: 2.5,
+              sm: 4,
+            },
+            py: {
+              xs: 2.5,
+              sm: 3,
+            },
           }}
         >
           {error && (
@@ -303,7 +350,7 @@ function Registro() {
               <TextField
                 fullWidth
                 size="small"
-                type="password"
+                type={mostrarPassword ? "text" : "password"}
                 label="Contraseña"
                 name="password"
                 value={formulario.password}
@@ -311,16 +358,50 @@ function Registro() {
                 required
                 disabled={cargando}
                 autoComplete="new-password"
-                InputProps={{
-                  startAdornment: (
-                    <InputAdornment position="start">
-                      <LockOutlinedIcon fontSize="small" />
-                    </InputAdornment>
-                  ),
+                slotProps={{
+                  input: {
+                    startAdornment: (
+                      <InputAdornment position="start">
+                        <LockOutlinedIcon fontSize="small" />
+                      </InputAdornment>
+                    ),
+                    endAdornment: (
+                      <InputAdornment position="end">
+                        <IconButton
+                          type="button"
+                          edge="end"
+                          disabled={cargando}
+                          onClick={() =>
+                            setMostrarPassword((valorActual) => !valorActual)
+                          }
+                          onMouseDown={(event) => {
+                            event.preventDefault();
+                          }}
+                          aria-label={
+                            mostrarPassword
+                              ? "Ocultar contraseña"
+                              : "Mostrar contraseña"
+                          }
+                          sx={{
+                            color: "#64748b",
+                            "&:hover": {
+                              bgcolor: "#f1f5f9",
+                              color: "#1d4ed8",
+                            },
+                          }}
+                        >
+                          {mostrarPassword ? (
+                            <VisibilityOffOutlinedIcon fontSize="small" />
+                          ) : (
+                            <VisibilityOutlinedIcon fontSize="small" />
+                          )}
+                        </IconButton>
+                      </InputAdornment>
+                    ),
+                  },
                 }}
                 sx={inputStyle}
               />
-
               <Button
                 fullWidth
                 type="submit"
@@ -329,7 +410,12 @@ function Registro() {
                 size="large"
                 startIcon={
                   cargando ? (
-                    <CircularProgress size={18} sx={{ color: "#ffffff" }} />
+                    <CircularProgress
+                      size={18}
+                      sx={{
+                        color: "#ffffff",
+                      }}
+                    />
                   ) : (
                     <PersonAddAltIcon />
                   )
@@ -356,7 +442,10 @@ function Registro() {
 
         <Box
           sx={{
-            px: { xs: 2.5, sm: 4 },
+            px: {
+              xs: 2.5,
+              sm: 4,
+            },
             py: 2,
             bgcolor: "#f8fafc",
             borderTop: "1px solid #e2e8f0",

@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Link as RouterLink, useNavigate } from "react-router-dom";
+
 import axiosCliente from "../../services/axiosCliente";
 
 import {
@@ -8,10 +9,12 @@ import {
   Button,
   Chip,
   CircularProgress,
+  IconButton,
   InputAdornment,
   Paper,
   Stack,
   TextField,
+  Tooltip,
   Typography,
 } from "@mui/material";
 
@@ -19,6 +22,8 @@ import EmailOutlinedIcon from "@mui/icons-material/EmailOutlined";
 import LockOutlinedIcon from "@mui/icons-material/LockOutlined";
 import SupportAgentIcon from "@mui/icons-material/SupportAgent";
 import LoginIcon from "@mui/icons-material/Login";
+import VisibilityOutlinedIcon from "@mui/icons-material/VisibilityOutlined";
+import VisibilityOffOutlinedIcon from "@mui/icons-material/VisibilityOffOutlined";
 
 function IniciarSesion() {
   const navigate = useNavigate();
@@ -28,18 +33,30 @@ function IniciarSesion() {
     password: "",
   });
 
+  const [mostrarPassword, setMostrarPassword] = useState(false);
+
   const [error, setError] = useState("");
   const [cargando, setCargando] = useState(false);
 
-  const cambiarValor = (e) => {
-    setFormulario({
-      ...formulario,
-      [e.target.name]: e.target.value,
-    });
+  const cambiarValor = (event) => {
+    const { name, value } = event.target;
+
+    setFormulario((formularioActual) => ({
+      ...formularioActual,
+      [name]: value,
+    }));
   };
 
-  const iniciarSesion = async (e) => {
-    e.preventDefault();
+  const alternarVisibilidadPassword = () => {
+    setMostrarPassword((valorActual) => !valorActual);
+  };
+
+  const evitarPerderFocoPassword = (event) => {
+    event.preventDefault();
+  };
+
+  const iniciarSesion = async (event) => {
+    event.preventDefault();
 
     setError("");
     setCargando(true);
@@ -70,6 +87,7 @@ function IniciarSesion() {
       user.roles = roles;
 
       localStorage.setItem("TOKEN", respuesta.data.token);
+
       localStorage.setItem("USUARIO", JSON.stringify(user));
 
       if (
@@ -97,7 +115,9 @@ function IniciarSesion() {
           `/verificar-correo?email=${encodeURIComponent(
             data.verification_email,
           )}`,
-          { replace: true },
+          {
+            replace: true,
+          },
         );
 
         return;
@@ -117,8 +137,14 @@ function IniciarSesion() {
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        px: { xs: 2, sm: 3 },
-        py: { xs: 3, md: 5 },
+        px: {
+          xs: 2,
+          sm: 3,
+        },
+        py: {
+          xs: 3,
+          md: 5,
+        },
       }}
     >
       <Paper
@@ -135,8 +161,14 @@ function IniciarSesion() {
       >
         <Box
           sx={{
-            px: { xs: 2.5, sm: 4 },
-            pt: { xs: 3, sm: 4 },
+            px: {
+              xs: 2.5,
+              sm: 4,
+            },
+            pt: {
+              xs: 3,
+              sm: 4,
+            },
             pb: 2,
           }}
         >
@@ -154,14 +186,21 @@ function IniciarSesion() {
                 border: "1px solid #bfdbfe",
               }}
             >
-              <SupportAgentIcon sx={{ fontSize: 32 }} />
+              <SupportAgentIcon
+                sx={{
+                  fontSize: 32,
+                }}
+              />
             </Box>
 
             <Box>
               <Typography
                 fontWeight={900}
                 sx={{
-                  fontSize: { xs: 24, sm: 27 },
+                  fontSize: {
+                    xs: 24,
+                    sm: 27,
+                  },
                   color: "#0f172a",
                   lineHeight: 1.15,
                 }}
@@ -197,15 +236,24 @@ function IniciarSesion() {
 
         <Box
           sx={{
-            px: { xs: 2.5, sm: 4 },
-            py: { xs: 2.5, sm: 3 },
+            px: {
+              xs: 2.5,
+              sm: 4,
+            },
+            py: {
+              xs: 2.5,
+              sm: 3,
+            },
           }}
         >
           <Box mb={2.5}>
             <Typography
               fontWeight={900}
               sx={{
-                fontSize: { xs: 21, sm: 24 },
+                fontSize: {
+                  xs: 21,
+                  sm: 24,
+                },
                 color: "#0f172a",
               }}
             >
@@ -262,7 +310,7 @@ function IniciarSesion() {
 
               <TextField
                 fullWidth
-                type="password"
+                type={mostrarPassword ? "text" : "password"}
                 name="password"
                 label="Contraseña"
                 value={formulario.password}
@@ -271,12 +319,47 @@ function IniciarSesion() {
                 disabled={cargando}
                 autoComplete="current-password"
                 size="small"
-                InputProps={{
-                  startAdornment: (
-                    <InputAdornment position="start">
-                      <LockOutlinedIcon fontSize="small" />
-                    </InputAdornment>
-                  ),
+                slotProps={{
+                  input: {
+                    startAdornment: (
+                      <InputAdornment position="start">
+                        <LockOutlinedIcon fontSize="small" />
+                      </InputAdornment>
+                    ),
+                    endAdornment: (
+                      <InputAdornment position="end">
+                        <IconButton
+                          type="button"
+                          edge="end"
+                          disabled={cargando}
+                          onClick={() =>
+                            setMostrarPassword((valorActual) => !valorActual)
+                          }
+                          onMouseDown={(event) => {
+                            event.preventDefault();
+                          }}
+                          aria-label={
+                            mostrarPassword
+                              ? "Ocultar contraseña"
+                              : "Mostrar contraseña"
+                          }
+                          sx={{
+                            color: "#64748b",
+                            "&:hover": {
+                              bgcolor: "#f1f5f9",
+                              color: "#1d4ed8",
+                            },
+                          }}
+                        >
+                          {mostrarPassword ? (
+                            <VisibilityOffOutlinedIcon fontSize="small" />
+                          ) : (
+                            <VisibilityOutlinedIcon fontSize="small" />
+                          )}
+                        </IconButton>
+                      </InputAdornment>
+                    ),
+                  },
                 }}
                 sx={inputStyle}
               />
@@ -313,7 +396,12 @@ function IniciarSesion() {
                 size="large"
                 startIcon={
                   cargando ? (
-                    <CircularProgress size={18} sx={{ color: "#ffffff" }} />
+                    <CircularProgress
+                      size={18}
+                      sx={{
+                        color: "#ffffff",
+                      }}
+                    />
                   ) : (
                     <LoginIcon />
                   )
@@ -340,7 +428,10 @@ function IniciarSesion() {
 
         <Box
           sx={{
-            px: { xs: 2.5, sm: 4 },
+            px: {
+              xs: 2.5,
+              sm: 4,
+            },
             py: 2,
             bgcolor: "#f8fafc",
             borderTop: "1px solid #e2e8f0",

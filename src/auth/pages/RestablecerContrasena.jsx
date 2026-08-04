@@ -4,6 +4,7 @@ import {
   useNavigate,
   useSearchParams,
 } from "react-router-dom";
+
 import axiosCliente from "../../services/axiosCliente";
 
 import {
@@ -11,10 +12,12 @@ import {
   Box,
   Button,
   CircularProgress,
+  IconButton,
   InputAdornment,
   Paper,
   Stack,
   TextField,
+  Tooltip,
   Typography,
 } from "@mui/material";
 
@@ -22,6 +25,8 @@ import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import LockOutlinedIcon from "@mui/icons-material/LockOutlined";
 import LockResetIcon from "@mui/icons-material/LockReset";
 import SaveOutlinedIcon from "@mui/icons-material/SaveOutlined";
+import VisibilityOutlinedIcon from "@mui/icons-material/VisibilityOutlined";
+import VisibilityOffOutlinedIcon from "@mui/icons-material/VisibilityOffOutlined";
 
 function RestablecerContrasena() {
   const navigate = useNavigate();
@@ -35,21 +40,35 @@ function RestablecerContrasena() {
     password_confirmation: "",
   });
 
+  const [mostrarPassword, setMostrarPassword] =
+    useState(false);
+
+  const [
+    mostrarConfirmacionPassword,
+    setMostrarConfirmacionPassword,
+  ] = useState(false);
+
   const [error, setError] = useState("");
   const [mensaje, setMensaje] = useState("");
   const [cargando, setCargando] = useState(false);
 
   const enlaceValido = Boolean(token && email);
 
-  const cambiarValor = (e) => {
-    setFormulario({
-      ...formulario,
-      [e.target.name]: e.target.value,
-    });
+  const cambiarValor = (event) => {
+    const { name, value } = event.target;
+
+    setFormulario((formularioActual) => ({
+      ...formularioActual,
+      [name]: value,
+    }));
   };
 
-  const restablecerContrasena = async (e) => {
-    e.preventDefault();
+  const evitarPerderFocoPassword = (event) => {
+    event.preventDefault();
+  };
+
+  const restablecerContrasena = async (event) => {
+    event.preventDefault();
 
     setError("");
     setMensaje("");
@@ -58,11 +77,15 @@ function RestablecerContrasena() {
       setError(
         "El enlace de recuperación está incompleto o no es válido.",
       );
+
       return;
     }
 
     if (formulario.password.length < 8) {
-      setError("La contraseña debe tener al menos 8 caracteres.");
+      setError(
+        "La contraseña debe tener al menos 8 caracteres.",
+      );
+
       return;
     }
 
@@ -71,19 +94,23 @@ function RestablecerContrasena() {
       formulario.password_confirmation
     ) {
       setError("Las contraseñas no coinciden.");
+
       return;
     }
 
     setCargando(true);
 
     try {
-      const respuesta = await axiosCliente.post("/reset-password", {
-        token,
-        email,
-        password: formulario.password,
-        password_confirmation:
-          formulario.password_confirmation,
-      });
+      const respuesta = await axiosCliente.post(
+        "/reset-password",
+        {
+          token,
+          email,
+          password: formulario.password,
+          password_confirmation:
+            formulario.password_confirmation,
+        },
+      );
 
       setMensaje(
         respuesta.data?.message ||
@@ -94,6 +121,9 @@ function RestablecerContrasena() {
         password: "",
         password_confirmation: "",
       });
+
+      setMostrarPassword(false);
+      setMostrarConfirmacionPassword(false);
 
       setTimeout(() => {
         navigate("/login", {
@@ -124,8 +154,14 @@ function RestablecerContrasena() {
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        px: { xs: 2, sm: 3 },
-        py: { xs: 3, md: 5 },
+        px: {
+          xs: 2,
+          sm: 3,
+        },
+        py: {
+          xs: 3,
+          md: 5,
+        },
       }}
     >
       <Paper
@@ -143,8 +179,14 @@ function RestablecerContrasena() {
       >
         <Box
           sx={{
-            px: { xs: 2.5, sm: 4 },
-            pt: { xs: 3, sm: 4 },
+            px: {
+              xs: 2.5,
+              sm: 4,
+            },
+            pt: {
+              xs: 3,
+              sm: 4,
+            },
             pb: 2,
           }}
         >
@@ -166,14 +208,21 @@ function RestablecerContrasena() {
                 border: "1px solid #bfdbfe",
               }}
             >
-              <LockResetIcon sx={{ fontSize: 34 }} />
+              <LockResetIcon
+                sx={{
+                  fontSize: 34,
+                }}
+              />
             </Box>
 
             <Box>
               <Typography
                 fontWeight={900}
                 sx={{
-                  fontSize: { xs: 24, sm: 27 },
+                  fontSize: {
+                    xs: 24,
+                    sm: 27,
+                  },
                   color: "#0f172a",
                   lineHeight: 1.15,
                 }}
@@ -197,8 +246,14 @@ function RestablecerContrasena() {
 
         <Box
           sx={{
-            px: { xs: 2.5, sm: 4 },
-            py: { xs: 2.5, sm: 3 },
+            px: {
+              xs: 2.5,
+              sm: 4,
+            },
+            py: {
+              xs: 2.5,
+              sm: 3,
+            },
           }}
         >
           <Typography
@@ -210,7 +265,8 @@ function RestablecerContrasena() {
             }}
           >
             Escribe una nueva contraseña para la cuenta
-            asociada a <strong>{email || "tu correo"}</strong>.
+            asociada a{" "}
+            <strong>{email || "tu correo"}</strong>.
           </Typography>
 
           {!enlaceValido && (
@@ -260,13 +316,20 @@ function RestablecerContrasena() {
             <Stack spacing={2}>
               <TextField
                 fullWidth
-                type="password"
+                type={
+                  mostrarPassword
+                    ? "text"
+                    : "password"
+                }
                 name="password"
                 label="Nueva contraseña"
                 value={formulario.password}
                 onChange={cambiarValor}
                 required
-                disabled={cargando || !enlaceValido}
+                disabled={
+                  cargando ||
+                  !enlaceValido
+                }
                 autoComplete="new-password"
                 autoFocus
                 size="small"
@@ -277,13 +340,63 @@ function RestablecerContrasena() {
                       <LockOutlinedIcon fontSize="small" />
                     </InputAdornment>
                   ),
+                  endAdornment: (
+                    <InputAdornment position="end">
+                      <Tooltip
+                        title={
+                          mostrarPassword
+                            ? "Ocultar contraseña"
+                            : "Mostrar contraseña"
+                        }
+                      >
+                        <span>
+                          <IconButton
+                            type="button"
+                            edge="end"
+                            disabled={
+                              cargando ||
+                              !enlaceValido
+                            }
+                            onClick={() =>
+                              setMostrarPassword(
+                                (valorActual) =>
+                                  !valorActual,
+                              )
+                            }
+                            onMouseDown={
+                              evitarPerderFocoPassword
+                            }
+                            aria-label={
+                              mostrarPassword
+                                ? "Ocultar contraseña"
+                                : "Mostrar contraseña"
+                            }
+                            aria-pressed={
+                              mostrarPassword
+                            }
+                            sx={visibilityButtonStyle}
+                          >
+                            {mostrarPassword ? (
+                              <VisibilityOffOutlinedIcon fontSize="small" />
+                            ) : (
+                              <VisibilityOutlinedIcon fontSize="small" />
+                            )}
+                          </IconButton>
+                        </span>
+                      </Tooltip>
+                    </InputAdornment>
+                  ),
                 }}
                 sx={inputStyle}
               />
 
               <TextField
                 fullWidth
-                type="password"
+                type={
+                  mostrarConfirmacionPassword
+                    ? "text"
+                    : "password"
+                }
                 name="password_confirmation"
                 label="Confirmar nueva contraseña"
                 value={
@@ -291,13 +404,62 @@ function RestablecerContrasena() {
                 }
                 onChange={cambiarValor}
                 required
-                disabled={cargando || !enlaceValido}
+                disabled={
+                  cargando ||
+                  !enlaceValido
+                }
                 autoComplete="new-password"
                 size="small"
                 InputProps={{
                   startAdornment: (
                     <InputAdornment position="start">
                       <LockOutlinedIcon fontSize="small" />
+                    </InputAdornment>
+                  ),
+                  endAdornment: (
+                    <InputAdornment position="end">
+                      <Tooltip
+                        title={
+                          mostrarConfirmacionPassword
+                            ? "Ocultar confirmación"
+                            : "Mostrar confirmación"
+                        }
+                      >
+                        <span>
+                          <IconButton
+                            type="button"
+                            edge="end"
+                            disabled={
+                              cargando ||
+                              !enlaceValido
+                            }
+                            onClick={() =>
+                              setMostrarConfirmacionPassword(
+                                (valorActual) =>
+                                  !valorActual,
+                              )
+                            }
+                            onMouseDown={
+                              evitarPerderFocoPassword
+                            }
+                            aria-label={
+                              mostrarConfirmacionPassword
+                                ? "Ocultar confirmación de contraseña"
+                                : "Mostrar confirmación de contraseña"
+                            }
+                            aria-pressed={
+                              mostrarConfirmacionPassword
+                            }
+                            sx={visibilityButtonStyle}
+                          >
+                            {mostrarConfirmacionPassword ? (
+                              <VisibilityOffOutlinedIcon fontSize="small" />
+                            ) : (
+                              <VisibilityOutlinedIcon fontSize="small" />
+                            )}
+                          </IconButton>
+                        </span>
+                      </Tooltip>
                     </InputAdornment>
                   ),
                 }}
@@ -308,13 +470,18 @@ function RestablecerContrasena() {
                 fullWidth
                 type="submit"
                 variant="contained"
-                disabled={cargando || !enlaceValido}
+                disabled={
+                  cargando ||
+                  !enlaceValido
+                }
                 size="large"
                 startIcon={
                   cargando ? (
                     <CircularProgress
                       size={18}
-                      sx={{ color: "#ffffff" }}
+                      sx={{
+                        color: "#ffffff",
+                      }}
                     />
                   ) : (
                     <SaveOutlinedIcon />
@@ -345,7 +512,10 @@ function RestablecerContrasena() {
 
         <Box
           sx={{
-            px: { xs: 2.5, sm: 4 },
+            px: {
+              xs: 2.5,
+              sm: 4,
+            },
             py: 2,
             bgcolor: "#f8fafc",
             borderTop: "1px solid #e2e8f0",
@@ -384,6 +554,18 @@ const inputStyle = {
   },
   "& .MuiInputLabel-root": {
     fontSize: 14,
+  },
+  "& .MuiFormHelperText-root": {
+    fontWeight: 600,
+    ml: 0,
+  },
+};
+
+const visibilityButtonStyle = {
+  color: "#64748b",
+  "&:hover": {
+    bgcolor: "#f1f5f9",
+    color: "#1d4ed8",
   },
 };
 

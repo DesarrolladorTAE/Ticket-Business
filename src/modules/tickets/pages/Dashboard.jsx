@@ -598,7 +598,7 @@ function Dashboard() {
             <Button
               fullWidth
               variant="text"
-              onClick={() => navigate("/tickets")}
+              onClick={() => navigate("/mis-tickets")}
               sx={{
                 mt: 1.5,
                 textTransform: "none",
