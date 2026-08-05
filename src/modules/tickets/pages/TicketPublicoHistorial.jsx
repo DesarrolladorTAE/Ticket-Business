@@ -17,6 +17,7 @@ import {
   TextField,
   Tooltip,
   Typography,
+  Collapse,
 } from "@mui/material";
 
 import SendIcon from "@mui/icons-material/Send";
@@ -26,6 +27,8 @@ import AttachFileIcon from "@mui/icons-material/AttachFile";
 import CloseIcon from "@mui/icons-material/Close";
 import InsertDriveFileIcon from "@mui/icons-material/InsertDriveFile";
 import ImageIcon from "@mui/icons-material/Image";
+import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
+import ExpandLessIcon from "@mui/icons-material/ExpandLess";
 
 function PublicTicketTopBanner({
   system,
@@ -246,7 +249,8 @@ function PublicTicketFooter({ system, color, titulo }) {
           }}
         >
           Tu solicitud será revisada por el equipo de soporte. Conserva el folio
-          de tu ticket para consultar el seguimiento público cuando lo necesites.
+          de tu ticket para consultar el seguimiento público cuando lo
+          necesites.
         </Typography>
 
         <Box
@@ -296,10 +300,7 @@ function PublicTicketFooter({ system, color, titulo }) {
 
 function normalizarEstadoVisual(ticket) {
   const nombre = String(
-    ticket?.status?.nombre ||
-      ticket?.status_nombre ||
-      ticket?.estado ||
-      ""
+    ticket?.status?.nombre || ticket?.status_nombre || ticket?.estado || "",
   )
     .trim()
     .toLowerCase();
@@ -352,7 +353,8 @@ function normalizarEstadoVisual(ticket) {
   }
 
   return {
-    label: ticket?.status?.nombre || ticket?.status_nombre || `Estado ${id || "-"}`,
+    label:
+      ticket?.status?.nombre || ticket?.status_nombre || `Estado ${id || "-"}`,
     bg: "#f1f5f9",
     color: "#334155",
     border: "#cbd5e1",
@@ -364,20 +366,49 @@ function PublicTicketInfoItem({ label, value, badge }) {
     <Box
       sx={{
         minWidth: 0,
-        p: { xs: 1.1, md: 1.3 },
-        borderRadius: 2.5,
+        minHeight: {
+          xs: 68,
+          sm: 76,
+          md: 84,
+        },
+        px: {
+          xs: 1,
+          sm: 1.2,
+          md: 1.3,
+        },
+        py: {
+          xs: 0.75,
+          sm: 0.95,
+          md: 1.2,
+        },
+        borderRadius: {
+          xs: 2,
+          md: 2.5,
+        },
         bgcolor: "#f8fafc",
         border: "1px solid #e5e7eb",
+        display: "flex",
+        flexDirection: "column",
+        justifyContent: "center",
+        overflow: "hidden",
       }}
     >
       <Typography
-        variant="caption"
         color="text.secondary"
         fontWeight={900}
         sx={{
           textTransform: "uppercase",
-          letterSpacing: "0.06em",
-          fontSize: { xs: 10.5, md: 11 },
+          letterSpacing: "0.045em",
+          fontSize: {
+            xs: 9.5,
+            sm: 10.2,
+            md: 11,
+          },
+          lineHeight: 1.1,
+          mb: {
+            xs: 0.35,
+            md: 0.5,
+          },
         }}
       >
         {label}
@@ -388,14 +419,25 @@ function PublicTicketInfoItem({ label, value, badge }) {
           label={badge.label}
           size="small"
           sx={{
-            mt: 0.6,
+            width: "fit-content",
             maxWidth: "100%",
+            height: {
+              xs: 23,
+              md: 26,
+            },
+            fontSize: {
+              xs: 10.5,
+              md: 12,
+            },
             fontWeight: 900,
             bgcolor: badge.bg,
             color: badge.color,
             border: `1px solid ${badge.border}`,
             "& .MuiChip-label": {
-              px: 1.1,
+              px: {
+                xs: 0.8,
+                md: 1.1,
+              },
               overflow: "hidden",
               textOverflow: "ellipsis",
             },
@@ -403,13 +445,20 @@ function PublicTicketInfoItem({ label, value, badge }) {
         />
       ) : (
         <Typography
-          fontWeight={900}
+          fontWeight={800}
           sx={{
-            mt: 0.5,
             color: "#0f172a",
-            fontSize: { xs: 12.5, md: 14 },
-            lineHeight: 1.25,
+            fontSize: {
+              xs: 11.5,
+              sm: 12.5,
+              md: 14,
+            },
+            lineHeight: 1.2,
             wordBreak: "break-word",
+            display: "-webkit-box",
+            WebkitLineClamp: 2,
+            WebkitBoxOrient: "vertical",
+            overflow: "hidden",
           }}
         >
           {value || "-"}
@@ -438,14 +487,12 @@ function TicketPublicoHistorial() {
   const [archivos, setArchivos] = useState([]);
   const [archivoPreview, setArchivoPreview] = useState(null);
   const [refrescando, setRefrescando] = useState(false);
+  const [mostrarDetallesMovil, setMostrarDetallesMovil] = useState(false);
 
   const ticketCerrado =
     Number(ticket?.status_id || ticket?.status?.id || 0) === 4 ||
     String(
-      ticket?.status?.nombre ||
-        ticket?.status_nombre ||
-        ticket?.estado ||
-        "",
+      ticket?.status?.nombre || ticket?.status_nombre || ticket?.estado || "",
     )
       .trim()
       .toLowerCase()
@@ -529,9 +576,7 @@ function TicketPublicoHistorial() {
 
   const enviarMensaje = async () => {
     if (ticketCerrado) {
-      setError(
-        "Este ticket está cerrado y ya no acepta mensajes ni archivos.",
-      );
+      setError("Este ticket está cerrado y ya no acepta mensajes ni archivos.");
       setOk("");
       return;
     }
@@ -607,7 +652,6 @@ function TicketPublicoHistorial() {
       enviarMensaje();
     }
   };
-
 
   const formatearFecha = (fecha) => {
     if (!fecha) return "";
@@ -704,7 +748,8 @@ function TicketPublicoHistorial() {
     portada.descripcion ||
     "Consulta el seguimiento de tu solicitud y responde al equipo de soporte.";
 
-  const sistemaNombre = system?.nombre || ticket?.system?.nombre || "Sin sistema";
+  const sistemaNombre =
+    system?.nombre || ticket?.system?.nombre || "Sin sistema";
   const seccionNombre =
     ticket?.category?.nombre ||
     ticket?.seccion_nombre ||
@@ -712,6 +757,32 @@ function TicketPublicoHistorial() {
     "Sin sección";
   const fechaCreacion = formatearFecha(ticket?.created_at);
   const fechaActualizacion = formatearFecha(ticket?.updated_at);
+  const informacionTicket = [
+    {
+      label: "Folio",
+      value: ticket?.folio,
+    },
+    {
+      label: "Sistema",
+      value: sistemaNombre,
+    },
+    {
+      label: "Sección",
+      value: seccionNombre,
+    },
+    {
+      label: "Estado",
+      badge: estado,
+    },
+    {
+      label: "Creado",
+      value: fechaCreacion,
+    },
+    {
+      label: "Última actualización",
+      value: fechaActualizacion,
+    },
+  ];
 
   return (
     <Box
@@ -756,8 +827,8 @@ function TicketPublicoHistorial() {
       >
         <Box
           sx={{
-            px: { xs: 1.6, sm: 2.2, md: 3 },
-            py: { xs: 1.5, md: 2 },
+            px: { xs: 1.2, sm: 2.2, md: 3 },
+            py: { xs: 1.1, sm: 1.5, md: 2 },
             bgcolor: "#ffffff",
             borderBottom: "1px solid #e5e7eb",
             flexShrink: 0,
@@ -817,8 +888,6 @@ function TicketPublicoHistorial() {
               justifyContent={{ xs: "space-between", sm: "flex-end" }}
               sx={{ flexShrink: 0 }}
             >
-
-
               <Stack direction="row" spacing={0.8} alignItems="center">
                 <Tooltip title="Copiar folio">
                   <IconButton
@@ -857,26 +926,153 @@ function TicketPublicoHistorial() {
             </Stack>
           </Stack>
 
+          {/* RESUMEN COMPACTO: SOLO MÓVIL */}
           <Box
             sx={{
-              display: "grid",
-              gridTemplateColumns: {
-                xs: "repeat(2, minmax(0, 1fr))",
-                md: "repeat(3, minmax(0, 1fr))",
+              display: {
+                xs: "block",
+                sm: "none",
               },
-              gap: { xs: 1, md: 1.2 },
-              mt: 1.8,
+              mt: 1.2,
             }}
           >
-            <PublicTicketInfoItem label="Folio" value={ticket?.folio} />
-            <PublicTicketInfoItem label="Sistema" value={sistemaNombre} />
-            <PublicTicketInfoItem label="Sección" value={seccionNombre} />
-            <PublicTicketInfoItem label="Estado" badge={estado} />
-            <PublicTicketInfoItem label="Creado" value={fechaCreacion} />
-            <PublicTicketInfoItem
-              label="Última actualización"
-              value={fechaActualizacion}
-            />
+            <Box
+              sx={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                gap: 1,
+                px: 1,
+                py: 0.8,
+                borderRadius: 2,
+                bgcolor: "#f8fafc",
+                border: "1px solid #e5e7eb",
+              }}
+            >
+              <Box sx={{ minWidth: 0 }}>
+                <Typography
+                  sx={{
+                    color: "text.secondary",
+                    fontSize: 9,
+                    fontWeight: 900,
+                    lineHeight: 1,
+                    textTransform: "uppercase",
+                    letterSpacing: "0.05em",
+                  }}
+                >
+                  Folio
+                </Typography>
+
+                <Typography
+                  sx={{
+                    mt: 0.35,
+                    color: "#0f172a",
+                    fontSize: 12,
+                    fontWeight: 800,
+                    lineHeight: 1.15,
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  {ticket?.folio || "-"}
+                </Typography>
+              </Box>
+
+              <Chip
+                label={estado.label}
+                size="small"
+                sx={{
+                  height: 23,
+                  flexShrink: 0,
+                  bgcolor: estado.bg,
+                  color: estado.color,
+                  border: `1px solid ${estado.border}`,
+                  fontSize: 10,
+                  fontWeight: 900,
+                  "& .MuiChip-label": {
+                    px: 0.9,
+                  },
+                }}
+              />
+            </Box>
+
+            <Button
+              type="button"
+              fullWidth
+              size="small"
+              onClick={() =>
+                setMostrarDetallesMovil((valorActual) => !valorActual)
+              }
+              endIcon={
+                mostrarDetallesMovil ? <ExpandLessIcon /> : <ExpandMoreIcon />
+              }
+              sx={{
+                mt: 0.5,
+                minHeight: 30,
+                borderRadius: 2,
+                color,
+                fontSize: 11,
+                fontWeight: 900,
+                textTransform: "none",
+              }}
+            >
+              {mostrarDetallesMovil
+                ? "Ocultar detalles"
+                : "Ver detalles del ticket"}
+            </Button>
+
+            <Collapse in={mostrarDetallesMovil} timeout="auto" unmountOnExit>
+              <Box
+                sx={{
+                  display: "grid",
+                  gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+                  gap: 0.6,
+                  mt: 0.6,
+                }}
+              >
+                {informacionTicket
+                  .filter(
+                    (item) => item.label !== "Folio" && item.label !== "Estado",
+                  )
+                  .map((item) => (
+                    <PublicTicketInfoItem
+                      key={item.label}
+                      label={item.label}
+                      value={item.value}
+                      badge={item.badge}
+                    />
+                  ))}
+              </Box>
+            </Collapse>
+          </Box>
+
+          {/* INFORMACIÓN SIEMPRE VISIBLE: TABLETA Y ESCRITORIO */}
+          <Box
+            sx={{
+              display: {
+                xs: "none",
+                sm: "grid",
+              },
+              gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
+              gap: {
+                sm: 1,
+                md: 1.2,
+              },
+              mt: {
+                sm: 1.5,
+                md: 1.8,
+              },
+            }}
+          >
+            {informacionTicket.map((item) => (
+              <PublicTicketInfoItem
+                key={item.label}
+                label={item.label}
+                value={item.value}
+                badge={item.badge}
+              />
+            ))}
           </Box>
         </Box>
 
@@ -929,11 +1125,32 @@ function TicketPublicoHistorial() {
             )}
 
             {messages.map((msg) => {
-              const esCliente = msg.user?.role === "client";
+              const autorId = Number(msg.user_id || msg.user?.id || 0);
+
+              const clienteId = Number(
+                ticket?.user_id || ticket?.user?.id || 0,
+              );
+
+              const rolAutor = String(
+                msg.company_role ||
+                  msg.user?.company_role ||
+                  msg.user?.role ||
+                  "",
+              )
+                .trim()
+                .toLowerCase();
+
+              const esCliente =
+                clienteId > 0
+                  ? autorId === clienteId
+                  : ["client", "cliente"].includes(rolAutor);
+
               const esEvento = msg.type === "event";
+
               const adjuntos = Array.isArray(msg.attachments)
                 ? msg.attachments
                 : [];
+
               const autorTipo = esCliente ? "Cliente" : "Soporte";
 
               if (esEvento) {
@@ -1186,9 +1403,8 @@ function TicketPublicoHistorial() {
                   lineHeight: 1.55,
                 }}
               >
-                <strong>Este ticket está cerrado.</strong>{" "}
-                Puedes consultar el historial, pero ya no acepta mensajes ni
-                archivos.
+                <strong>Este ticket está cerrado.</strong> Puedes consultar el
+                historial, pero ya no acepta mensajes ni archivos.
               </Typography>
             </Alert>
           ) : (
@@ -1230,10 +1446,7 @@ function TicketPublicoHistorial() {
                             {archivo.name}
                           </Typography>
 
-                          <Typography
-                            variant="caption"
-                            color="text.secondary"
-                          >
+                          <Typography variant="caption" color="text.secondary">
                             {formatoPeso(archivo.size)}
                           </Typography>
                         </Box>
@@ -1304,8 +1517,7 @@ function TicketPublicoHistorial() {
                   variant="contained"
                   onClick={enviarMensaje}
                   disabled={
-                    enviando ||
-                    (!message.trim() && archivos.length === 0)
+                    enviando || (!message.trim() && archivos.length === 0)
                   }
                   endIcon={<SendIcon />}
                   sx={{

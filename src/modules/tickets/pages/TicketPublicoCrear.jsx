@@ -240,7 +240,8 @@ function PublicTicketFooter({ system, color, titulo }) {
           }}
         >
           Tu solicitud será revisada por el equipo de soporte. Conserva el folio
-          de tu ticket para consultar el seguimiento público cuando lo necesites.
+          de tu ticket para consultar el seguimiento público cuando lo
+          necesites.
         </Typography>
 
         <Box
@@ -422,8 +423,20 @@ function TicketPublicoCrear() {
 
       navigate(`/public/tickets/${ticket.public_tracking_code}`);
     } catch (error) {
+      const data = error.response?.data;
+      const validationErrors = data?.errors || {};
+
+      const emailError = validationErrors?.["cliente.email"]?.[0];
+
+      const firstValidationError = Object.values(validationErrors)
+        .flat()
+        .find(Boolean);
+
       setError(
-        error.response?.data?.message || "No se pudo crear el ticket público.",
+        emailError ||
+          firstValidationError ||
+          data?.message ||
+          "No se pudo crear el ticket público.",
       );
     } finally {
       setEnviando(false);
@@ -731,7 +744,7 @@ function TicketPublicoCrear() {
                       hidden
                       multiple
                       onChange={seleccionarArchivos}
-                      accept=".jpg,.jpeg,.png,.webp,.pdf,.doc,.docx,.xls,.xlsx,.txt,.zip"
+                      accept=".jpg,.jpeg,.png,.webp,.pdf,.doc,.docx,.xls,.xlsx,.txt"
                     />
                   </Button>
 
@@ -745,8 +758,8 @@ function TicketPublicoCrear() {
                       lineHeight: 1.4,
                     }}
                   >
-                    Permitidos: imágenes, PDF, Word, Excel, TXT o ZIP. Máximo 10
-                    MB por archivo.
+                    Permitidos: imágenes, PDF, Word, Excel o TXT. Máximo 10 MB por archivo.
+                    
                   </Typography>
                 </Box>
 
