@@ -363,9 +363,17 @@ export default function TicketDetalle() {
     setPreviewFile(null);
   };
 
-  const getArchivoUrl = (file) => {
+const getArchivoUrl = (file) => {
+  if (file?.url) {
+    return file.url;
+  }
+
+  if (file?.ruta) {
     return `${STORAGE_URL}/${file.ruta}`;
-  };
+  }
+
+  return "";
+};
 
   const getFileExtension = (file) => {
     return file?.nombre_archivo?.split(".").pop()?.toLowerCase() || "";
@@ -385,18 +393,30 @@ export default function TicketDetalle() {
     return getFileExtension(file) === "pdf";
   };
 
-  const descargarArchivo = (file) => {
-    const url = getArchivoUrl(file);
-    const link = document.createElement("a");
+const descargarArchivo = (file) => {
+  const url =
+    file?.download_url ||
+    getArchivoUrl(file);
 
-    link.href = url;
-    link.download = file.nombre_archivo || "archivo";
-    link.target = "_blank";
+  if (!url) {
+    setError(
+      "No fue posible obtener el archivo adjunto.",
+    );
+    return;
+  }
 
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  };
+  const link = document.createElement("a");
+
+  link.href = url;
+  link.download =
+    file?.nombre_archivo || "archivo";
+  link.target = "_blank";
+  link.rel = "noopener noreferrer";
+
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+};
 
   const calcularTiempoResolucion = () => {
     if (!ticket?.created_at || !ticket?.resolved_at) {
