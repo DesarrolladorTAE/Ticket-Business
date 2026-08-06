@@ -28,6 +28,9 @@ import GruposSoporte from "../modules/support-groups/pages/GruposSoporte";
 
 import RutaProtegida from "./RutaProtegida";
 import AdminLayout from "../layouts/AdminLayout";
+import LandingPage from "../landing/pages/LandingPage";
+import ComoFuncionaPage from "../landing/pages/ComoFuncionaPage";
+import BeneficiosPage from "../landing/pages/BeneficiosPage";
 
 const normalizarRol = (rol) => {
   return String(rol || "")
@@ -73,7 +76,9 @@ function AppRouter() {
   return (
     <Routes>
       {/* PUBLIC */}
-      <Route path="/" element={<Navigate to="/login" replace />} />
+      <Route path="/beneficios"element={<BeneficiosPage />}/>
+      <Route path="/como-funciona" element={<ComoFuncionaPage />}/>
+      <Route path="/" element={<LandingPage />} />
       <Route path="/login" element={<IniciarSesion />} />
       <Route path="/registro" element={<Registro />} />
 
