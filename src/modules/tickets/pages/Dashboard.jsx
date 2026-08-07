@@ -490,9 +490,7 @@ function Dashboard() {
                   tabIndex={0}
                   role="button"
                   onClick={() => abrirTicket(ticket)}
-                  onKeyDown={(event) =>
-                    manejarTecladoTicket(event, ticket)
-                  }
+                  onKeyDown={(event) => manejarTecladoTicket(event, ticket)}
                   sx={{
                     p: 1.35,
                     borderRadius: 2,
@@ -549,10 +547,13 @@ function Dashboard() {
                         sx={{
                           fontWeight: 800,
                           flexShrink: 0,
-                          maxWidth: 145,
+                          width: "fit-content",
+                          maxWidth: "none",
                           "& .MuiChip-label": {
-                            overflow: "hidden",
-                            textOverflow: "ellipsis",
+                            px: 1.2,
+                            whiteSpace: "nowrap",
+                            overflow: "visible",
+                            textOverflow: "clip",
                           },
                         }}
                       />
@@ -747,36 +748,47 @@ function Dashboard() {
                     }}
                   >
                     <Stack spacing={1.3}>
-                      <Stack
-                        direction="row"
-                        justifyContent="space-between"
-                        alignItems="flex-start"
-                        spacing={1}
-                      >
-                        <Box sx={{ minWidth: 0, flex: 1 }}>
+                      <Stack spacing={0.8}>
+                        <Box sx={{ minWidth: 0 }}>
                           <Typography
                             variant="caption"
-                            color="text.secondary"
-                            fontWeight={800}
+                            color="primary"
+                            fontWeight={900}
                             display="block"
+                            sx={{
+                              wordBreak: "break-word",
+                            }}
                           >
-                            Folio
+                            {folioTicket(ticket)}
                           </Typography>
 
-                          <Typography fontWeight={900} color="primary" noWrap>
-                            {folioTicket(ticket)}
+                          <Typography
+                            fontWeight={900}
+                            sx={{
+                              fontSize: 14,
+                              lineHeight: 1.3,
+                              mt: 0.2,
+                              wordBreak: "break-word",
+                            }}
+                          >
+                            {ticket.titulo || "Sin título"}
                           </Typography>
                         </Box>
 
                         <Chip
                           size="small"
-                          label={nombreEstado(ticket)}
-                          color={colorEstado(nombreEstado(ticket))}
+                          label={ticket.due_label || "Sin vigencia"}
+                          color={colorVigencia(ticket)}
                           sx={{
+                            alignSelf: "flex-start",
                             fontWeight: 800,
-                            borderRadius: 2,
-                            flexShrink: 0,
-                            maxWidth: 130,
+                            width: "fit-content",
+                            maxWidth: "100%",
+                            "& .MuiChip-label": {
+                              px: 1.2,
+                              whiteSpace: "normal",
+                              textAlign: "center",
+                            },
                           }}
                         />
                       </Stack>
