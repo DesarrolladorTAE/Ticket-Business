@@ -10,6 +10,7 @@ import Dashboard from "../modules/tickets/pages/Dashboard";
 
 import TicketDetalle from "../modules/tickets/pages/TicketDetalle";
 import MisTickets from "../modules/tickets/pages/MisTickets";
+import TicketCompartido from "../modules/tickets/pages/TicketCompartido";
 
 import CrearAgente from "../modules/agents/pages/CrearAgente";
 import Agentes from "../modules/agents/pages/Agentes";
@@ -104,6 +105,11 @@ function AppRouter() {
       <Route
         path="/public/tickets/:trackingCode"
         element={<TicketPublicoHistorial />}
+      />
+
+      <Route
+        path="/public/shared-tickets/:trackingCode"
+        element={<TicketCompartido />}
       />
 
       {/* PROTEGIDO */}

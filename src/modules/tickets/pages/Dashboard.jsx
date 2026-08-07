@@ -62,7 +62,10 @@ function Dashboard() {
       setData(resDashboard.data.data || {});
       setTickets(resTickets.data.data || resTickets.data || []);
     } catch (error) {
-      console.log("ERROR DASHBOARD:", error.response?.data || error);
+      console.log(
+        "ERROR DASHBOARD:",
+        error.response?.data || error,
+      );
 
       setError(
         error.response?.data?.message ||
@@ -84,21 +87,43 @@ function Dashboard() {
   };
 
   const manejarTecladoTicket = (event, ticket) => {
-    if (event.key === "Enter" || event.key === " ") {
+    if (
+      event.key === "Enter" ||
+      event.key === " "
+    ) {
       event.preventDefault();
       abrirTicket(ticket);
     }
   };
 
   const colorEstado = (estado) => {
-    const valor = String(estado || "").toLowerCase();
+    const valor = String(
+      estado || "",
+    ).toLowerCase();
 
-    if (valor.includes("cerr")) return "success";
-    if (valor.includes("resuelto")) return "success";
-    if (valor.includes("proceso")) return "warning";
-    if (valor.includes("abiert")) return "primary";
-    if (valor.includes("pendiente")) return "primary";
-    if (valor.includes("reciente")) return "info";
+    if (valor.includes("cerr")) {
+      return "success";
+    }
+
+    if (valor.includes("resuelto")) {
+      return "success";
+    }
+
+    if (valor.includes("proceso")) {
+      return "warning";
+    }
+
+    if (valor.includes("abiert")) {
+      return "primary";
+    }
+
+    if (valor.includes("pendiente")) {
+      return "primary";
+    }
+
+    if (valor.includes("reciente")) {
+      return "info";
+    }
 
     return "default";
   };
@@ -149,17 +174,27 @@ function Dashboard() {
 
     return `${ticket.responsable.name || ""} ${
       ticket.responsable.apellido_paterno || ""
-    } ${ticket.responsable.apellido_materno || ""}`
+    } ${
+      ticket.responsable.apellido_materno || ""
+    }`
       .trim()
       .replace(/\s+/g, " ");
   };
 
   const folioTicket = (ticket) => {
-    if (ticket.folio) return ticket.folio;
+    if (ticket.folio) {
+      return ticket.folio;
+    }
 
-    if (ticket.folio_prefijo || ticket.folio_numero) {
-      return `${ticket.folio_prefijo || "TCK"}-${
-        ticket.folio_numero || ticket.id
+    if (
+      ticket.folio_prefijo ||
+      ticket.folio_numero
+    ) {
+      return `${
+        ticket.folio_prefijo || "TCK"
+      }-${
+        ticket.folio_numero ||
+        ticket.id
       }`;
     }
 
@@ -168,7 +203,11 @@ function Dashboard() {
 
   if (loading) {
     return (
-      <Box display="flex" justifyContent="center" mt={6}>
+      <Box
+        display="flex"
+        justifyContent="center"
+        mt={6}
+      >
         <CircularProgress />
       </Box>
     );
@@ -183,33 +222,54 @@ function Dashboard() {
   const proceso = stats.proceso ?? 0;
   const cerrados = stats.cerrados ?? 0;
 
-  const ticketsRecientes = tickets.slice(0, 10);
+  const ticketsRecientes =
+    tickets.slice(0, 10);
 
   const maxDia = chart.length
-    ? Math.max(...chart.map((item) => Number(item.total || 0)))
+    ? Math.max(
+        ...chart.map((item) =>
+          Number(item.total || 0),
+        ),
+      )
     : 0;
 
   return (
     <Box sx={{ width: "100%" }}>
+      {/* ENCABEZADO */}
       <Box
         mb={{ xs: 1.5, md: 3 }}
         display="flex"
         justifyContent="space-between"
-        alignItems={{ xs: "flex-start", sm: "center" }}
+        alignItems={{
+          xs: "flex-start",
+          sm: "center",
+        }}
         gap={2}
-        flexDirection={{ xs: "column", sm: "row" }}
+        flexDirection={{
+          xs: "column",
+          sm: "row",
+        }}
       >
         <Box>
           <Typography
             variant="h5"
             fontWeight={900}
-            sx={{ fontSize: { xs: 22, md: 26 } }}
+            sx={{
+              fontSize: {
+                xs: 22,
+                md: 26,
+              },
+            }}
           >
             Dashboard
           </Typography>
 
-          <Typography variant="body2" color="text.secondary">
-            Resumen general y control de vigencia de los tickets.
+          <Typography
+            variant="body2"
+            color="text.secondary"
+          >
+            Resumen general y control de
+            vigencia de los tickets.
           </Typography>
         </Box>
 
@@ -222,19 +282,29 @@ function Dashboard() {
             borderRadius: 2,
             textTransform: "none",
             fontWeight: 800,
-            width: { xs: "100%", sm: "auto" },
+            width: {
+              xs: "100%",
+              sm: "auto",
+            },
           }}
         >
-          {actualizando ? "Actualizando..." : "Actualizar"}
+          {actualizando
+            ? "Actualizando..."
+            : "Actualizar"}
         </Button>
       </Box>
 
+      {/* ERROR */}
       {error && (
-        <Alert severity="error" sx={{ mb: 3 }}>
+        <Alert
+          severity="error"
+          sx={{ mb: 3 }}
+        >
           {error}
         </Alert>
       )}
 
+      {/* TARJETAS */}
       <Box
         sx={{
           display: "grid",
@@ -242,15 +312,24 @@ function Dashboard() {
             xs: "repeat(2, minmax(0, 1fr))",
             md: "repeat(4, minmax(0, 1fr))",
           },
-          gap: { xs: 1, sm: 1.5, md: 3 },
-          mb: { xs: 2, md: 4 },
+          gap: {
+            xs: 1,
+            sm: 1.5,
+            md: 3,
+          },
+          mb: {
+            xs: 2,
+            md: 4,
+          },
         }}
       >
         <StatCard
           titulo="Total"
           valor={total}
           chip="Tickets"
-          icon={<ConfirmationNumberIcon />}
+          icon={
+            <ConfirmationNumberIcon />
+          }
           accent="#2563eb"
         />
 
@@ -259,7 +338,9 @@ function Dashboard() {
           valor={abiertos}
           chip="Pendientes"
           color="primary"
-          icon={<PendingActionsIcon />}
+          icon={
+            <PendingActionsIcon />
+          }
           accent="#1d4ed8"
         />
 
@@ -277,11 +358,14 @@ function Dashboard() {
           valor={cerrados}
           chip="Finalizados"
           color="success"
-          icon={<CheckCircleIcon />}
+          icon={
+            <CheckCircleIcon />
+          }
           accent="#16a34a"
         />
       </Box>
 
+      {/* GRÁFICA + VIGENCIAS */}
       <Box
         sx={{
           display: "grid",
@@ -289,36 +373,61 @@ function Dashboard() {
             xs: "1fr",
             lg: "minmax(0, 1.65fr) minmax(310px, 0.85fr)",
           },
-          gap: { xs: 2, md: 3 },
+          gap: {
+            xs: 2,
+            md: 3,
+          },
           alignItems: "stretch",
         }}
       >
+        {/* GRÁFICA */}
         <Paper sx={chartSectionStyle}>
           <Box
             mb={2.5}
             display="flex"
-            flexDirection={{ xs: "column", md: "row" }}
+            flexDirection={{
+              xs: "column",
+              md: "row",
+            }}
             justifyContent="space-between"
-            alignItems={{ xs: "stretch", md: "center" }}
+            alignItems={{
+              xs: "stretch",
+              md: "center",
+            }}
             gap={2}
           >
             <Box>
               <Typography
                 fontWeight={900}
-                sx={{ fontSize: { xs: 18, md: 21 } }}
+                sx={{
+                  fontSize: {
+                    xs: 18,
+                    md: 21,
+                  },
+                }}
               >
                 Tickets por día
               </Typography>
 
-              <Typography variant="body2" color="text.secondary">
-                Evolución diaria de tickets creados.
+              <Typography
+                variant="body2"
+                color="text.secondary"
+              >
+                Evolución diaria de tickets
+                creados.
               </Typography>
             </Box>
 
             <Stack
-              direction={{ xs: "column", sm: "row" }}
+              direction={{
+                xs: "column",
+                sm: "row",
+              }}
               spacing={1}
-              alignItems={{ xs: "stretch", sm: "center" }}
+              alignItems={{
+                xs: "stretch",
+                sm: "center",
+              }}
             >
               <Chip
                 label={`${chart.length} días registrados`}
@@ -344,20 +453,45 @@ function Dashboard() {
             <Box
               sx={{
                 width: "100%",
-                overflowX: { xs: "auto", md: "hidden" },
-                mt: { xs: 2.5, md: 3 },
-                pb: { xs: 1, md: 2 },
+                overflowX: {
+                  xs: "auto",
+                  md: "hidden",
+                },
+                mt: {
+                  xs: 2.5,
+                  md: 3,
+                },
+                pb: {
+                  xs: 1,
+                  md: 2,
+                },
               }}
             >
               <Box
                 sx={{
-                  width: { xs: 560, md: "100%" },
-                  minWidth: { xs: 560, md: 0 },
-                  height: { xs: 320, sm: 360, md: 410 },
-                  px: { xs: 1, md: 2 },
+                  width: {
+                    xs: 560,
+                    md: "100%",
+                  },
+                  minWidth: {
+                    xs: 560,
+                    md: 0,
+                  },
+                  height: {
+                    xs: 320,
+                    sm: 360,
+                    md: 410,
+                  },
+                  px: {
+                    xs: 1,
+                    md: 2,
+                  },
                 }}
               >
-                <ResponsiveContainer width="100%" height="100%">
+                <ResponsiveContainer
+                  width="100%"
+                  height="100%"
+                >
                   <LineChart
                     data={chart}
                     margin={{
@@ -393,7 +527,11 @@ function Dashboard() {
                       tickLine={false}
                     />
 
-                    <Tooltip content={<CustomTooltip />} />
+                    <Tooltip
+                      content={
+                        <CustomTooltip />
+                      }
+                    />
 
                     <Line
                       type="monotone"
@@ -418,11 +556,16 @@ function Dashboard() {
               </Box>
             </Box>
           ) : (
-            <EmptyBox texto="No hay información suficiente para graficar." />
+            <EmptyBox
+              texto="No hay información suficiente para graficar."
+            />
           )}
         </Paper>
 
-        <Paper sx={vigenciasSectionStyle}>
+        {/* VIGENCIAS PRÓXIMAS */}
+        <Paper
+          sx={vigenciasSectionStyle}
+        >
           <Box
             mb={2}
             display="flex"
@@ -430,7 +573,11 @@ function Dashboard() {
             alignItems="flex-start"
             gap={1}
           >
-            <Stack direction="row" spacing={1.2} alignItems="center">
+            <Stack
+              direction="row"
+              spacing={1.2}
+              alignItems="center"
+            >
               <Box
                 sx={{
                   width: 38,
@@ -447,16 +594,27 @@ function Dashboard() {
                 <AccessTimeIcon />
               </Box>
 
-              <Box sx={{ minWidth: 0 }}>
+              <Box
+                sx={{ minWidth: 0 }}
+              >
                 <Typography
                   fontWeight={900}
-                  sx={{ fontSize: { xs: 18, md: 20 } }}
+                  sx={{
+                    fontSize: {
+                      xs: 18,
+                      md: 20,
+                    },
+                  }}
                 >
                   Vigencias próximas
                 </Typography>
 
-                <Typography variant="body2" color="text.secondary">
-                  Tickets activos ordenados por vencimiento.
+                <Typography
+                  variant="body2"
+                  color="text.secondary"
+                >
+                  Tickets activos ordenados
+                  por vencimiento.
                 </Typography>
               </Box>
             </Stack>
@@ -478,115 +636,194 @@ function Dashboard() {
             <Stack
               spacing={1}
               sx={{
-                maxHeight: { xs: "none", lg: 455 },
-                overflowY: { xs: "visible", lg: "auto" },
-                pr: { xs: 0, lg: 0.5 },
+                maxHeight: {
+                  xs: "none",
+                  lg: 455,
+                },
+                overflowY: {
+                  xs: "visible",
+                  lg: "auto",
+                },
+                pr: {
+                  xs: 0,
+                  lg: 0.5,
+                },
               }}
             >
-              {vigencias.map((ticket) => (
-                <Paper
-                  key={ticket.id}
-                  variant="outlined"
-                  tabIndex={0}
-                  role="button"
-                  onClick={() => abrirTicket(ticket)}
-                  onKeyDown={(event) => manejarTecladoTicket(event, ticket)}
-                  sx={{
-                    p: 1.35,
-                    borderRadius: 2,
-                    borderColor: "#e5e7eb",
-                    cursor: "pointer",
-                    transition:
-                      "border-color 0.15s ease, background-color 0.15s ease",
-                    "&:hover": {
-                      borderColor: "primary.main",
-                      bgcolor: "#f8fafc",
-                    },
-                    "&:focus-visible": {
-                      outline: "2px solid",
-                      outlineColor: "primary.main",
-                      outlineOffset: 1,
-                    },
-                  }}
-                >
-                  <Stack spacing={1}>
-                    <Stack
-                      direction="row"
-                      justifyContent="space-between"
-                      alignItems="flex-start"
-                      spacing={1}
-                    >
-                      <Box sx={{ minWidth: 0, flex: 1 }}>
-                        <Typography
-                          variant="caption"
-                          color="primary"
-                          fontWeight={900}
-                          display="block"
-                          noWrap
-                        >
-                          {folioTicket(ticket)}
-                        </Typography>
+              {vigencias.map(
+                (ticket) => (
+                  <Paper
+                    key={ticket.id}
+                    variant="outlined"
+                    tabIndex={0}
+                    role="button"
+                    onClick={() =>
+                      abrirTicket(ticket)
+                    }
+                    onKeyDown={(event) =>
+                      manejarTecladoTicket(
+                        event,
+                        ticket,
+                      )
+                    }
+                    sx={{
+                      p: 1.35,
+                      borderRadius: 2,
+                      borderColor:
+                        "#e5e7eb",
+                      cursor: "pointer",
+                      transition:
+                        "border-color 0.15s ease, background-color 0.15s ease",
+                      "&:hover": {
+                        borderColor:
+                          "primary.main",
+                        bgcolor:
+                          "#f8fafc",
+                      },
+                      "&:focus-visible":
+                        {
+                          outline:
+                            "2px solid",
+                          outlineColor:
+                            "primary.main",
+                          outlineOffset: 1,
+                        },
+                    }}
+                  >
+                    <Stack spacing={1}>
+                      {/* FOLIO */}
+                      <Typography
+                        variant="caption"
+                        color="primary"
+                        fontWeight={900}
+                        sx={{
+                          display:
+                            "block",
+                          width: "100%",
+                          lineHeight: 1.25,
+                          overflowWrap:
+                            "anywhere",
+                          wordBreak:
+                            "break-word",
+                        }}
+                      >
+                        {folioTicket(
+                          ticket,
+                        )}
+                      </Typography>
 
-                        <Typography
-                          fontWeight={900}
+                      {/* TÍTULO */}
+                      <Typography
+                        fontWeight={900}
+                        sx={{
+                          fontSize: 14,
+                          lineHeight: 1.3,
+                          wordBreak:
+                            "break-word",
+                        }}
+                      >
+                        {ticket.titulo ||
+                          "Sin título"}
+                      </Typography>
+
+                      {/* VIGENCIA EN FILA PROPIA */}
+                      <Box
+                        sx={{
+                          width: "100%",
+                          display: "flex",
+                          justifyContent:
+                            "flex-start",
+                        }}
+                      >
+                        <Chip
+                          size="small"
+                          label={
+                            ticket.due_label ||
+                            "Sin vigencia"
+                          }
+                          color={colorVigencia(
+                            ticket,
+                          )}
                           sx={{
-                            fontSize: 14,
-                            lineHeight: 1.3,
-                            mt: 0.2,
-                            wordBreak: "break-word",
+                            fontWeight: 800,
+                            width:
+                              "fit-content",
+                            maxWidth:
+                              "100%",
+                            height: "auto",
+                            "& .MuiChip-label":
+                              {
+                                px: 1.2,
+                                py: 0.35,
+                                whiteSpace:
+                                  "normal",
+                                lineHeight:
+                                  1.2,
+                                textAlign:
+                                  "center",
+                              },
                           }}
-                        >
-                          {ticket.titulo || "Sin título"}
-                        </Typography>
+                        />
                       </Box>
 
-                      <Chip
-                        size="small"
-                        label={ticket.due_label || "Sin vigencia"}
-                        color={colorVigencia(ticket)}
-                        sx={{
-                          fontWeight: 800,
-                          flexShrink: 0,
-                          width: "fit-content",
-                          maxWidth: "none",
-                          "& .MuiChip-label": {
-                            px: 1.2,
-                            whiteSpace: "nowrap",
-                            overflow: "visible",
-                            textOverflow: "clip",
-                          },
-                        }}
-                      />
+                      {/* INFORMACIÓN */}
+                      <Stack
+                        spacing={0.3}
+                      >
+                        <Typography
+                          variant="caption"
+                          color="text.secondary"
+                        >
+                          Sistema:{" "}
+                          <Box
+                            component="span"
+                            fontWeight={
+                              800
+                            }
+                          >
+                            {nombreSistema(
+                              ticket,
+                            )}
+                          </Box>
+                        </Typography>
+
+                        <Typography
+                          variant="caption"
+                          color="text.secondary"
+                        >
+                          Agente:{" "}
+                          <Box
+                            component="span"
+                            fontWeight={
+                              800
+                            }
+                          >
+                            {nombreAgente(
+                              ticket,
+                            )}
+                          </Box>
+                        </Typography>
+
+                        <Typography
+                          variant="caption"
+                          color="text.secondary"
+                        >
+                          Fecha límite:{" "}
+                          <Box
+                            component="span"
+                            fontWeight={
+                              900
+                            }
+                          >
+                            {ticket.due_date ||
+                              "Sin fecha"}
+                          </Box>
+                        </Typography>
+                      </Stack>
                     </Stack>
-
-                    <Stack
-                      direction={{ xs: "column", sm: "row", lg: "column" }}
-                      spacing={{ xs: 0.3, sm: 1.5, lg: 0.3 }}
-                    >
-                      <Typography variant="caption" color="text.secondary">
-                        Sistema:{" "}
-                        <Box component="span" fontWeight={800}>
-                          {nombreSistema(ticket)}
-                        </Box>
-                      </Typography>
-
-                      <Typography variant="caption" color="text.secondary">
-                        Agente:{" "}
-                        <Box component="span" fontWeight={800}>
-                          {nombreAgente(ticket)}
-                        </Box>
-                      </Typography>
-
-                      <Typography variant="caption" color="text.secondary">
-                        Fecha límite:{" "}
-                        <Box component="span" fontWeight={900}>
-                          {ticket.due_date || "Sin fecha"}
-                        </Box>
-                      </Typography>
-                    </Stack>
-                  </Stack>
-                </Paper>
-              ))}
+                  </Paper>
+                ),
+              )}
             </Stack>
           ) : (
             <EmptyBox
@@ -599,7 +836,9 @@ function Dashboard() {
             <Button
               fullWidth
               variant="text"
-              onClick={() => navigate("/mis-tickets")}
+              onClick={() =>
+                navigate("/mis-tickets")
+              }
               sx={{
                 mt: 1.5,
                 textTransform: "none",
@@ -612,26 +851,42 @@ function Dashboard() {
         </Paper>
       </Box>
 
+      {/* TICKETS RECIENTES */}
       <Box mt={3}>
         <Paper sx={sectionStyle}>
           <Box
             mb={2.5}
             display="flex"
-            flexDirection={{ xs: "column", sm: "row" }}
+            flexDirection={{
+              xs: "column",
+              sm: "row",
+            }}
             justifyContent="space-between"
-            alignItems={{ xs: "stretch", sm: "center" }}
+            alignItems={{
+              xs: "stretch",
+              sm: "center",
+            }}
             gap={1.5}
           >
             <Box>
               <Typography
                 fontWeight={900}
-                sx={{ fontSize: { xs: 18, md: 20 } }}
+                sx={{
+                  fontSize: {
+                    xs: 18,
+                    md: 20,
+                  },
+                }}
               >
                 Tickets recientes
               </Typography>
 
-              <Typography variant="body2" color="text.secondary">
-                Últimos tickets registrados con folio y estado.
+              <Typography
+                variant="body2"
+                color="text.secondary"
+              >
+                Últimos tickets registrados
+                con folio y estado.
               </Typography>
             </Box>
 
@@ -640,194 +895,309 @@ function Dashboard() {
               variant="outlined"
               sx={{
                 fontWeight: 800,
-                width: { xs: "fit-content", sm: "auto" },
+                width: {
+                  xs: "fit-content",
+                  sm: "auto",
+                },
               }}
             />
           </Box>
 
-          {ticketsRecientes.length > 0 ? (
+          {ticketsRecientes.length >
+          0 ? (
             <>
+              {/* TABLA ESCRITORIO */}
               <TableContainer
                 sx={{
-                  display: { xs: "none", md: "block" },
-                  border: "1px solid #e5e7eb",
+                  display: {
+                    xs: "none",
+                    md: "block",
+                  },
+                  border:
+                    "1px solid #e5e7eb",
                   borderRadius: 2,
                   overflowX: "auto",
                 }}
               >
                 <Table size="small">
                   <TableHead>
-                    <TableRow sx={{ bgcolor: "#f8fafc" }}>
-                      <TableCell sx={headCell}>Folio</TableCell>
-                      <TableCell sx={headCell}>Título</TableCell>
-                      <TableCell sx={headCell}>Sistema</TableCell>
-                      <TableCell sx={headCell}>Estado</TableCell>
-                      <TableCell sx={headCell} align="right">
+                    <TableRow
+                      sx={{
+                        bgcolor:
+                          "#f8fafc",
+                      }}
+                    >
+                      <TableCell
+                        sx={headCell}
+                      >
+                        Folio
+                      </TableCell>
+
+                      <TableCell
+                        sx={headCell}
+                      >
+                        Título
+                      </TableCell>
+
+                      <TableCell
+                        sx={headCell}
+                      >
+                        Sistema
+                      </TableCell>
+
+                      <TableCell
+                        sx={headCell}
+                      >
+                        Estado
+                      </TableCell>
+
+                      <TableCell
+                        sx={headCell}
+                        align="right"
+                      >
                         Acción
                       </TableCell>
                     </TableRow>
                   </TableHead>
 
                   <TableBody>
-                    {ticketsRecientes.map((ticket) => (
-                      <TableRow key={ticket.id} hover>
-                        <TableCell>
-                          <Typography fontWeight={900} noWrap color="primary">
-                            {folioTicket(ticket)}
-                          </Typography>
-                        </TableCell>
+                    {ticketsRecientes.map(
+                      (ticket) => (
+                        <TableRow
+                          key={ticket.id}
+                          hover
+                        >
+                          <TableCell>
+                            <Typography
+                              fontWeight={
+                                900
+                              }
+                              noWrap
+                              color="primary"
+                            >
+                              {folioTicket(
+                                ticket,
+                              )}
+                            </Typography>
+                          </TableCell>
 
-                        <TableCell>
-                          <Typography
-                            variant="body2"
-                            fontWeight={700}
-                            sx={{
-                              maxWidth: 360,
-                              overflow: "hidden",
-                              textOverflow: "ellipsis",
-                              whiteSpace: "nowrap",
-                            }}
-                          >
-                            {ticket.titulo || "Sin título"}
-                          </Typography>
-                        </TableCell>
+                          <TableCell>
+                            <Typography
+                              variant="body2"
+                              fontWeight={
+                                700
+                              }
+                              sx={{
+                                maxWidth:
+                                  360,
+                                overflow:
+                                  "hidden",
+                                textOverflow:
+                                  "ellipsis",
+                                whiteSpace:
+                                  "nowrap",
+                              }}
+                            >
+                              {ticket.titulo ||
+                                "Sin título"}
+                            </Typography>
+                          </TableCell>
 
-                        <TableCell>
-                          <Typography variant="body2" noWrap>
-                            {nombreSistema(ticket)}
-                          </Typography>
-                        </TableCell>
+                          <TableCell>
+                            <Typography
+                              variant="body2"
+                              noWrap
+                            >
+                              {nombreSistema(
+                                ticket,
+                              )}
+                            </Typography>
+                          </TableCell>
 
-                        <TableCell>
-                          <Chip
-                            size="small"
-                            label={nombreEstado(ticket)}
-                            color={colorEstado(nombreEstado(ticket))}
-                            sx={{
-                              fontWeight: 800,
-                              borderRadius: 2,
-                            }}
-                          />
-                        </TableCell>
+                          <TableCell>
+                            <Chip
+                              size="small"
+                              label={nombreEstado(
+                                ticket,
+                              )}
+                              color={colorEstado(
+                                nombreEstado(
+                                  ticket,
+                                ),
+                              )}
+                              sx={{
+                                fontWeight:
+                                  800,
+                                borderRadius:
+                                  2,
+                              }}
+                            />
+                          </TableCell>
 
-                        <TableCell align="right">
-                          <Button
-                            size="small"
-                            variant="outlined"
-                            onClick={() => abrirTicket(ticket)}
-                            sx={{
-                              borderRadius: 2,
-                              textTransform: "none",
-                              fontWeight: 800,
-                            }}
-                          >
-                            Ver
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    ))}
+                          <TableCell align="right">
+                            <Button
+                              size="small"
+                              variant="outlined"
+                              onClick={() =>
+                                abrirTicket(
+                                  ticket,
+                                )
+                              }
+                              sx={{
+                                borderRadius:
+                                  2,
+                                textTransform:
+                                  "none",
+                                fontWeight:
+                                  800,
+                              }}
+                            >
+                              Ver
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      ),
+                    )}
                   </TableBody>
                 </Table>
               </TableContainer>
 
+              {/* TARJETAS MÓVIL */}
               <Stack
                 spacing={1.5}
                 sx={{
-                  display: { xs: "flex", md: "none" },
+                  display: {
+                    xs: "flex",
+                    md: "none",
+                  },
                 }}
               >
-                {ticketsRecientes.map((ticket) => (
-                  <Paper
-                    key={ticket.id}
-                    variant="outlined"
-                    sx={{
-                      p: 1.5,
-                      borderRadius: 3,
-                      borderColor: "#e5e7eb",
-                      bgcolor: "#ffffff",
-                    }}
-                  >
-                    <Stack spacing={1.3}>
-                      <Stack spacing={0.8}>
-                        <Box sx={{ minWidth: 0 }}>
-                          <Typography
-                            variant="caption"
-                            color="primary"
-                            fontWeight={900}
-                            display="block"
+                {ticketsRecientes.map(
+                  (ticket) => (
+                    <Paper
+                      key={ticket.id}
+                      variant="outlined"
+                      sx={{
+                        p: 1.5,
+                        borderRadius: 3,
+                        borderColor:
+                          "#e5e7eb",
+                        bgcolor:
+                          "#ffffff",
+                      }}
+                    >
+                      <Stack
+                        spacing={1.3}
+                      >
+                        <Stack
+                          direction="row"
+                          justifyContent="space-between"
+                          alignItems="flex-start"
+                          spacing={1}
+                        >
+                          <Box
                             sx={{
-                              wordBreak: "break-word",
+                              minWidth: 0,
+                              flex: 1,
                             }}
                           >
-                            {folioTicket(ticket)}
-                          </Typography>
+                            <Typography
+                              variant="caption"
+                              color="text.secondary"
+                              fontWeight={
+                                800
+                              }
+                              display="block"
+                            >
+                              Folio
+                            </Typography>
 
-                          <Typography
-                            fontWeight={900}
+                            <Typography
+                              fontWeight={
+                                900
+                              }
+                              color="primary"
+                              noWrap
+                            >
+                              {folioTicket(
+                                ticket,
+                              )}
+                            </Typography>
+                          </Box>
+
+                          <Chip
+                            size="small"
+                            label={nombreEstado(
+                              ticket,
+                            )}
+                            color={colorEstado(
+                              nombreEstado(
+                                ticket,
+                              ),
+                            )}
                             sx={{
-                              fontSize: 14,
-                              lineHeight: 1.3,
-                              mt: 0.2,
-                              wordBreak: "break-word",
+                              fontWeight:
+                                800,
+                              borderRadius:
+                                2,
+                              flexShrink: 0,
+                              maxWidth:
+                                130,
                             }}
-                          >
-                            {ticket.titulo || "Sin título"}
-                          </Typography>
-                        </Box>
+                          />
+                        </Stack>
 
-                        <Chip
-                          size="small"
-                          label={ticket.due_label || "Sin vigencia"}
-                          color={colorVigencia(ticket)}
+                        <Typography
+                          fontWeight={900}
                           sx={{
-                            alignSelf: "flex-start",
-                            fontWeight: 800,
-                            width: "fit-content",
-                            maxWidth: "100%",
-                            "& .MuiChip-label": {
-                              px: 1.2,
-                              whiteSpace: "normal",
-                              textAlign: "center",
-                            },
+                            fontSize: 15,
+                            lineHeight: 1.35,
+                            wordBreak:
+                              "break-word",
                           }}
+                        >
+                          {ticket.titulo ||
+                            "Sin título"}
+                        </Typography>
+
+                        <Divider />
+
+                        <InfoItem
+                          label="Sistema"
+                          value={nombreSistema(
+                            ticket,
+                          )}
                         />
+
+                        <Button
+                          fullWidth
+                          size="small"
+                          variant="outlined"
+                          onClick={() =>
+                            abrirTicket(
+                              ticket,
+                            )
+                          }
+                          sx={{
+                            borderRadius: 2,
+                            textTransform:
+                              "none",
+                            fontWeight: 800,
+                          }}
+                        >
+                          Ver ticket
+                        </Button>
                       </Stack>
-
-                      <Typography
-                        fontWeight={900}
-                        sx={{
-                          fontSize: 15,
-                          lineHeight: 1.35,
-                          wordBreak: "break-word",
-                        }}
-                      >
-                        {ticket.titulo || "Sin título"}
-                      </Typography>
-
-                      <Divider />
-
-                      <InfoItem label="Sistema" value={nombreSistema(ticket)} />
-
-                      <Button
-                        fullWidth
-                        size="small"
-                        variant="outlined"
-                        onClick={() => abrirTicket(ticket)}
-                        sx={{
-                          borderRadius: 2,
-                          textTransform: "none",
-                          fontWeight: 800,
-                        }}
-                      >
-                        Ver ticket
-                      </Button>
-                    </Stack>
-                  </Paper>
-                ))}
+                    </Paper>
+                  ),
+                )}
               </Stack>
             </>
           ) : (
-            <EmptyBox texto="No hay tickets registrados." height={150} />
+            <EmptyBox
+              texto="No hay tickets registrados."
+              height={150}
+            />
           )}
         </Paper>
       </Box>
@@ -835,32 +1205,63 @@ function Dashboard() {
   );
 }
 
-function StatCard({ titulo, valor, chip, color = "default", icon, accent }) {
+function StatCard({
+  titulo,
+  valor,
+  chip,
+  color = "default",
+  icon,
+  accent,
+}) {
   return (
     <Paper sx={cardStyle}>
       <Box
         sx={{
           width: "100%",
           minWidth: 0,
-          display: { xs: "flex", md: "block" },
-          alignItems: { xs: "center", md: "initial" },
-          gap: { xs: 1.1, md: 0 },
+          display: {
+            xs: "flex",
+            md: "block",
+          },
+          alignItems: {
+            xs: "center",
+            md: "initial",
+          },
+          gap: {
+            xs: 1.1,
+            md: 0,
+          },
         }}
       >
         <Box
           sx={{
-            width: { xs: 34, md: 38 },
-            height: { xs: 34, md: 38 },
-            borderRadius: { xs: 2.2, md: 2.5 },
+            width: {
+              xs: 34,
+              md: 38,
+            },
+            height: {
+              xs: 34,
+              md: 38,
+            },
+            borderRadius: {
+              xs: 2.2,
+              md: 2.5,
+            },
             bgcolor: `${accent}18`,
             color: accent,
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            mb: { xs: 0, md: 1.3 },
+            mb: {
+              xs: 0,
+              md: 1.3,
+            },
             flexShrink: 0,
             "& svg": {
-              fontSize: { xs: 20, md: 24 },
+              fontSize: {
+                xs: 20,
+                md: 24,
+              },
             },
           }}
         >
@@ -873,11 +1274,15 @@ function StatCard({ titulo, valor, chip, color = "default", icon, accent }) {
             color="text.secondary"
             fontWeight={800}
             sx={{
-              fontSize: { xs: 11.5, md: 14 },
+              fontSize: {
+                xs: 11.5,
+                md: 14,
+              },
               lineHeight: 1.15,
               whiteSpace: "nowrap",
               overflow: "hidden",
-              textOverflow: "ellipsis",
+              textOverflow:
+                "ellipsis",
             }}
           >
             {titulo}
@@ -885,9 +1290,15 @@ function StatCard({ titulo, valor, chip, color = "default", icon, accent }) {
 
           <Typography
             fontWeight={900}
-            mt={{ xs: 0.35, md: 0.8 }}
+            mt={{
+              xs: 0.35,
+              md: 0.8,
+            }}
             sx={{
-              fontSize: { xs: 24, md: 34 },
+              fontSize: {
+                xs: 24,
+                md: 34,
+              },
               lineHeight: 1,
             }}
           >
@@ -901,32 +1312,55 @@ function StatCard({ titulo, valor, chip, color = "default", icon, accent }) {
         color={color}
         sx={{
           ...chipStyle,
-          display: { xs: "none", md: "inline-flex" },
+          display: {
+            xs: "none",
+            md: "inline-flex",
+          },
         }}
       />
     </Paper>
   );
 }
 
-function CustomTooltip({ active, payload, label }) {
-  if (!active || !payload?.length) return null;
+function CustomTooltip({
+  active,
+  payload,
+  label,
+}) {
+  if (
+    !active ||
+    !payload?.length
+  ) {
+    return null;
+  }
 
   return (
     <Paper
       sx={{
         p: 1.2,
         borderRadius: 2,
-        border: "1px solid #e5e7eb",
+        border:
+          "1px solid #e5e7eb",
         boxShadow: 3,
       }}
     >
-      <Typography fontWeight={900} fontSize={13}>
+      <Typography
+        fontWeight={900}
+        fontSize={13}
+      >
         {label}
       </Typography>
 
-      <Typography fontSize={13} color="text.secondary">
+      <Typography
+        fontSize={13}
+        color="text.secondary"
+      >
         Tickets creados:{" "}
-        <Box component="span" fontWeight={900} color="#2563eb">
+        <Box
+          component="span"
+          fontWeight={900}
+          color="#2563eb"
+        >
           {payload[0].value}
         </Box>
       </Typography>
@@ -934,7 +1368,10 @@ function CustomTooltip({ active, payload, label }) {
   );
 }
 
-function InfoItem({ label, value }) {
+function InfoItem({
+  label,
+  value,
+}) {
   return (
     <Box>
       <Typography
@@ -950,7 +1387,8 @@ function InfoItem({ label, value }) {
         variant="body2"
         fontWeight={800}
         sx={{
-          wordBreak: "break-word",
+          wordBreak:
+            "break-word",
           lineHeight: 1.35,
         }}
       >
@@ -960,7 +1398,10 @@ function InfoItem({ label, value }) {
   );
 }
 
-function EmptyBox({ texto, height = 220 }) {
+function EmptyBox({
+  texto,
+  height = 220,
+}) {
   return (
     <Box
       sx={{
@@ -969,7 +1410,8 @@ function EmptyBox({ texto, height = 220 }) {
         alignItems: "center",
         justifyContent: "center",
         color: "text.secondary",
-        border: "1px dashed #cbd5e1",
+        border:
+          "1px dashed #cbd5e1",
         borderRadius: 2,
         bgcolor: "#f8fafc",
         textAlign: "center",
@@ -977,7 +1419,10 @@ function EmptyBox({ texto, height = 220 }) {
         py: 3,
       }}
     >
-      <Typography variant="body2" fontWeight={700}>
+      <Typography
+        variant="body2"
+        fontWeight={700}
+      >
         {texto}
       </Typography>
     </Box>
@@ -986,20 +1431,47 @@ function EmptyBox({ texto, height = 220 }) {
 
 const cardStyle = {
   height: "100%",
-  minHeight: { xs: 78, sm: 88, md: 165 },
-  p: { xs: 1.15, sm: 1.4, md: 2.5 },
-  borderRadius: { xs: 2.5, md: 3 },
+  minHeight: {
+    xs: 78,
+    sm: 88,
+    md: 165,
+  },
+  p: {
+    xs: 1.15,
+    sm: 1.4,
+    md: 2.5,
+  },
+  borderRadius: {
+    xs: 2.5,
+    md: 3,
+  },
   boxShadow: 1,
-  border: "1px solid #e5e7eb",
+  border:
+    "1px solid #e5e7eb",
   display: "flex",
-  justifyContent: { xs: "flex-start", md: "space-between" },
-  alignItems: { xs: "center", md: "flex-start" },
-  gap: { xs: 1, md: 1.5 },
+  justifyContent: {
+    xs: "flex-start",
+    md: "space-between",
+  },
+  alignItems: {
+    xs: "center",
+    md: "flex-start",
+  },
+  gap: {
+    xs: 1,
+    md: 1.5,
+  },
   transition: "0.2s ease",
   overflow: "hidden",
   "&:hover": {
-    boxShadow: { xs: 1, md: 4 },
-    transform: { xs: "none", md: "translateY(-2px)" },
+    boxShadow: {
+      xs: 1,
+      md: 4,
+    },
+    transform: {
+      xs: "none",
+      md: "translateY(-2px)",
+    },
   },
 };
 
@@ -1013,10 +1485,15 @@ const chartSectionStyle = {
   width: "100%",
   height: "100%",
   minWidth: 0,
-  p: { xs: 2, sm: 3, md: 4 },
+  p: {
+    xs: 2,
+    sm: 3,
+    md: 4,
+  },
   borderRadius: 3,
   boxShadow: 1,
-  border: "1px solid #dbeafe",
+  border:
+    "1px solid #dbeafe",
   bgcolor: "#ffffff",
   overflow: "hidden",
 };
@@ -1025,19 +1502,29 @@ const vigenciasSectionStyle = {
   width: "100%",
   height: "100%",
   minWidth: 0,
-  p: { xs: 1.5, sm: 2, md: 2.5 },
+  p: {
+    xs: 1.5,
+    sm: 2,
+    md: 2.5,
+  },
   borderRadius: 3,
   boxShadow: 1,
-  border: "1px solid #fed7aa",
+  border:
+    "1px solid #fed7aa",
   bgcolor: "#ffffff",
   overflow: "hidden",
 };
 
 const sectionStyle = {
-  p: { xs: 1.5, sm: 2, md: 3 },
+  p: {
+    xs: 1.5,
+    sm: 2,
+    md: 3,
+  },
   borderRadius: 3,
   boxShadow: 1,
-  border: "1px solid #e5e7eb",
+  border:
+    "1px solid #e5e7eb",
 };
 
 const headCell = {

@@ -28,12 +28,42 @@ export default function ChatMessages({
     return fechaA.toDateString() === fechaB.toDateString();
   };
 
-  const mismoUsuario = (a, b) => {
-    if (!a || !b) return false;
-    if (esMensajeSistema(a) || esMensajeSistema(b)) return false;
+const obtenerRemitente = (msg) => {
+  if (!msg) return "";
 
-    return String(a.user_id) === String(b.user_id);
-  };
+  if (msg.sender_key) {
+    return String(msg.sender_key);
+  }
+
+  if (msg.source === "public_access") {
+    return `public_access:${
+      msg.public_access_id ||
+      msg.author_email ||
+      msg.user?.email ||
+      msg.id
+    }`;
+  }
+
+  return `user:${
+    msg.user_id ??
+    msg.user?.id ??
+    msg.id
+  }`;
+};
+
+const mismoUsuario = (a, b) => {
+  if (!a || !b) return false;
+
+  if (
+    esMensajeSistema(a) ||
+    esMensajeSistema(b)
+  ) {
+    return false;
+  }
+
+  return obtenerRemitente(a) ===
+    obtenerRemitente(b);
+};
 
   const formatoFecha = (fecha) => {
     if (!fecha) return "";

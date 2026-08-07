@@ -7,6 +7,7 @@ import ChatInput from "../components/chat/ChatInput";
 import TicketHeader from "../components/TicketHeader";
 import AttachmentPreview from "../components/AttachmentPreview";
 import TicketInfoItem from "../components/TicketInfoItem";
+import TicketSharedAccessPanel from "../components/TicketSharedAccessPanel";
 
 import Swal from "sweetalert2";
 
@@ -363,17 +364,17 @@ export default function TicketDetalle() {
     setPreviewFile(null);
   };
 
-const getArchivoUrl = (file) => {
-  if (file?.url) {
-    return file.url;
-  }
+  const getArchivoUrl = (file) => {
+    if (file?.url) {
+      return file.url;
+    }
 
-  if (file?.ruta) {
-    return `${STORAGE_URL}/${file.ruta}`;
-  }
+    if (file?.ruta) {
+      return `${STORAGE_URL}/${file.ruta}`;
+    }
 
-  return "";
-};
+    return "";
+  };
 
   const getFileExtension = (file) => {
     return file?.nombre_archivo?.split(".").pop()?.toLowerCase() || "";
@@ -393,30 +394,25 @@ const getArchivoUrl = (file) => {
     return getFileExtension(file) === "pdf";
   };
 
-const descargarArchivo = (file) => {
-  const url =
-    file?.download_url ||
-    getArchivoUrl(file);
+  const descargarArchivo = (file) => {
+    const url = file?.download_url || getArchivoUrl(file);
 
-  if (!url) {
-    setError(
-      "No fue posible obtener el archivo adjunto.",
-    );
-    return;
-  }
+    if (!url) {
+      setError("No fue posible obtener el archivo adjunto.");
+      return;
+    }
 
-  const link = document.createElement("a");
+    const link = document.createElement("a");
 
-  link.href = url;
-  link.download =
-    file?.nombre_archivo || "archivo";
-  link.target = "_blank";
-  link.rel = "noopener noreferrer";
+    link.href = url;
+    link.download = file?.nombre_archivo || "archivo";
+    link.target = "_blank";
+    link.rel = "noopener noreferrer";
 
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-};
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
 
   const calcularTiempoResolucion = () => {
     if (!ticket?.created_at || !ticket?.resolved_at) {
@@ -677,15 +673,34 @@ const descargarArchivo = (file) => {
     );
   };
 
-  const puedeEliminarMensaje = (msg) => {
-    if (isAdmin || isSupervisor) return true;
-
-    if (isAgent || isClient) {
-      return Number(msg.user_id) === Number(usuario?.id);
-    }
-
+const puedeEliminarMensaje = (msg) => {
+  /*
+   * Los mensajes del acceso compartido viven en
+   * ticket_public_messages, no en ticket_messages.
+   *
+   * Todavía no tenemos endpoint de eliminación
+   * para ellos.
+   */
+  if (
+    msg?.source === "public_access" ||
+    msg?.author_type === "external"
+  ) {
     return false;
-  };
+  }
+
+  if (isAdmin || isSupervisor) {
+    return true;
+  }
+
+  if (isAgent || isClient) {
+    return (
+      Number(msg.user_id) ===
+      Number(usuario?.id)
+    );
+  }
+
+  return false;
+};
 
   if (loading) {
     return (
@@ -899,6 +914,8 @@ const descargarArchivo = (file) => {
           Info={TicketInfoItem}
         />
       </Box>
+
+      {puedeGestionar && <TicketSharedAccessPanel ticketId={id} />}
 
       <Paper
         sx={{
