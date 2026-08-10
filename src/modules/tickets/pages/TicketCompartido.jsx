@@ -9,6 +9,10 @@ import {
   Button,
   Chip,
   CircularProgress,
+  Dialog,
+  DialogContent,
+  DialogTitle,
+  IconButton,
   Divider,
   Paper,
   Stack,
@@ -21,6 +25,9 @@ import ConfirmationNumberOutlinedIcon from "@mui/icons-material/ConfirmationNumb
 import LogoutOutlinedIcon from "@mui/icons-material/LogoutOutlined";
 import SendOutlinedIcon from "@mui/icons-material/SendOutlined";
 import AttachFileOutlinedIcon from "@mui/icons-material/AttachFileOutlined";
+import CloseOutlinedIcon from "@mui/icons-material/CloseOutlined";
+
+const API_BASE_URL = "https://api.thebusinessticket.com/api";
 
 const getStorageKey = (trackingCode) =>
   `TBT_SHARED_TICKET_SESSION_${trackingCode}`;
@@ -80,6 +87,7 @@ export default function TicketCompartido() {
   const [messages, setMessages] = useState([]);
   const [text, setText] = useState("");
   const [archivo, setArchivo] = useState(null);
+  const [archivoPreview, setArchivoPreview] = useState(null);
 
   const [loading, setLoading] = useState(false);
   const [loadingTicket, setLoadingTicket] = useState(false);
@@ -147,7 +155,6 @@ export default function TicketCompartido() {
 
     if (!correo || !password) {
       setError("Escribe tu correo y contraseña.");
-
       return;
     }
 
@@ -254,7 +261,6 @@ export default function TicketCompartido() {
 
     if (ticketCerrado) {
       setError("Este ticket está cerrado y ya no acepta mensajes ni archivos.");
-
       return;
     }
 
@@ -269,21 +275,47 @@ export default function TicketCompartido() {
       }
 
       if (archivo) {
-        formData.append("archivo", archivo);
+        formData.append("archivo", archivo, archivo.name);
       }
 
-      const response = await axiosCliente.post(
-        `/public/shared-tickets/${trackingCode}/messages`,
-        formData,
+      const response = await fetch(
+        `${API_BASE_URL}/public/shared-tickets/${trackingCode}/messages`,
         {
-          headers: headersPublicos(),
+          method: "POST",
+          headers: {
+            Accept: "application/json",
+            Authorization: `Bearer ${sessionToken}`,
+          },
+          body: formData,
         },
       );
+
+      const responseData = await response.json();
+
+      if (!response.ok) {
+        const validationErrors = responseData?.errors;
+
+        if (validationErrors && typeof validationErrors === "object") {
+          const primerError = Object.values(validationErrors)
+            .flat()
+            .find(Boolean);
+
+          throw new Error(
+            primerError ||
+              responseData?.message ||
+              "No fue posible enviar la respuesta.",
+          );
+        }
+
+        throw new Error(
+          responseData?.message || "No fue posible enviar la respuesta.",
+        );
+      }
 
       setText("");
       setArchivo(null);
 
-      const nuevoMensaje = response.data?.data || null;
+      const nuevoMensaje = responseData?.data || null;
 
       if (nuevoMensaje) {
         setMessages((prev) => [...prev, nuevoMensaje]);
@@ -291,29 +323,13 @@ export default function TicketCompartido() {
         await cargarMensajes();
       }
 
-      if (response.data?.ticket_reopened || response.data?.ticket_status_id) {
+      if (responseData?.ticket_reopened || responseData?.ticket_status_id) {
         await cargarTicket();
       }
     } catch (error) {
-      console.log(
-        "ERROR ENVIAR MENSAJE COMPARTIDO:",
-        error.response?.data || error,
-      );
+      console.log("ERROR ENVIAR MENSAJE COMPARTIDO:", error);
 
-      const validationErrors = error.response?.data?.errors;
-
-      if (validationErrors && typeof validationErrors === "object") {
-        const primerError = Object.values(validationErrors)
-          .flat()
-          .find(Boolean);
-
-        setError(primerError || "No fue posible enviar la respuesta.");
-      } else {
-        setError(
-          error.response?.data?.message ||
-            "No fue posible enviar la respuesta.",
-        );
-      }
+      setError(error?.message || "No fue posible enviar la respuesta.");
     } finally {
       setSendingMessage(false);
     }
@@ -479,10 +495,8 @@ export default function TicketCompartido() {
               {msg.attachments.map((file) => (
                 <Button
                   key={file.id}
-                  component="a"
-                  href={file.url || "#"}
-                  target="_blank"
-                  rel="noopener noreferrer"
+                  type="button"
+                  onClick={() => abrirArchivo(file)}
                   variant="outlined"
                   size="small"
                   startIcon={<AttachFileOutlinedIcon />}
@@ -522,6 +536,37 @@ export default function TicketCompartido() {
         </Box>
       </Box>
     );
+  };
+
+  const esImagen = (file) => {
+    const mime = String(file?.mime_type || "").toLowerCase();
+
+    const nombre = String(file?.nombre_archivo || "").toLowerCase();
+
+    return (
+      mime.startsWith("image/") || /\.(jpg|jpeg|png|webp|gif)$/i.test(nombre)
+    );
+  };
+
+  const esPdf = (file) => {
+    const mime = String(file?.mime_type || "").toLowerCase();
+
+    const nombre = String(file?.nombre_archivo || "").toLowerCase();
+
+    return mime === "application/pdf" || nombre.endsWith(".pdf");
+  };
+
+  const abrirArchivo = (file) => {
+    if (!file?.url) {
+      setError("No fue posible localizar el archivo.");
+      return;
+    }
+
+    setArchivoPreview(file);
+  };
+
+  const cerrarArchivo = () => {
+    setArchivoPreview(null);
   };
 
   if (sessionToken && loadingTicket && !ticket) {
@@ -859,7 +904,10 @@ export default function TicketCompartido() {
           >
             <Box
               sx={{
-                px: { xs: 1.5, sm: 2 },
+                px: {
+                  xs: 1.5,
+                  sm: 2,
+                },
                 py: 1.5,
                 bgcolor: "#ffffff",
                 borderBottom: "1px solid #e2e8f0",
@@ -917,6 +965,7 @@ export default function TicketCompartido() {
               ) : (
                 <>
                   {messages.map(renderMensaje)}
+
                   <div ref={chatEndRef} />
                 </>
               )}
@@ -941,6 +990,122 @@ export default function TicketCompartido() {
                 <Stack spacing={1}>
                   {error && <Alert severity="error">{error}</Alert>}
 
+                  {/* ARCHIVO ADJUNTO */}
+                  <Stack
+                    direction={{
+                      xs: "column",
+                      sm: "row",
+                    }}
+                    spacing={1}
+                    alignItems={{
+                      xs: "stretch",
+                      sm: "center",
+                    }}
+                  >
+                    <Button
+                      component="label"
+                      variant="outlined"
+                      startIcon={<AttachFileOutlinedIcon />}
+                      disabled={sendingMessage}
+                      sx={{
+                        alignSelf: {
+                          xs: "stretch",
+                          sm: "flex-start",
+                        },
+                        borderRadius: 2,
+                        textTransform: "none",
+                        fontWeight: 800,
+                      }}
+                    >
+                      Adjuntar archivo
+                      <input
+                        hidden
+                        type="file"
+                        accept=".jpg,.jpeg,.png,.webp,.pdf,.doc,.docx,.xls,.xlsx,.txt"
+                        onChange={(event) => {
+                          const file = event.target.files?.[0] || null;
+
+                          setArchivo(file);
+
+                          /*
+                           * Permite seleccionar
+                           * nuevamente el mismo archivo.
+                           */
+                          event.target.value = "";
+                        }}
+                      />
+                    </Button>
+
+                    {archivo && (
+                      <Paper
+                        variant="outlined"
+                        sx={{
+                          flex: 1,
+                          minWidth: 0,
+                          px: 1.25,
+                          py: 0.75,
+                          borderRadius: 2,
+                          bgcolor: "#f8fafc",
+                          borderColor: "#cbd5e1",
+                        }}
+                      >
+                        <Stack
+                          direction="row"
+                          spacing={1}
+                          alignItems="center"
+                          justifyContent="space-between"
+                        >
+                          <Stack
+                            direction="row"
+                            spacing={0.75}
+                            alignItems="center"
+                            sx={{
+                              minWidth: 0,
+                            }}
+                          >
+                            <AttachFileOutlinedIcon
+                              sx={{
+                                fontSize: 18,
+                                color: "#64748b",
+                                flexShrink: 0,
+                              }}
+                            />
+
+                            <Typography
+                              variant="body2"
+                              sx={{
+                                fontWeight: 800,
+                                color: "#334155",
+                                overflow: "hidden",
+                                textOverflow: "ellipsis",
+                                whiteSpace: "nowrap",
+                              }}
+                            >
+                              {archivo.name}
+                            </Typography>
+                          </Stack>
+
+                          <Button
+                            size="small"
+                            color="error"
+                            onClick={() => setArchivo(null)}
+                            disabled={sendingMessage}
+                            sx={{
+                              flexShrink: 0,
+                              minWidth: 0,
+                              px: 1,
+                              textTransform: "none",
+                              fontWeight: 800,
+                            }}
+                          >
+                            Quitar
+                          </Button>
+                        </Stack>
+                      </Paper>
+                    )}
+                  </Stack>
+
+                  {/* MENSAJE */}
                   <Stack
                     direction={{
                       xs: "column",
@@ -962,6 +1127,7 @@ export default function TicketCompartido() {
                       onKeyDown={(event) => {
                         if (event.key === "Enter" && !event.shiftKey) {
                           event.preventDefault();
+
                           enviarMensaje();
                         }
                       }}
@@ -971,7 +1137,7 @@ export default function TicketCompartido() {
                       variant="contained"
                       startIcon={<SendOutlinedIcon />}
                       onClick={enviarMensaje}
-                      disabled={sendingMessage || !text.trim()}
+                      disabled={sendingMessage || (!text.trim() && !archivo)}
                       sx={{
                         minWidth: {
                           xs: "100%",
@@ -987,21 +1153,208 @@ export default function TicketCompartido() {
                     </Button>
                   </Stack>
 
-                  <Typography
-                    variant="caption"
-                    sx={{
-                      color: "#64748b",
-                    }}
-                  >
-                    Enter para enviar. Shift + Enter para agregar una nueva
-                    línea.
-                  </Typography>
-                </Stack>
-              )}
-            </Box>
-          </Paper>
-        </Stack>
-      </Box>
-    </Box>
+              <Typography
+                variant="caption"
+                sx={{
+                  color: "#64748b",
+                }}
+              >
+                Enter para enviar. Shift + Enter para agregar una nueva
+                línea.
+              </Typography>
+            </Stack>
+          )}
+        </Box>
+      </Paper>
+    </Stack>
+  </Box>
+
+  {/* MODAL PARA VISUALIZAR ARCHIVOS */}
+  <Dialog
+    open={Boolean(archivoPreview)}
+    onClose={cerrarArchivo}
+    fullWidth
+    maxWidth="md"
+    PaperProps={{
+      sx: {
+        borderRadius: 3,
+        overflow: "hidden",
+      },
+    }}
+  >
+    <DialogTitle
+      sx={{
+        py: 1.5,
+        px: 2,
+        borderBottom: "1px solid #e2e8f0",
+      }}
+    >
+      <Stack
+        direction="row"
+        alignItems="center"
+        justifyContent="space-between"
+        spacing={2}
+      >
+        <Box
+          sx={{
+            minWidth: 0,
+          }}
+        >
+          <Typography
+            sx={{
+              fontWeight: 900,
+              color: "#0f172a",
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              whiteSpace: "nowrap",
+            }}
+          >
+            {archivoPreview?.nombre_archivo ||
+              "Archivo adjunto"}
+          </Typography>
+
+          <Typography
+            variant="caption"
+            sx={{
+              color: "#64748b",
+            }}
+          >
+            Archivo del ticket
+          </Typography>
+        </Box>
+
+        <IconButton
+          onClick={cerrarArchivo}
+          size="small"
+        >
+          <CloseOutlinedIcon />
+        </IconButton>
+      </Stack>
+    </DialogTitle>
+
+    <DialogContent
+      sx={{
+        p: 0,
+        bgcolor: "#f8fafc",
+      }}
+    >
+      {/* IMÁGENES */}
+      {archivoPreview &&
+        esImagen(archivoPreview) && (
+          <Box
+            sx={{
+              minHeight: {
+                xs: 300,
+                sm: 500,
+              },
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              p: 2,
+            }}
+          >
+            <Box
+              component="img"
+              src={archivoPreview.url}
+              alt={
+                archivoPreview.nombre_archivo ||
+                "Archivo adjunto"
+              }
+              sx={{
+                display: "block",
+                maxWidth: "100%",
+                maxHeight: "70vh",
+                objectFit: "contain",
+                borderRadius: 2,
+              }}
+            />
+          </Box>
+        )}
+
+      {/* PDF */}
+      {archivoPreview &&
+        esPdf(archivoPreview) && (
+          <Box
+            component="iframe"
+            src={archivoPreview.url}
+            title={
+              archivoPreview.nombre_archivo ||
+              "Documento PDF"
+            }
+            sx={{
+              display: "block",
+              width: "100%",
+              height: {
+                xs: "65vh",
+                sm: "75vh",
+              },
+              border: 0,
+              bgcolor: "#ffffff",
+            }}
+          />
+        )}
+
+      {/* WORD, EXCEL, TXT, ETC. */}
+      {archivoPreview &&
+        !esImagen(archivoPreview) &&
+        !esPdf(archivoPreview) && (
+          <Stack
+            spacing={2}
+            alignItems="center"
+            justifyContent="center"
+            sx={{
+              minHeight: 280,
+              p: 3,
+            }}
+          >
+            <AttachFileOutlinedIcon
+              sx={{
+                fontSize: 48,
+                color: "#64748b",
+              }}
+            />
+
+            <Typography
+              sx={{
+                fontWeight: 900,
+                color: "#0f172a",
+                textAlign: "center",
+              }}
+            >
+              {archivoPreview.nombre_archivo ||
+                "Archivo adjunto"}
+            </Typography>
+
+            <Typography
+              variant="body2"
+              sx={{
+                color: "#64748b",
+                textAlign: "center",
+              }}
+            >
+              Este tipo de archivo no puede visualizarse
+              directamente.
+            </Typography>
+
+            <Button
+              component="a"
+              href={archivoPreview.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              variant="contained"
+              startIcon={<AttachFileOutlinedIcon />}
+              sx={{
+                textTransform: "none",
+                fontWeight: 900,
+                boxShadow: "none",
+              }}
+            >
+              Abrir archivo
+            </Button>
+          </Stack>
+        )}
+    </DialogContent>
+  </Dialog>
+</Box>
   );
 }

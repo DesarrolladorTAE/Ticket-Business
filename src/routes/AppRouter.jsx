@@ -14,6 +14,7 @@ import TicketCompartido from "../modules/tickets/pages/TicketCompartido";
 
 import CrearAgente from "../modules/agents/pages/CrearAgente";
 import Agentes from "../modules/agents/pages/Agentes";
+import Clientes from "../modules/clients/pages/Clientes";
 
 import Sistemas from "../modules/tickets/pages/Sistemas";
 import Secciones from "../modules/tickets/pages/Secciones";
@@ -272,6 +273,25 @@ function AppRouter() {
             </RutaPorRol>
           }
         />
+
+        {/* CLIENTES */}
+      <Route
+      path="/clientes"
+      element={
+        <RutaPorRol
+          roles={[
+              "Administrador",
+              "admin",
+              "Supervisor",
+              "supervisor",
+              "Agente",
+              "agent",
+            ]}
+        >
+          <Clientes />
+          </RutaPorRol>
+      }
+    />
 
         {/* SISTEMAS - SOLO ADMINISTRADOR */}
         <Route

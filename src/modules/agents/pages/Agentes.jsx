@@ -14,6 +14,8 @@ import {
   DialogTitle,
   Divider,
   Grid,
+  IconButton,
+  InputAdornment,
   MenuItem,
   Paper,
   Stack,
@@ -37,6 +39,9 @@ import PersonAddIcon from "@mui/icons-material/PersonAdd";
 import EditIcon from "@mui/icons-material/Edit";
 import ToggleOffIcon from "@mui/icons-material/ToggleOff";
 import ToggleOnIcon from "@mui/icons-material/ToggleOn";
+import DeleteIcon from "@mui/icons-material/Delete";
+import VisibilityIcon from "@mui/icons-material/Visibility";
+import VisibilityOffIcon from "@mui/icons-material/VisibilityOff";
 
 import axiosCliente from "../../../services/axiosCliente";
 
@@ -139,12 +144,20 @@ function MetricCard({ title, value, description }) {
   );
 }
 
-function AgentCard({ agent, onEdit, onToggleStatus, changingStatusId }) {
+function AgentCard({
+  agent,
+  onEdit,
+  onToggleStatus,
+  onDelete,
+  changingStatusId,
+  deletingAgentId,
+}) {
   const nombre = nombreCompleto(agent);
   const grupos = agent?.groups || [];
   const gruposCount = getGroupsCount(agent);
   const activo = Number(agent?.company_status) === 1;
   const changingThisAgent = Number(changingStatusId) === Number(agent.id);
+  const deletingThisAgent = Number(deletingAgentId) === Number(agent.id);
 
   return (
     <Paper
@@ -421,7 +434,7 @@ function AgentCard({ agent, onEdit, onToggleStatus, changingStatusId }) {
             color={activo ? "warning" : "success"}
             startIcon={activo ? <ToggleOffIcon /> : <ToggleOnIcon />}
             onClick={() => onToggleStatus(agent)}
-            disabled={changingThisAgent}
+            disabled={changingThisAgent || deletingThisAgent}
             sx={{
               borderRadius: 2,
               textTransform: "none",
@@ -435,13 +448,36 @@ function AgentCard({ agent, onEdit, onToggleStatus, changingStatusId }) {
                 ? "Inactivar"
                 : "Activar"}
           </Button>
+
+          <Button
+            variant="outlined"
+            size="small"
+            color="error"
+            startIcon={<DeleteIcon />}
+            onClick={() => onDelete(agent)}
+            disabled={deletingThisAgent || changingThisAgent}
+            sx={{
+              borderRadius: 2,
+              textTransform: "none",
+              fontWeight: 800,
+            }}
+          >
+            {deletingThisAgent ? "Eliminando..." : "Eliminar"}
+          </Button>
         </Stack>
       </Stack>
     </Paper>
   );
 }
 
-function AgentsTable({ agents, onEdit, onToggleStatus, changingStatusId }) {
+function AgentsTable({
+  agents,
+  onEdit,
+  onToggleStatus,
+  onDelete,
+  changingStatusId,
+  deletingAgentId,
+}) {
   return (
     <TableContainer
       component={Paper}
@@ -521,6 +557,8 @@ function AgentsTable({ agents, onEdit, onToggleStatus, changingStatusId }) {
             const activo = Number(agent?.company_status) === 1;
             const changingThisAgent =
               Number(changingStatusId) === Number(agent.id);
+            const deletingThisAgent =
+              Number(deletingAgentId) === Number(agent.id);
 
             return (
               <TableRow
@@ -689,7 +727,7 @@ function AgentsTable({ agents, onEdit, onToggleStatus, changingStatusId }) {
                       color={activo ? "warning" : "success"}
                       startIcon={activo ? <ToggleOffIcon /> : <ToggleOnIcon />}
                       onClick={() => onToggleStatus(agent)}
-                      disabled={changingThisAgent}
+                      disabled={changingThisAgent || deletingThisAgent}
                       sx={{
                         borderRadius: 2,
                         textTransform: "none",
@@ -703,6 +741,23 @@ function AgentsTable({ agents, onEdit, onToggleStatus, changingStatusId }) {
                         : activo
                           ? "Inactivar"
                           : "Activar"}
+                    </Button>
+
+                    <Button
+                      variant="outlined"
+                      size="small"
+                      color="error"
+                      startIcon={<DeleteIcon />}
+                      onClick={() => onDelete(agent)}
+                      disabled={deletingThisAgent || changingThisAgent}
+                      sx={{
+                        borderRadius: 2,
+                        textTransform: "none",
+                        fontWeight: 800,
+                        justifyContent: "flex-start",
+                      }}
+                    >
+                      {deletingThisAgent ? "Eliminando..." : "Eliminar"}
                     </Button>
                   </Stack>
                 </TableCell>
@@ -753,12 +808,14 @@ function CrearAgenteDialog({ open, onClose, onCreated }) {
   const [formulario, setFormulario] = useState(formularioInicial);
   const [error, setError] = useState("");
   const [cargando, setCargando] = useState(false);
+  const [mostrarPassword, setMostrarPassword] = useState(false);
 
   const cerrar = () => {
     if (cargando) return;
 
     setFormulario(formularioInicial);
     setError("");
+    setMostrarPassword(false);
     onClose();
   };
 
@@ -973,12 +1030,39 @@ function CrearAgenteDialog({ open, onClose, onCreated }) {
                       size="small"
                       label="Contraseña"
                       name="password"
-                      type="password"
+                      type={mostrarPassword ? "text" : "password"}
                       value={formulario.password}
                       onChange={cambiarValor}
                       required
                       disabled={cargando}
                       helperText="Define la contraseña inicial del agente"
+                      slotProps={{
+                        input: {
+                          endAdornment: (
+                            <InputAdornment position="end">
+                            <IconButton
+                              edge="end"
+                              onClick={() =>
+                                setMostrarPassword((prev) => !prev)
+                              }
+                              onMouseDown={(event) => event.preventDefault()}
+                              disabled={cargando}
+                              aria-label={
+                                mostrarPassword
+                                  ? "Ocultar contraseña"
+                                  : "Mostrar contraseña"
+                              }
+                            >
+                              {mostrarPassword ? (
+                                <VisibilityOffIcon />
+                              ) : (
+                                <VisibilityIcon />
+                              )}
+                            </IconButton>
+                            </InputAdornment>
+                          ),
+                        },
+                      }}
                     />
                   </Grid>
                 </Grid>
@@ -1030,6 +1114,7 @@ function EditarAgenteDialog({ open, agent, onClose, onUpdated }) {
   const [formulario, setFormulario] = useState(formularioInicial);
   const [error, setError] = useState("");
   const [cargando, setCargando] = useState(false);
+  const [mostrarPassword, setMostrarPassword] = useState(false);
 
   useEffect(() => {
     if (open && agent) {
@@ -1043,6 +1128,7 @@ function EditarAgenteDialog({ open, agent, onClose, onUpdated }) {
       });
 
       setError("");
+      setMostrarPassword(false);
     }
   }, [open, agent]);
 
@@ -1051,6 +1137,7 @@ function EditarAgenteDialog({ open, agent, onClose, onUpdated }) {
 
     setFormulario(formularioInicial);
     setError("");
+    setMostrarPassword(false);
     onClose();
   };
 
@@ -1282,11 +1369,38 @@ function EditarAgenteDialog({ open, agent, onClose, onUpdated }) {
                       size="small"
                       label="Nueva contraseña"
                       name="password"
-                      type="password"
+                      type={mostrarPassword ? "text" : "password"}
                       value={formulario.password}
                       onChange={cambiarValor}
                       disabled={cargando}
                       helperText="Opcional. Déjala vacía si no deseas cambiarla."
+                      slotProps={{
+                        input: {
+                          endAdornment: (
+                            <InputAdornment position="end">
+                            <IconButton
+                              edge="end"
+                              onClick={() =>
+                                setMostrarPassword((prev) => !prev)
+                              }
+                              onMouseDown={(event) => event.preventDefault()}
+                              disabled={cargando}
+                              aria-label={
+                                mostrarPassword
+                                  ? "Ocultar contraseña"
+                                  : "Mostrar contraseña"
+                              }
+                            >
+                              {mostrarPassword ? (
+                                <VisibilityOffIcon />
+                              ) : (
+                                <VisibilityIcon />
+                              )}
+                            </IconButton>
+                            </InputAdornment>
+                          ),
+                        },
+                      }}
                     />
                   </Grid>
                 </Grid>
@@ -1412,6 +1526,123 @@ function ConfirmarEstadoDialog({ open, agent, onClose, onConfirm, cargando }) {
   );
 }
 
+function ConfirmarEliminarDialog({
+  open,
+  agent,
+  onClose,
+  onConfirm,
+  cargando,
+  error,
+}) {
+  const nombre = nombreCompleto(agent);
+
+  return (
+    <Dialog
+      open={open}
+      onClose={cargando ? undefined : onClose}
+      fullWidth
+      maxWidth="xs"
+      PaperProps={{
+        sx: {
+          borderRadius: 3,
+        },
+      }}
+    >
+      <DialogTitle
+        sx={{
+          fontWeight: 900,
+          color: "#b91c1c",
+        }}
+      >
+        Eliminar agente
+      </DialogTitle>
+
+      <DialogContent dividers>
+        <Stack spacing={2}>
+          <Typography
+            variant="body2"
+            sx={{
+              color: "#475569",
+              lineHeight: 1.6,
+            }}
+          >
+            ¿Seguro que deseas eliminar a este agente?
+          </Typography>
+
+          <Paper
+            variant="outlined"
+            sx={{
+              p: 1.5,
+              borderRadius: 2,
+              bgcolor: "#f8fafc",
+            }}
+          >
+            <Typography
+              sx={{
+                fontWeight: 900,
+                color: "#0f172a",
+              }}
+            >
+              {nombre || "Agente sin nombre"}
+            </Typography>
+
+            {agent?.email && (
+              <Typography
+                variant="body2"
+                sx={{
+                  color: "#64748b",
+                  mt: 0.3,
+                  wordBreak: "break-word",
+                }}
+              >
+                {agent.email}
+              </Typography>
+            )}
+          </Paper>
+
+          <Alert severity="warning">
+            Se retirará al agente de la empresa. El historial de tickets se
+            conservará.
+          </Alert>
+
+          {error && <Alert severity="error">{error}</Alert>}
+        </Stack>
+      </DialogContent>
+
+      <DialogActions sx={{ p: 2 }}>
+        <Button
+          variant="outlined"
+          onClick={onClose}
+          disabled={cargando}
+          sx={{
+            borderRadius: 2,
+            textTransform: "none",
+            fontWeight: 800,
+          }}
+        >
+          Cancelar
+        </Button>
+
+        <Button
+          variant="contained"
+          color="error"
+          startIcon={<DeleteIcon />}
+          onClick={onConfirm}
+          disabled={cargando}
+          sx={{
+            borderRadius: 2,
+            textTransform: "none",
+            fontWeight: 800,
+            boxShadow: "none",
+          }}
+        >
+          {cargando ? "Eliminando..." : "Eliminar"}
+        </Button>
+      </DialogActions>
+    </Dialog>
+  );
+}
+
 export default function Agentes() {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("md"));
@@ -1432,6 +1663,10 @@ export default function Agentes() {
 
   const [statusAgent, setStatusAgent] = useState(null);
   const [changingStatus, setChangingStatus] = useState(false);
+
+  const [deleteAgent, setDeleteAgent] = useState(null);
+  const [deletingAgent, setDeletingAgent] = useState(false);
+  const [deleteError, setDeleteError] = useState("");
 
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -1546,6 +1781,52 @@ export default function Agentes() {
       );
     } finally {
       setChangingStatus(false);
+    }
+  };
+
+  const abrirConfirmarEliminar = (agent) => {
+    setDeleteAgent(agent);
+    setDeleteError("");
+    setError("");
+    setSuccess("");
+  };
+
+  const cerrarConfirmarEliminar = () => {
+    if (deletingAgent) return;
+
+    setDeleteAgent(null);
+    setDeleteError("");
+  };
+
+  const confirmarEliminarAgente = async () => {
+    if (!deleteAgent?.id) return;
+
+    setDeletingAgent(true);
+    setDeleteError("");
+    setError("");
+    setSuccess("");
+
+    try {
+      await axiosCliente.delete(`/agents/${deleteAgent.id}`);
+
+      setDeleteAgent(null);
+      setSuccess("Agente eliminado correctamente.");
+
+      await loadAgents({
+        refresh: true,
+      });
+    } catch (requestError) {
+      console.log(
+        "ERROR ELIMINAR AGENTE:",
+        requestError.response?.data || requestError,
+      );
+
+      setDeleteError(
+        requestError?.response?.data?.message ||
+          "No se pudo eliminar el agente.",
+      );
+    } finally {
+      setDeletingAgent(false);
     }
   };
 
@@ -1923,7 +2204,9 @@ export default function Agentes() {
                   agent={agent}
                   onEdit={abrirEditarAgente}
                   onToggleStatus={abrirConfirmarEstado}
+                  onDelete={abrirConfirmarEliminar}
                   changingStatusId={changingStatus ? statusAgent?.id : null}
+                  deletingAgentId={deletingAgent ? deleteAgent?.id : null}
                 />
               ))}
             </Box>
@@ -1957,7 +2240,9 @@ export default function Agentes() {
               agents={agentesPaginados}
               onEdit={abrirEditarAgente}
               onToggleStatus={abrirConfirmarEstado}
+              onDelete={abrirConfirmarEliminar}
               changingStatusId={changingStatus ? statusAgent?.id : null}
+              deletingAgentId={deletingAgent ? deleteAgent?.id : null}
             />
 
             <AgentesPagination
@@ -1990,6 +2275,15 @@ export default function Agentes() {
         onClose={cerrarConfirmarEstado}
         onConfirm={confirmarCambioEstado}
         cargando={changingStatus}
+      />
+
+      <ConfirmarEliminarDialog
+        open={Boolean(deleteAgent)}
+        agent={deleteAgent}
+        onClose={cerrarConfirmarEliminar}
+        onConfirm={confirmarEliminarAgente}
+        cargando={deletingAgent}
+        error={deleteError}
       />
     </Box>
   );

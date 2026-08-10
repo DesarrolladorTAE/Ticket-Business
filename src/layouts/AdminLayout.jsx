@@ -274,16 +274,10 @@ function AdminLayout() {
       ],
       icon: <ConfirmationNumberIcon fontSize="small" />,
     },
-        {
+    {
       label: "Mi perfil",
       path: "/mi-perfil",
-      roles: [
-        "administrador",
-        "admin",
-        "agente",
-        "agent",
-        "supervisor",
-      ],
+      roles: ["administrador", "admin", "agente", "agent", "supervisor"],
       icon: <AccountCircleIcon fontSize="small" />,
     },
 
@@ -293,8 +287,16 @@ function AdminLayout() {
       roles: ["administrador", "admin", "supervisor"],
       icon: <GroupsIcon fontSize="small" />,
     },
+
     {
-      label: "Sistemas",
+      label: "Clientes",
+      path: "/clientes",
+      roles: ["administrador", "admin", "supervisor", "agente", "agent"],
+      icon: <GroupsIcon fontSize="small" />,
+    },
+
+    {
+      label: "Categorías",
       path: "/sistemas",
       roles: ["administrador", "admin"],
       icon: <AppsIcon fontSize="small" />,

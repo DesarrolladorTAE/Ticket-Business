@@ -33,7 +33,12 @@ function MisTickets() {
 
   const [tickets, setTickets] = useState([]);
   const [busqueda, setBusqueda] = useState("");
+  const [clienteFiltro, setClienteFiltro] = useState("todos");
+  const [fechaFiltro, setFechaFiltro] = useState("");
+  const [prioridadFiltro, setPrioridadFiltro] = useState("todos");
   const [estadoFiltro, setEstadoFiltro] = useState("todos");
+  const [vigenciaFiltro, setVigenciaFiltro] = useState("todos");
+  const [situacionFiltro, setSituacionFiltro] = useState("todos");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [openNuevoTicket, setOpenNuevoTicket] = useState(false);
@@ -47,7 +52,15 @@ function MisTickets() {
 
   useEffect(() => {
     setPage(0);
-  }, [busqueda, estadoFiltro]);
+  }, [
+    busqueda,
+    clienteFiltro,
+    fechaFiltro,
+    prioridadFiltro,
+    estadoFiltro,
+    vigenciaFiltro,
+    situacionFiltro,
+  ]);
 
   const cargarTickets = async () => {
     setLoading(true);
@@ -138,6 +151,55 @@ function MisTickets() {
       .replace(/\s+/g, " ");
   };
 
+  const nombreCliente = (ticket) => {
+    if (!ticket.user) return "Sin cliente";
+
+    return `${ticket.user.name || ""} ${
+      ticket.user.apellido_paterno || ""
+    } ${ticket.user.apellido_materno || ""}`
+      .trim()
+      .replace(/\s+/g, " ");
+  };
+
+  const clienteValor = (ticket) =>
+    String(ticket.user?.id ?? nombreCliente(ticket));
+
+  const fechaCreacionISO = (ticket) => {
+    if (!ticket.created_at) return "";
+
+    const fecha = new Date(ticket.created_at);
+
+    if (Number.isNaN(fecha.getTime())) {
+      return String(ticket.created_at).slice(0, 10);
+    }
+
+    const year = fecha.getFullYear();
+    const month = String(fecha.getMonth() + 1).padStart(2, "0");
+    const day = String(fecha.getDate()).padStart(2, "0");
+
+    return `${year}-${month}-${day}`;
+  };
+
+  const esTicketPendiente = (ticket) => {
+    const statusId = Number(ticket.status?.id ?? ticket.status_id ?? 0);
+
+    if (statusId) {
+      return [1, 2].includes(statusId) && !ticket.resolved_at;
+    }
+
+    const estado = String(nombreEstado(ticket)).toLowerCase();
+
+    return (
+      !ticket.resolved_at &&
+      !estado.includes("cerr") &&
+      !estado.includes("resuelto") &&
+      !estado.includes("finalizado")
+    );
+  };
+
+  const esTicketVigente = (ticket) =>
+    ["normal", "warning", "due_today"].includes(ticket.due_status);
+
   const colorEstado = (ticket) => {
     const estado = String(nombreEstado(ticket)).toLowerCase();
 
@@ -185,35 +247,133 @@ function MisTickets() {
     }
   };
 
+  const clientesDisponibles = useMemo(() => {
+    const mapa = new Map();
+
+    tickets.forEach((ticket) => {
+      const valor = clienteValor(ticket);
+      const nombre = nombreCliente(ticket);
+
+      if (!mapa.has(valor)) {
+        mapa.set(valor, nombre);
+      }
+    });
+
+    return Array.from(mapa.entries())
+      .map(([value, label]) => ({ value, label }))
+      .sort((a, b) => a.label.localeCompare(b.label, "es"));
+  }, [tickets]);
+
+  const prioridadesDisponibles = useMemo(() => {
+    const mapa = new Map();
+
+    tickets.forEach((ticket) => {
+      const nombre = nombrePrioridad(ticket);
+      const valor = String(ticket.priority?.id ?? nombre);
+
+      if (!mapa.has(valor)) {
+        mapa.set(valor, nombre);
+      }
+    });
+
+    return Array.from(mapa.entries())
+      .map(([value, label]) => ({ value, label }))
+      .sort((a, b) => a.label.localeCompare(b.label, "es"));
+  }, [tickets]);
+
+  const estadosDisponibles = useMemo(() => {
+    const estados = new Set();
+
+    tickets.forEach((ticket) => {
+      estados.add(nombreEstado(ticket));
+    });
+
+    return Array.from(estados)
+      .filter(Boolean)
+      .sort((a, b) => a.localeCompare(b, "es"));
+  }, [tickets]);
+
+  const hayFiltrosActivos =
+    busqueda.trim() ||
+    clienteFiltro !== "todos" ||
+    fechaFiltro ||
+    prioridadFiltro !== "todos" ||
+    estadoFiltro !== "todos" ||
+    vigenciaFiltro !== "todos" ||
+    situacionFiltro !== "todos";
+
+  const limpiarFiltros = () => {
+    setBusqueda("");
+    setClienteFiltro("todos");
+    setFechaFiltro("");
+    setPrioridadFiltro("todos");
+    setEstadoFiltro("todos");
+    setVigenciaFiltro("todos");
+    setSituacionFiltro("todos");
+  };
+
   const ticketsFiltrados = useMemo(() => {
     const texto = busqueda.trim().toLowerCase();
 
     return tickets.filter((ticket) => {
       const estado = String(nombreEstado(ticket)).toLowerCase();
+      const prioridadValor = String(
+        ticket.priority?.id ?? nombrePrioridad(ticket),
+      );
+
+      const coincideTexto =
+        !texto ||
+        [ticket.folio, ticket.folio_prefijo, ticket.folio_numero, ticket.titulo]
+          .join(" ")
+          .toLowerCase()
+          .includes(texto);
+
+      const coincideCliente =
+        clienteFiltro === "todos" || clienteValor(ticket) === clienteFiltro;
+
+      const coincideFecha =
+        !fechaFiltro || fechaCreacionISO(ticket) === fechaFiltro;
+
+      const coincidePrioridad =
+        prioridadFiltro === "todos" || prioridadValor === prioridadFiltro;
 
       const coincideEstado =
-        estadoFiltro === "todos" || estado.includes(estadoFiltro);
+        estadoFiltro === "todos" || estado === estadoFiltro;
 
-      const baseBusqueda = [
-        ticket.folio,
-        ticket.folio_prefijo,
-        ticket.folio_numero,
-        ticket.titulo,
-        nombreSistema(ticket),
-        nombreProblema(ticket),
-        nombrePrioridad(ticket),
-        nombreAgente(ticket),
-        ticket.due_date,
-        ticket.due_label,
-      ]
-        .join(" ")
-        .toLowerCase();
+      const coincideVigencia =
+        vigenciaFiltro === "todos" ||
+        (vigenciaFiltro === "vigentes" && esTicketVigente(ticket)) ||
+        (vigenciaFiltro === "vencidos" && ticket.due_status === "overdue") ||
+        (vigenciaFiltro === "sin_vigencia" &&
+          (!ticket.due_at || ticket.due_status === "unknown"));
 
-      const coincideTexto = !texto || baseBusqueda.includes(texto);
+      const pendiente = esTicketPendiente(ticket);
 
-      return coincideEstado && coincideTexto;
+      const coincideSituacion =
+        situacionFiltro === "todos" ||
+        (situacionFiltro === "pendientes" && pendiente) ||
+        (situacionFiltro === "finalizados" && !pendiente);
+
+      return (
+        coincideTexto &&
+        coincideCliente &&
+        coincideFecha &&
+        coincidePrioridad &&
+        coincideEstado &&
+        coincideVigencia &&
+        coincideSituacion
+      );
     });
-  }, [tickets, busqueda, estadoFiltro]);
+  }, [
+    tickets,
+    busqueda,
+    clienteFiltro,
+    fechaFiltro,
+    prioridadFiltro,
+    estadoFiltro,
+    vigenciaFiltro,
+    situacionFiltro,
+  ]);
 
   const ticketsPaginados = useMemo(() => {
     const start = page * rowsPerPage;
@@ -319,9 +479,7 @@ function MisTickets() {
       onRowsPerPageChange={handleChangeRowsPerPage}
       rowsPerPageOptions={[5, 10, 25]}
       labelRowsPerPage="Filas por página"
-      labelDisplayedRows={({ from, to, count }) =>
-        `${from}-${to} de ${count}`
-      }
+      labelDisplayedRows={({ from, to, count }) => `${from}-${to} de ${count}`}
       sx={{
         borderTop: "1px solid #e5e7eb",
         bgcolor: "#ffffff",
@@ -394,36 +552,182 @@ function MisTickets() {
           border: "1px solid #e5e7eb",
         }}
       >
-        <Grid container spacing={2} mb={3}>
-          <Grid item xs={12} md={8}>
-            <TextField
-              fullWidth
-              size="small"
-              label="Buscar"
-              value={busqueda}
-              onChange={(event) => setBusqueda(event.target.value)}
-              placeholder="Folio, título, sistema, prioridad, agente o vigencia"
-            />
-          </Grid>
+        <Box
+          sx={{
+            mb: 3,
+            p: { xs: 1.25, sm: 1.5 },
+            border: "1px solid #e5e7eb",
+            borderRadius: 2.5,
+            bgcolor: "#f8fafc",
+          }}
+        >
+          <Stack
+            direction={{ xs: "column", sm: "row" }}
+            justifyContent="space-between"
+            alignItems={{ xs: "stretch", sm: "center" }}
+            spacing={1}
+            sx={{ mb: 1.5 }}
+          >
+            <Box>
+              <Typography fontWeight={900} sx={{ fontSize: 14 }}>
+                Filtros
+              </Typography>
 
-          <Grid item xs={12} md={4}>
-            <TextField
-              select
-              fullWidth
+              <Typography variant="caption" color="text.secondary">
+                Combina uno o varios filtros para localizar tickets.
+              </Typography>
+            </Box>
+
+            <Button
               size="small"
-              label="Estado"
-              value={estadoFiltro}
-              onChange={(event) => setEstadoFiltro(event.target.value)}
+              color="inherit"
+              onClick={limpiarFiltros}
+              
+              sx={{
+                textTransform: "none",
+                fontWeight: 800,
+                alignSelf: { xs: "flex-start", sm: "center" },
+              }}
             >
-              <MenuItem value="todos">Todos</MenuItem>
-              <MenuItem value="abiert">Abiertos</MenuItem>
-              <MenuItem value="reciente">Recientes</MenuItem>
-              <MenuItem value="proceso">En proceso</MenuItem>
-              <MenuItem value="cerr">Cerrados</MenuItem>
-              <MenuItem value="resuelto">Resueltos</MenuItem>
-            </TextField>
+              Limpiar filtros
+            </Button>
+          </Stack>
+
+          <Grid container spacing={1.5}>
+            <Grid item xs={12} sm={6} lg={4}>
+              <TextField
+                fullWidth
+                size="small"
+                label="Nombre o folio"
+                value={busqueda}
+                onChange={(event) => setBusqueda(event.target.value)}
+                placeholder="Ej. Error de acceso o TAE-..."
+              />
+            </Grid>
+
+            <Grid item xs={12} sm={6} lg={4}>
+              <TextField
+                select
+                fullWidth
+                size="small"
+                label="Cliente"
+                value={clienteFiltro}
+                onChange={(event) => setClienteFiltro(event.target.value)}
+              >
+                <MenuItem value="todos">Todos los clientes</MenuItem>
+
+                {clientesDisponibles.map((cliente) => (
+                  <MenuItem key={cliente.value} value={cliente.value}>
+                    {cliente.label}
+                  </MenuItem>
+                ))}
+              </TextField>
+            </Grid>
+
+            <Grid item xs={12} sm={6} lg={4}>
+              <Box
+                sx={{
+                  position: "relative",
+                  width: "100%",
+                }}
+              >
+                <Typography
+                  variant="caption"
+                  sx={{
+                    position: "absolute",
+                    top: -7,
+                    left: 10,
+                    zIndex: 1,
+                    px: 0.5,
+                    bgcolor: "#f8fafc",
+                    color: "text.secondary",
+                    fontSize: 11,
+                    lineHeight: 1,
+                  }}
+                >
+                  Fecha de creación
+                </Typography>
+
+                <TextField
+                  fullWidth
+                  size="small"
+                  type="date"
+                  value={fechaFiltro}
+                  onChange={(event) => setFechaFiltro(event.target.value)}
+                />
+              </Box>
+            </Grid>
+
+            <Grid item xs={12} sm={6} lg={3}>
+              <TextField
+                select
+                fullWidth
+                size="small"
+                label="Prioridad"
+                value={prioridadFiltro}
+                onChange={(event) => setPrioridadFiltro(event.target.value)}
+              >
+                <MenuItem value="todos">Todas</MenuItem>
+
+                {prioridadesDisponibles.map((prioridad) => (
+                  <MenuItem key={prioridad.value} value={prioridad.value}>
+                    {prioridad.label}
+                  </MenuItem>
+                ))}
+              </TextField>
+            </Grid>
+
+            <Grid item xs={12} sm={6} lg={3}>
+              <TextField
+                select
+                fullWidth
+                size="small"
+                label="Estado"
+                value={estadoFiltro}
+                onChange={(event) => setEstadoFiltro(event.target.value)}
+              >
+                <MenuItem value="todos">Todos</MenuItem>
+
+                {estadosDisponibles.map((estado) => (
+                  <MenuItem key={estado} value={String(estado).toLowerCase()}>
+                    {estado}
+                  </MenuItem>
+                ))}
+              </TextField>
+            </Grid>
+
+            <Grid item xs={12} sm={6} lg={3}>
+              <TextField
+                select
+                fullWidth
+                size="small"
+                label="Vigencia"
+                value={vigenciaFiltro}
+                onChange={(event) => setVigenciaFiltro(event.target.value)}
+              >
+                <MenuItem value="todos">Todas</MenuItem>
+                <MenuItem value="vigentes">Vigentes</MenuItem>
+                <MenuItem value="vencidos">Vencidos</MenuItem>
+                <MenuItem value="sin_vigencia">Sin vigencia</MenuItem>
+              </TextField>
+            </Grid>
+
+            <Grid item xs={12} sm={6} lg={3}>
+              <TextField
+                select
+                fullWidth
+                size="small"
+                label="Situación"
+                value={situacionFiltro}
+                onChange={(event) => setSituacionFiltro(event.target.value)}
+              >
+                <MenuItem value="todos">Todos</MenuItem>
+                <MenuItem value="pendientes">Pendientes</MenuItem>
+                <MenuItem value="finalizados">Finalizados</MenuItem>
+              </TextField>
+            </Grid>
           </Grid>
-        </Grid>
+        </Box>
 
         <Stack
           direction={{ xs: "column", sm: "row" }}
@@ -722,7 +1026,9 @@ function MisTickets() {
                       <Grid item xs={12} sm={6}>
                         <InfoItem
                           label="Sección"
-                          value={ticket.seccion_nombre || nombreProblema(ticket)}
+                          value={
+                            ticket.seccion_nombre || nombreProblema(ticket)
+                          }
                         />
                       </Grid>
 
@@ -750,10 +1056,7 @@ function MisTickets() {
                       </Grid>
 
                       <Grid item xs={12} sm={6}>
-                        <InfoItem
-                          label="Agente"
-                          value={nombreAgente(ticket)}
-                        />
+                        <InfoItem label="Agente" value={nombreAgente(ticket)} />
                       </Grid>
                     </Grid>
 
