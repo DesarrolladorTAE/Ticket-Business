@@ -223,7 +223,7 @@ function Secciones() {
       (item) => String(item.id) === String(systemId),
     );
 
-    return sistema?.nombre ?? "Sin sistema";
+    return sistema?.nombre ?? "Sin categoría";
   };
 
   const obtenerPrefijoSistema = (systemId) => {
@@ -366,7 +366,7 @@ function Secciones() {
           </Typography>
 
           <Typography variant="body2" color="text.secondary">
-            Administra las secciones disponibles para cada sistema.
+            Administra las secciones disponibles para cada categoría.
           </Typography>
         </Box>
 
@@ -397,8 +397,8 @@ function Secciones() {
 
           <Typography variant="body2" color="text.secondary">
             {modoEdicion
-              ? "Modifica el sistema o nombre de la sección seleccionada."
-              : "Agrega una nueva sección para clasificar los tickets de un sistema."}
+              ? "Modifica la categoría o nombre de la sección seleccionada."
+              : "Agrega una nueva sección para clasificar los tickets de una categoría."}
           </Typography>
         </Box>
 
@@ -420,7 +420,7 @@ function Secciones() {
               <TextField
                 select
                 fullWidth
-                label="Sistema"
+                label="Categoría"
                 name="system_id"
                 value={formulario.system_id}
                 onChange={cambiarValor}
@@ -515,7 +515,7 @@ function Secciones() {
           </Typography>
 
           <Typography variant="body2" color="text.secondary">
-            Listado de secciones disponibles por sistema.
+            Listado de secciones disponibles por categoría.
           </Typography>
         </Box>
 
@@ -596,7 +596,7 @@ function Secciones() {
                   <TableHead>
                     <TableRow>
                       <TableCell sx={{ ...headCell, width: "28%" }}>
-                        Sistema
+                        Categoría
                       </TableCell>
 
                       <TableCell sx={{ ...headCell, width: "30%" }}>
@@ -710,7 +710,7 @@ function Secciones() {
                     <Grid container spacing={1.2}>
                       <Grid item xs={12}>
                         <InfoItem
-                          label="Sistema"
+                          label="Categoría"
                           value={obtenerNombreSistema(seccion.system_id)}
                         />
                       </Grid>

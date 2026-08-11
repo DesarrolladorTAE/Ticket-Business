@@ -18,6 +18,7 @@ import Clientes from "../modules/clients/pages/Clientes";
 
 import Sistemas from "../modules/tickets/pages/Sistemas";
 import Secciones from "../modules/tickets/pages/Secciones";
+import Etiquetas from "../modules/tickets/pages/Etiquetas";
 import TicketPublicoCrear from "../modules/tickets/pages/TicketPublicoCrear";
 import TicketPublicoHistorial from "../modules/tickets/pages/TicketPublicoHistorial";
 import ExternalApiLogs from "../modules/tickets/pages/ExternalApiLogs";
@@ -78,25 +79,20 @@ function AppRouter() {
   return (
     <Routes>
       {/* PUBLIC */}
-      <Route path="/beneficios"element={<BeneficiosPage />}/>
-      <Route path="/como-funciona" element={<ComoFuncionaPage />}/>
+      <Route path="/beneficios" element={<BeneficiosPage />} />
+      <Route path="/como-funciona" element={<ComoFuncionaPage />} />
       <Route path="/" element={<LandingPage />} />
       <Route path="/login" element={<IniciarSesion />} />
       <Route path="/registro" element={<Registro />} />
 
-      <Route path="/olvide-contrasena" 
-        element={<OlvideContrasena />} 
-      />
+      <Route path="/olvide-contrasena" element={<OlvideContrasena />} />
 
       <Route
         path="/restablecer-contrasena"
         element={<RestablecerContrasena />}
       />
 
-      <Route
-        path="/verificar-correo"
-        element={<VerificarCorreo />}
-      />
+      <Route path="/verificar-correo" element={<VerificarCorreo />} />
 
       <Route
         path="/public/s/:systemId/:prefix"
@@ -210,7 +206,19 @@ function AppRouter() {
           }
         />
 
-                {/* MI PERFIL */}
+        {/* ETIQUETAS - ADMINISTRADOR Y SUPERVISOR */}
+        <Route
+          path="/etiquetas"
+          element={
+            <RutaPorRol
+              roles={["Administrador", "admin", "Supervisor", "supervisor"]}
+            >
+              <Etiquetas />
+            </RutaPorRol>
+          }
+        />
+
+        {/* MI PERFIL */}
         <Route
           path="/mi-perfil"
           element={
@@ -275,23 +283,23 @@ function AppRouter() {
         />
 
         {/* CLIENTES */}
-      <Route
-      path="/clientes"
-      element={
-        <RutaPorRol
-          roles={[
-              "Administrador",
-              "admin",
-              "Supervisor",
-              "supervisor",
-              "Agente",
-              "agent",
-            ]}
-        >
-          <Clientes />
-          </RutaPorRol>
-      }
-    />
+        <Route
+          path="/clientes"
+          element={
+            <RutaPorRol
+              roles={[
+                "Administrador",
+                "admin",
+                "Supervisor",
+                "supervisor",
+                "Agente",
+                "agent",
+              ]}
+            >
+              <Clientes />
+            </RutaPorRol>
+          }
+        />
 
         {/* SISTEMAS - SOLO ADMINISTRADOR */}
         <Route

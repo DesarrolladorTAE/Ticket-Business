@@ -3,8 +3,10 @@ import axiosCliente from "../../../services/axiosCliente";
 
 import {
   Alert,
+  Autocomplete,
   Box,
   Button,
+  Chip,
   Dialog,
   DialogActions,
   DialogContent,
@@ -22,29 +24,133 @@ import AttachFileIcon from "@mui/icons-material/AttachFile";
 import CloseIcon from "@mui/icons-material/Close";
 import InsertDriveFileIcon from "@mui/icons-material/InsertDriveFile";
 
+const formatearFechaInput = (fecha) => {
+  const year = fecha.getFullYear();
+  const month = String(fecha.getMonth() + 1).padStart(2, "0");
+  const day = String(fecha.getDate()).padStart(2, "0");
+
+  return `${year}-${month}-${day}`;
+};
+
+const obtenerFechaHoy = () => {
+  return formatearFechaInput(new Date());
+};
+
+const obtenerFechaVigenciaDefault = () => {
+  const fecha = new Date();
+
+  // 15 días naturales contando hoy como día 1.
+  fecha.setDate(fecha.getDate() + 14);
+
+  return formatearFechaInput(fecha);
+};
+
+
+const normalizarRol = (rol) => {
+  const valor = String(rol || "")
+    .trim()
+    .toLowerCase();
+
+  if (["admin", "administrador"].includes(valor)) return "admin";
+  if (valor === "supervisor") return "supervisor";
+  if (["agent", "agente"].includes(valor)) return "agent";
+  if (["client", "cliente"].includes(valor)) return "client";
+
+  return valor;
+};
+
+const obtenerRolesUsuario = () => {
+  try {
+    const usuario = JSON.parse(localStorage.getItem("USUARIO") || "{}");
+
+    const roles = [];
+
+    if (Array.isArray(usuario?.roles)) {
+      usuario.roles.forEach((rol) => {
+        if (typeof rol === "string") {
+          roles.push(rol);
+        } else if (rol?.name) {
+          roles.push(rol.name);
+        }
+      });
+    }
+
+    if (usuario?.role) {
+      roles.push(usuario.role);
+    }
+
+    if (usuario?.company_role) {
+      roles.push(usuario.company_role);
+    }
+
+    return [...new Set(roles.map(normalizarRol).filter(Boolean))];
+  } catch {
+    return [];
+  }
+};
+
+const nombreCompletoCliente = (cliente) => {
+  const nombre = [
+    cliente?.name,
+    cliente?.apellido_paterno,
+    cliente?.apellido_materno,
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .trim();
+
+  return nombre || cliente?.email || `Cliente #${cliente?.id || ""}`;
+};
+
+const etiquetaCliente = (cliente) => {
+  const nombre = nombreCompletoCliente(cliente);
+  const email = String(cliente?.email || "").trim();
+
+  return email ? `${nombre} — ${email}` : nombre;
+};
+
 function NuevoTicketModal({ open, onClose, onCreated }) {
+  const rolesUsuario = obtenerRolesUsuario();
+  const esCliente = rolesUsuario.includes("client");
+  const puedeAsignar = !esCliente;
+
   const [formulario, setFormulario] = useState({
     titulo: "",
     descripcion: "",
     system_id: "",
     category_id: "",
     priority_id: "",
+    client_id: "",
+    tag_ids: [],
+    due_date: obtenerFechaVigenciaDefault(),
   });
 
   const [archivo, setArchivo] = useState(null);
   const [sistemas, setSistemas] = useState([]);
   const [categorias, setCategorias] = useState([]);
   const [prioridades, setPrioridades] = useState([]);
+  const [clientes, setClientes] = useState([]);
+  const [etiquetas, setEtiquetas] = useState([]);
   const [error, setError] = useState("");
   const [cargando, setCargando] = useState(false);
+  const [cargandoCatalogos, setCargandoCatalogos] = useState(false);
 
   const normalizar = (res) => res?.data?.data || res?.data || [];
 
   useEffect(() => {
-    if (open) cargarCatalogos();
+    if (open) {
+      setFormulario((prev) => ({
+        ...prev,
+        due_date: prev.due_date || obtenerFechaVigenciaDefault(),
+      }));
+
+      cargarCatalogos();
+    }
   }, [open]);
 
   const cargarCatalogos = async () => {
+    setCargandoCatalogos(true);
+
     try {
       setError("");
 
@@ -65,9 +171,52 @@ function NuevoTicketModal({ open, onClose, onCreated }) {
       );
 
       setPrioridades(normalizar(resP));
+
+      if (puedeAsignar) {
+        const [resClientes, resEtiquetas] = await Promise.all([
+          axiosCliente.get("/clients/summary"),
+          axiosCliente.get("/ticket-tags"),
+        ]);
+
+        const clientesActivos = (resClientes?.data?.data || [])
+          .filter((cliente) => {
+            const estadoEmpresa =
+              cliente?.company_status ?? cliente?.status ?? 1;
+
+            return Number(estadoEmpresa) === 1;
+          })
+          .sort((a, b) =>
+            nombreCompletoCliente(a).localeCompare(
+              nombreCompletoCliente(b),
+              "es",
+              { sensitivity: "base" },
+            ),
+          );
+
+        const etiquetasActivas = normalizar(resEtiquetas)
+          .filter((etiqueta) => Number(etiqueta.estado) === 1)
+          .sort((a, b) =>
+            String(a.nombre || "").localeCompare(
+              String(b.nombre || ""),
+              "es",
+              { sensitivity: "base" },
+            ),
+          );
+
+        setClientes(clientesActivos);
+        setEtiquetas(etiquetasActivas);
+      } else {
+        setClientes([]);
+        setEtiquetas([]);
+      }
     } catch (error) {
       console.log("ERROR CATÁLOGOS:", error.response?.data || error);
-      setError("No se pudieron cargar los catálogos.");
+      setError(
+        error.response?.data?.message ||
+          "No se pudieron cargar los catálogos necesarios para crear el ticket.",
+      );
+    } finally {
+      setCargandoCatalogos(false);
     }
   };
 
@@ -92,6 +241,9 @@ function NuevoTicketModal({ open, onClose, onCreated }) {
       system_id: "",
       category_id: "",
       priority_id: "",
+      client_id: "",
+      tag_ids: [],
+      due_date: obtenerFechaVigenciaDefault(),
     });
 
     setArchivo(null);
@@ -126,8 +278,24 @@ function NuevoTicketModal({ open, onClose, onCreated }) {
   const crearTicket = async (e) => {
     e.preventDefault();
 
-    setCargando(true);
     setError("");
+
+    if (puedeAsignar && !formulario.client_id) {
+      setError("Selecciona el cliente al que va dirigido el ticket.");
+      return;
+    }
+
+    if (!formulario.due_date) {
+      setError("Selecciona la fecha de vigencia del ticket.");
+      return;
+    }
+
+    if (formulario.due_date < obtenerFechaHoy()) {
+      setError("La fecha de vigencia no puede ser anterior a hoy.");
+      return;
+    }
+
+    setCargando(true);
 
     try {
       const formData = new FormData();
@@ -137,6 +305,17 @@ function NuevoTicketModal({ open, onClose, onCreated }) {
       formData.append("system_id", formulario.system_id);
       formData.append("category_id", formulario.category_id);
       formData.append("priority_id", formulario.priority_id);
+      formData.append("due_date", formulario.due_date);
+
+      if (puedeAsignar && formulario.client_id) {
+        formData.append("client_id", formulario.client_id);
+      }
+
+      if (puedeAsignar) {
+        formulario.tag_ids.forEach((tagId) => {
+          formData.append("tag_ids[]", String(tagId));
+        });
+      }
 
       if (archivo) {
         formData.append("archivos[]", archivo);
@@ -246,6 +425,118 @@ function NuevoTicketModal({ open, onClose, onCreated }) {
           <Stack spacing={2}>
             {error && <Alert severity="error">{error}</Alert>}
 
+            {puedeAsignar && (
+              <Paper
+                variant="outlined"
+                sx={{
+                  p: { xs: 1.5, sm: 2 },
+                  borderRadius: 3,
+                  borderColor: "#e5e7eb",
+                  bgcolor: "#ffffff",
+                }}
+              >
+                <Stack spacing={2}>
+                  <Box>
+                    <Typography fontWeight={900} sx={{ fontSize: 15 }}>
+                      Asignación
+                    </Typography>
+
+                    <Typography variant="caption" color="text.secondary">
+                      Indica a qué cliente va dirigido el ticket y agrega las
+                      etiquetas que ayuden a identificarlo.
+                    </Typography>
+                  </Box>
+
+                  <Autocomplete
+                    fullWidth
+                    options={clientes}
+                    value={
+                      clientes.find(
+                        (cliente) =>
+                          String(cliente.id) === String(formulario.client_id),
+                      ) || null
+                    }
+                    onChange={(_, cliente) => {
+                      setFormulario((prev) => ({
+                        ...prev,
+                        client_id: cliente?.id || "",
+                      }));
+                    }}
+                    getOptionLabel={etiquetaCliente}
+                    isOptionEqualToValue={(option, value) =>
+                      String(option.id) === String(value.id)
+                    }
+                    noOptionsText="No hay clientes activos disponibles"
+                    disabled={cargando || cargandoCatalogos}
+                    renderInput={(params) => (
+                      <TextField
+                        {...params}
+                        size="small"
+                        label="Dirigido a / Cliente"
+                        required
+                        helperText={
+                          clientes.length === 0 && !cargandoCatalogos
+                            ? "No hay clientes activos disponibles."
+                            : "Selecciona el cliente que recibirá y dará seguimiento al ticket."
+                        }
+                      />
+                    )}
+                  />
+
+                  <Autocomplete
+                    multiple
+                    fullWidth
+                    options={etiquetas}
+                    value={etiquetas.filter((etiqueta) =>
+                      formulario.tag_ids
+                        .map(String)
+                        .includes(String(etiqueta.id)),
+                    )}
+                    onChange={(_, nuevasEtiquetas) => {
+                      setFormulario((prev) => ({
+                        ...prev,
+                        tag_ids: nuevasEtiquetas.map((etiqueta) => etiqueta.id),
+                      }));
+                    }}
+                    getOptionLabel={(etiqueta) => etiqueta?.nombre || ""}
+                    isOptionEqualToValue={(option, value) =>
+                      String(option.id) === String(value.id)
+                    }
+                    noOptionsText="No hay etiquetas activas disponibles"
+                    disabled={cargando || cargandoCatalogos}
+                    renderTags={(value, getTagProps) =>
+                      value.map((etiqueta, index) => {
+                        const { key, ...tagProps } = getTagProps({ index });
+
+                        return (
+                          <Chip
+                            key={key || etiqueta.id}
+                            {...tagProps}
+                            size="small"
+                            label={etiqueta.nombre}
+                            sx={{ fontWeight: 700 }}
+                          />
+                        );
+                      })
+                    }
+                    renderInput={(params) => (
+                      <TextField
+                        {...params}
+                        size="small"
+                        label="Etiquetas"
+                        placeholder={
+                          formulario.tag_ids.length === 0
+                            ? "Selecciona una o varias etiquetas"
+                            : ""
+                        }
+                        helperText="Opcional. Puedes asignar más de una etiqueta."
+                      />
+                    )}
+                  />
+                </Stack>
+              </Paper>
+            )}
+
             <Paper
               variant="outlined"
               sx={{
@@ -262,7 +553,7 @@ function NuevoTicketModal({ open, onClose, onCreated }) {
                   </Typography>
 
                   <Typography variant="caption" color="text.secondary">
-                    Selecciona el sistema, sección y prioridad del ticket.
+                    Selecciona la categoría, sección, prioridad y vigencia del ticket.
                   </Typography>
                 </Box>
 
@@ -270,12 +561,12 @@ function NuevoTicketModal({ open, onClose, onCreated }) {
                   select
                   fullWidth
                   size="small"
-                  label="Sistema"
+                  label="Categoría"
                   name="system_id"
                   value={formulario.system_id}
                   onChange={cambiarValor}
                   required
-                  disabled={cargando}
+                  disabled={cargando || cargandoCatalogos}
                 >
                   {sistemas.map((sistema) => (
                     <MenuItem key={sistema.id} value={sistema.id}>
@@ -296,9 +587,9 @@ function NuevoTicketModal({ open, onClose, onCreated }) {
                   required
                   helperText={
                     !formulario.system_id
-                      ? "Primero selecciona un sistema"
+                      ? "Primero selecciona una categoría"
                       : categoriasFiltradas.length === 0
-                        ? "Este sistema no tiene secciones disponibles"
+                        ? "Esta categoría no tiene secciones disponibles"
                         : ""
                   }
                 >
@@ -318,7 +609,7 @@ function NuevoTicketModal({ open, onClose, onCreated }) {
                   value={formulario.priority_id}
                   onChange={cambiarValor}
                   required
-                  disabled={cargando}
+                  disabled={cargando || cargandoCatalogos}
                 >
                   {prioridades.map((prioridad) => (
                     <MenuItem key={prioridad.id} value={prioridad.id}>
@@ -326,6 +617,47 @@ function NuevoTicketModal({ open, onClose, onCreated }) {
                     </MenuItem>
                   ))}
                 </TextField>
+
+                <Box
+                  sx={{
+                    position: "relative",
+                    width: "100%",
+                  }}
+                >
+                  <Typography
+                    variant="caption"
+                    sx={{
+                      position: "absolute",
+                      top: -7,
+                      left: 10,
+                      zIndex: 1,
+                      px: 0.5,
+                      bgcolor: "#ffffff",
+                      color: "text.secondary",
+                      fontSize: 11,
+                      lineHeight: 1,
+                    }}
+                  >
+                    Vigencia
+                  </Typography>
+
+                  <TextField
+                    fullWidth
+                    size="small"
+                    type="date"
+                    name="due_date"
+                    value={formulario.due_date}
+                    onChange={cambiarValor}
+                    required
+                    disabled={cargando || cargandoCatalogos}
+                    helperText="Por defecto: 15 días naturales contando hoy como día 1."
+                    slotProps={{
+                      htmlInput: {
+                        min: obtenerFechaHoy(),
+                      },
+                    }}
+                  />
+                </Box>
               </Stack>
             </Paper>
 
@@ -358,7 +690,7 @@ function NuevoTicketModal({ open, onClose, onCreated }) {
                   value={formulario.titulo}
                   onChange={cambiarValor}
                   required
-                  disabled={cargando}
+                  disabled={cargando || cargandoCatalogos}
                 />
 
                 <TextField
@@ -372,7 +704,7 @@ function NuevoTicketModal({ open, onClose, onCreated }) {
                   value={formulario.descripcion}
                   onChange={cambiarValor}
                   required
-                  disabled={cargando}
+                  disabled={cargando || cargandoCatalogos}
                 />
               </Stack>
             </Paper>
@@ -401,7 +733,7 @@ function NuevoTicketModal({ open, onClose, onCreated }) {
                   component="label"
                   variant="outlined"
                   startIcon={<AttachFileIcon />}
-                  disabled={cargando}
+                  disabled={cargando || cargandoCatalogos}
                   fullWidth
                   sx={{
                     borderRadius: 2,
@@ -462,7 +794,7 @@ function NuevoTicketModal({ open, onClose, onCreated }) {
                     <IconButton
                       size="small"
                       onClick={quitarArchivo}
-                      disabled={cargando}
+                      disabled={cargando || cargandoCatalogos}
                       sx={{ flexShrink: 0 }}
                     >
                       <CloseIcon fontSize="small" />
@@ -504,7 +836,7 @@ function NuevoTicketModal({ open, onClose, onCreated }) {
           <Button
             type="submit"
             variant="contained"
-            disabled={cargando}
+            disabled={cargando || cargandoCatalogos}
             fullWidth
             sx={{
               borderRadius: 2,

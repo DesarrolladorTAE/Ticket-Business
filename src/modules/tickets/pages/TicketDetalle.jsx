@@ -29,6 +29,7 @@ import {
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 import OpenInNewIcon from "@mui/icons-material/OpenInNew";
 import AccessTimeIcon from "@mui/icons-material/AccessTime";
+import LocalOfferIcon from "@mui/icons-material/LocalOffer";
 
 const STORAGE_URL = "https://api.thebusinessticket.com/storage";
 const PUBLIC_TICKET_BASE_PATH = "/public/tickets";
@@ -83,6 +84,12 @@ export default function TicketDetalle() {
   const [cargandoAgentes, setCargandoAgentes] = useState(false);
   const [asignandoResponsable, setAsignandoResponsable] = useState(false);
 
+  const [etiquetasDisponibles, setEtiquetasDisponibles] = useState([]);
+  const [etiquetasAsignadas, setEtiquetasAsignadas] = useState([]);
+  const [etiquetaSeleccionadaId, setEtiquetaSeleccionadaId] = useState("");
+  const [cargandoEtiquetas, setCargandoEtiquetas] = useState(false);
+  const [asignandoEtiqueta, setAsignandoEtiqueta] = useState(false);
+
   const ticketCerrado =
     Number(ticket?.status_id || ticket?.status?.id || 0) === 4;
 
@@ -134,6 +141,10 @@ export default function TicketDetalle() {
       if (puedeAsignarResponsable) {
         await cargarAgentesDisponibles();
       }
+
+      if (puedeGestionar) {
+        await cargarEtiquetasTicket();
+      }
     } catch (error) {
       console.log("ERROR CARGAR TICKET:", error.response?.data || error);
       setError("No se pudo cargar la información del ticket.");
@@ -164,6 +175,138 @@ export default function TicketDetalle() {
       setCargandoAgentes(false);
     }
   };
+
+  const cargarEtiquetasTicket = async () => {
+    if (!id || !puedeGestionar) return;
+
+    setCargandoEtiquetas(true);
+
+    try {
+      const [catalogoRes, asignadasRes] = await Promise.all([
+        axiosCliente.get("/ticket-tags"),
+        axiosCliente.get(`/tickets/${id}/tags`),
+      ]);
+
+      setEtiquetasDisponibles(catalogoRes.data?.data || []);
+      setEtiquetasAsignadas(asignadasRes.data?.data || []);
+    } catch (error) {
+      console.log(
+        "ERROR CARGAR ETIQUETAS:",
+        error.response?.data || error,
+      );
+
+      setEtiquetasDisponibles([]);
+      setEtiquetasAsignadas([]);
+    } finally {
+      setCargandoEtiquetas(false);
+    }
+  };
+
+  const asignarEtiqueta = async () => {
+    if (!etiquetaSeleccionadaId) {
+      Swal.fire({
+        icon: "warning",
+        title: "Selecciona una etiqueta",
+        text: "Debes seleccionar una etiqueta para asignarla.",
+      });
+
+      return;
+    }
+
+    setAsignandoEtiqueta(true);
+
+    try {
+      await axiosCliente.post(`/tickets/${id}/tags`, {
+        ticket_tag_id: Number(etiquetaSeleccionadaId),
+      });
+
+      setEtiquetaSeleccionadaId("");
+      await cargarEtiquetasTicket();
+
+      Swal.fire({
+        icon: "success",
+        title: "Etiqueta asignada",
+        text: "La etiqueta fue asignada correctamente.",
+        timer: 1600,
+        showConfirmButton: false,
+      });
+    } catch (error) {
+      console.log(
+        "ERROR ASIGNAR ETIQUETA:",
+        error.response?.data || error,
+      );
+
+      Swal.fire({
+        icon: "error",
+        title: "No se pudo asignar",
+        text:
+          error.response?.data?.message ||
+          "No fue posible asignar la etiqueta.",
+      });
+    } finally {
+      setAsignandoEtiqueta(false);
+    }
+  };
+
+  const quitarEtiqueta = async (etiqueta) => {
+    if (!etiqueta?.id) return;
+
+    const confirmar = await Swal.fire({
+      title: "Quitar etiqueta",
+      text: `¿Quitar la etiqueta "${etiqueta.nombre}" de este ticket?`,
+      icon: "question",
+      showCancelButton: true,
+      confirmButtonText: "Sí, quitar",
+      cancelButtonText: "Cancelar",
+    });
+
+    if (!confirmar.isConfirmed) return;
+
+    try {
+      await axiosCliente.delete(
+        `/tickets/${id}/tags/${etiqueta.id}`,
+      );
+
+      if (
+        String(etiquetaSeleccionadaId) ===
+        String(etiqueta.id)
+      ) {
+        setEtiquetaSeleccionadaId("");
+      }
+
+      await cargarEtiquetasTicket();
+
+      Swal.fire({
+        icon: "success",
+        title: "Etiqueta retirada",
+        text: "La etiqueta fue retirada del ticket.",
+        timer: 1500,
+        showConfirmButton: false,
+      });
+    } catch (error) {
+      console.log(
+        "ERROR QUITAR ETIQUETA:",
+        error.response?.data || error,
+      );
+
+      Swal.fire({
+        icon: "error",
+        title: "No se pudo quitar",
+        text:
+          error.response?.data?.message ||
+          "No fue posible retirar la etiqueta.",
+      });
+    }
+  };
+
+  const etiquetasParaAsignar = etiquetasDisponibles.filter(
+    (etiqueta) =>
+      Boolean(etiqueta?.estado) &&
+      !etiquetasAsignadas.some(
+        (asignada) =>
+          String(asignada.id) === String(etiqueta.id),
+      ),
+  );
 
   const asignarResponsable = async () => {
     if (!responsableSeleccionadoId) {
@@ -1114,6 +1257,204 @@ const puedeEliminarMensaje = (msg) => {
                 {cargandoAgentes ? "Cargando..." : "Recargar agentes"}
               </Button>
             </Stack>
+          </Stack>
+        </Paper>
+      )}
+
+      {puedeGestionar && (
+        <Paper
+          sx={{
+            p: { xs: 1.5, sm: 2 },
+            mb: 2,
+            borderRadius: 3,
+            border: "1px solid #e0e7ff",
+            bgcolor: "#fafbff",
+            boxShadow: "none",
+          }}
+        >
+          <Stack spacing={1.5}>
+            <Stack
+              direction={{ xs: "column", sm: "row" }}
+              justifyContent="space-between"
+              alignItems={{ xs: "flex-start", sm: "center" }}
+              spacing={1}
+            >
+              <Box>
+                <Stack direction="row" spacing={1} alignItems="center">
+                  <LocalOfferIcon
+                    fontSize="small"
+                    sx={{ color: "#2563eb" }}
+                  />
+
+                  <Typography
+                    variant="subtitle1"
+                    sx={{
+                      fontWeight: 900,
+                      color: "#0f172a",
+                    }}
+                  >
+                    Etiquetas del ticket
+                  </Typography>
+                </Stack>
+
+                <Typography
+                  variant="body2"
+                  sx={{
+                    color: "#64748b",
+                    mt: 0.35,
+                  }}
+                >
+                  Clasifica el ticket usando las etiquetas disponibles.
+                </Typography>
+              </Box>
+
+              <Button
+                size="small"
+                variant="text"
+                onClick={cargarEtiquetasTicket}
+                disabled={cargandoEtiquetas || asignandoEtiqueta}
+                sx={{
+                  textTransform: "none",
+                  fontWeight: 800,
+                }}
+              >
+                {cargandoEtiquetas ? "Cargando..." : "Actualizar etiquetas"}
+              </Button>
+            </Stack>
+
+            <Box>
+              <Typography
+                variant="caption"
+                color="text.secondary"
+                fontWeight={800}
+                display="block"
+                sx={{ mb: 0.75 }}
+              >
+                Asignadas
+              </Typography>
+
+              {cargandoEtiquetas ? (
+                <Stack direction="row" spacing={1} alignItems="center">
+                  <CircularProgress size={18} />
+                  <Typography variant="body2" color="text.secondary">
+                    Cargando etiquetas...
+                  </Typography>
+                </Stack>
+              ) : etiquetasAsignadas.length > 0 ? (
+                <Stack
+                  direction="row"
+                  spacing={0.8}
+                  useFlexGap
+                  flexWrap="wrap"
+                >
+                  {etiquetasAsignadas.map((etiqueta) => (
+                    <Chip
+                      key={etiqueta.id}
+                      label={etiqueta.nombre}
+                      onDelete={() => quitarEtiqueta(etiqueta)}
+                      color={etiqueta.estado ? "primary" : "default"}
+                      variant={etiqueta.estado ? "filled" : "outlined"}
+                      sx={{
+                        fontWeight: 800,
+                        maxWidth: "100%",
+                        "& .MuiChip-label": {
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                        },
+                      }}
+                    />
+                  ))}
+                </Stack>
+              ) : (
+                <Typography variant="body2" color="text.secondary">
+                  Este ticket todavía no tiene etiquetas asignadas.
+                </Typography>
+              )}
+            </Box>
+
+            <Stack
+              direction={{ xs: "column", md: "row" }}
+              spacing={1.5}
+              alignItems={{ xs: "stretch", md: "center" }}
+            >
+              <FormControl
+                size="small"
+                fullWidth
+                disabled={
+                  cargandoEtiquetas ||
+                  asignandoEtiqueta ||
+                  etiquetasParaAsignar.length === 0
+                }
+              >
+                <InputLabel id="etiqueta-select-label">
+                  Etiqueta
+                </InputLabel>
+
+                <Select
+                  labelId="etiqueta-select-label"
+                  label="Etiqueta"
+                  value={etiquetaSeleccionadaId}
+                  onChange={(event) =>
+                    setEtiquetaSeleccionadaId(event.target.value)
+                  }
+                >
+                  <MenuItem value="">
+                    <em>Selecciona una etiqueta</em>
+                  </MenuItem>
+
+                  {etiquetasParaAsignar.map((etiqueta) => (
+                    <MenuItem
+                      key={etiqueta.id}
+                      value={String(etiqueta.id)}
+                    >
+                      {etiqueta.nombre}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+
+              <Button
+                variant="contained"
+                onClick={asignarEtiqueta}
+                disabled={
+                  cargandoEtiquetas ||
+                  asignandoEtiqueta ||
+                  !etiquetaSeleccionadaId
+                }
+                sx={{
+                  minWidth: { xs: "100%", md: 170 },
+                  borderRadius: 2,
+                  textTransform: "none",
+                  fontWeight: 800,
+                  boxShadow: "none",
+                  bgcolor: "#2563eb",
+                  "&:hover": {
+                    bgcolor: "#1d4ed8",
+                    boxShadow: "none",
+                  },
+                }}
+              >
+                {asignandoEtiqueta ? "Asignando..." : "Asignar etiqueta"}
+              </Button>
+            </Stack>
+
+            {!cargandoEtiquetas &&
+              etiquetasDisponibles.length === 0 && (
+                <Alert severity="info">
+                  No hay etiquetas activas disponibles. Un administrador o
+                  supervisor debe crearlas desde el apartado Etiquetas.
+                </Alert>
+              )}
+
+            {!cargandoEtiquetas &&
+              etiquetasDisponibles.length > 0 &&
+              etiquetasParaAsignar.length === 0 &&
+              etiquetasAsignadas.length > 0 && (
+                <Typography variant="caption" color="text.secondary">
+                  Todas las etiquetas activas disponibles ya están asignadas a
+                  este ticket.
+                </Typography>
+              )}
           </Stack>
         </Paper>
       )}

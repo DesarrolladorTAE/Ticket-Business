@@ -6,6 +6,7 @@ import {
   Box,
   Button,
   CircularProgress,
+  Chip,
   Divider,
   IconButton,
   InputAdornment,
@@ -51,8 +52,7 @@ const obtenerMensajeError = (error) => {
   }
 
   return (
-    error?.response?.data?.message ||
-    "Ocurrió un error. Inténtalo nuevamente."
+    error?.response?.data?.message || "Ocurrió un error. Inténtalo nuevamente."
   );
 };
 
@@ -60,26 +60,21 @@ export default function MiPerfil() {
   const [perfil, setPerfil] = useState(perfilInicial);
 
   const [contacto, setContacto] = useState({
+    name: "",
+    apellido_paterno: "",
+    apellido_materno: "",
     email: "",
     telefono: "",
   });
 
   const [contrasena, setContrasena] = useState(contrasenaInicial);
 
-  const [
-    mostrarContrasenaActual,
-    setMostrarContrasenaActual,
-  ] = useState(false);
+  const [mostrarContrasenaActual, setMostrarContrasenaActual] = useState(false);
 
-  const [
-    mostrarNuevaContrasena,
-    setMostrarNuevaContrasena,
-  ] = useState(false);
+  const [mostrarNuevaContrasena, setMostrarNuevaContrasena] = useState(false);
 
-  const [
-    mostrarConfirmacionContrasena,
-    setMostrarConfirmacionContrasena,
-  ] = useState(false);
+  const [mostrarConfirmacionContrasena, setMostrarConfirmacionContrasena] =
+    useState(false);
 
   const [cargando, setCargando] = useState(true);
   const [guardandoContacto, setGuardandoContacto] = useState(false);
@@ -100,6 +95,9 @@ export default function MiPerfil() {
       setPerfil(usuario);
 
       setContacto({
+        name: usuario.name || "",
+        apellido_paterno: usuario.apellido_paterno || "",
+        apellido_materno: usuario.apellido_materno || "",
         email: usuario.email || "",
         telefono: usuario.telefono || "",
       });
@@ -121,9 +119,7 @@ export default function MiPerfil() {
     const { name, value } = event.target;
 
     if (name === "telefono") {
-      const telefonoLimpio = value
-        .replace(/\D/g, "")
-        .slice(0, 10);
+      const telefonoLimpio = value.replace(/\D/g, "").slice(0, 10);
 
       setContacto((prev) => ({
         ...prev,
@@ -157,6 +153,15 @@ export default function MiPerfil() {
 
     setMensajeContacto(null);
 
+    if (!contacto.name.trim()) {
+      setMensajeContacto({
+        type: "error",
+        text: "El nombre es obligatorio.",
+      });
+
+      return;
+    }
+
     if (!contacto.email.trim()) {
       setMensajeContacto({
         type: "error",
@@ -179,6 +184,9 @@ export default function MiPerfil() {
 
     try {
       const { data } = await axiosCliente.put("/profile", {
+        name: contacto.name.trim(),
+        apellido_paterno: contacto.apellido_paterno.trim() || null,
+        apellido_materno: contacto.apellido_materno.trim() || null,
         email: contacto.email.trim(),
         telefono: contacto.telefono,
       });
@@ -189,6 +197,9 @@ export default function MiPerfil() {
         setPerfil(usuarioActualizado);
 
         setContacto({
+          name: usuarioActualizado.name || "",
+          apellido_paterno: usuarioActualizado.apellido_paterno || "",
+          apellido_materno: usuarioActualizado.apellido_materno || "",
           email: usuarioActualizado.email || "",
           telefono: usuarioActualizado.telefono || "",
         });
@@ -202,6 +213,9 @@ export default function MiPerfil() {
             "USUARIO",
             JSON.stringify({
               ...usuarioGuardado,
+              name: usuarioActualizado.name,
+              apellido_paterno: usuarioActualizado.apellido_paterno,
+              apellido_materno: usuarioActualizado.apellido_materno,
               email: usuarioActualizado.email,
               telefono: usuarioActualizado.telefono,
             }),
@@ -216,9 +230,7 @@ export default function MiPerfil() {
 
       setMensajeContacto({
         type: "success",
-        text:
-          data?.message ||
-          "Perfil actualizado correctamente.",
+        text: data?.message || "Perfil actualizado correctamente.",
       });
     } catch (error) {
       setMensajeContacto({
@@ -251,21 +263,16 @@ export default function MiPerfil() {
     if (contrasena.password.length < 8) {
       setMensajeContrasena({
         type: "error",
-        text:
-          "La nueva contraseña debe tener al menos 8 caracteres.",
+        text: "La nueva contraseña debe tener al menos 8 caracteres.",
       });
 
       return;
     }
 
-    if (
-      contrasena.password !==
-      contrasena.password_confirmation
-    ) {
+    if (contrasena.password !== contrasena.password_confirmation) {
       setMensajeContrasena({
         type: "error",
-        text:
-          "La confirmación de la contraseña no coincide.",
+        text: "La confirmación de la contraseña no coincide.",
       });
 
       return;
@@ -274,15 +281,11 @@ export default function MiPerfil() {
     setGuardandoContrasena(true);
 
     try {
-      const { data } = await axiosCliente.put(
-        "/profile/password",
-        {
-          current_password: contrasena.current_password,
-          password: contrasena.password,
-          password_confirmation:
-            contrasena.password_confirmation,
-        },
-      );
+      const { data } = await axiosCliente.put("/profile/password", {
+        current_password: contrasena.current_password,
+        password: contrasena.password,
+        password_confirmation: contrasena.password_confirmation,
+      });
 
       setContrasena(contrasenaInicial);
 
@@ -292,9 +295,7 @@ export default function MiPerfil() {
 
       setMensajeContrasena({
         type: "success",
-        text:
-          data?.message ||
-          "Contraseña actualizada correctamente.",
+        text: data?.message || "Contraseña actualizada correctamente.",
       });
     } catch (error) {
       setMensajeContrasena({
@@ -304,6 +305,30 @@ export default function MiPerfil() {
     } finally {
       setGuardandoContrasena(false);
     }
+  };
+
+  const obtenerRolVisible = (role) => {
+    const rol = String(role || "")
+      .trim()
+      .toLowerCase();
+
+    if (rol === "admin" || rol === "administrador") {
+      return "Administrador";
+    }
+
+    if (rol === "supervisor") {
+      return "Supervisor";
+    }
+
+    if (rol === "agent" || rol === "agente") {
+      return "Agente";
+    }
+
+    if (rol === "client" || rol === "cliente") {
+      return "Cliente";
+    }
+
+    return role || "Sin rol";
   };
 
   const nombreCompleto = [
@@ -327,9 +352,7 @@ export default function MiPerfil() {
         <Stack spacing={2} alignItems="center">
           <CircularProgress />
 
-          <Typography color="text.secondary">
-            Cargando perfil...
-          </Typography>
+          <Typography color="text.secondary">Cargando perfil...</Typography>
         </Stack>
       </Box>
     );
@@ -369,8 +392,7 @@ export default function MiPerfil() {
               mt: 0.5,
             }}
           >
-            Consulta tus datos y actualiza tu información de
-            acceso.
+            Consulta tus datos y actualiza tu información de acceso.
           </Typography>
         </Box>
 
@@ -421,9 +443,28 @@ export default function MiPerfil() {
                 {nombreCompleto || "Usuario"}
               </Typography>
 
-              <Typography color="text.secondary">
-                Rol: {perfil.role || "Sin rol"}
-              </Typography>
+              <Stack
+                direction="row"
+                spacing={1}
+                alignItems="center"
+                sx={{ mt: 0.75 }}
+              >
+                <Typography
+                  variant="body2"
+                  color="text.secondary"
+                  fontWeight={700}
+                >
+                  Rol
+                </Typography>
+
+                <Chip
+                  label={obtenerRolVisible(perfil.role)}
+                  size="small"
+                  color="primary"
+                  variant="outlined"
+                  sx={{ fontWeight: 800 }}
+                />
+              </Stack>
             </Box>
           </Stack>
         </Paper>
@@ -471,8 +512,8 @@ export default function MiPerfil() {
                     mt: 0.5,
                   }}
                 >
-                  Puedes actualizar únicamente tu correo y
-                  teléfono.
+                  Puedes actualizar tu nombre, apellidos, correo y teléfono. El
+                  rol es únicamente informativo.
                 </Typography>
               </Box>
 
@@ -486,25 +527,45 @@ export default function MiPerfil() {
 
               <TextField
                 label="Nombre"
-                value={nombreCompleto}
+                name="name"
+                value={contacto.name}
+                onChange={actualizarContacto}
                 fullWidth
+                required
                 slotProps={{
-                  input: {
-                    readOnly: true,
+                  htmlInput: {
+                    maxLength: 100,
                   },
                 }}
               />
 
               <TextField
-                label="Rol"
-                value={perfil.role || ""}
+                label="Apellido paterno"
+                name="apellido_paterno"
+                value={contacto.apellido_paterno}
+                onChange={actualizarContacto}
                 fullWidth
                 slotProps={{
-                  input: {
-                    readOnly: true,
+                  htmlInput: {
+                    maxLength: 100,
                   },
                 }}
               />
+
+              <TextField
+                label="Apellido materno"
+                name="apellido_materno"
+                value={contacto.apellido_materno}
+                onChange={actualizarContacto}
+                fullWidth
+                slotProps={{
+                  htmlInput: {
+                    maxLength: 100,
+                  },
+                }}
+              />
+
+
 
               <TextField
                 label="Correo electrónico"
@@ -540,18 +601,13 @@ export default function MiPerfil() {
                 disabled={guardandoContacto}
                 startIcon={
                   guardandoContacto ? (
-                    <CircularProgress
-                      size={18}
-                      color="inherit"
-                    />
+                    <CircularProgress size={18} color="inherit" />
                   ) : (
                     <SaveIcon />
                   )
                 }
               >
-                {guardandoContacto
-                  ? "Guardando..."
-                  : "Guardar datos de contacto"}
+                {guardandoContacto ? "Guardando..." : "Guardar cambios"}
               </Button>
             </Stack>
           </Paper>
@@ -588,8 +644,8 @@ export default function MiPerfil() {
                     mt: 0.5,
                   }}
                 >
-                  Debes confirmar tu contraseña actual antes de
-                  establecer una nueva.
+                  Debes confirmar tu contraseña actual antes de establecer una
+                  nueva.
                 </Typography>
               </Box>
 
@@ -604,11 +660,7 @@ export default function MiPerfil() {
               <TextField
                 label="Contraseña actual"
                 name="current_password"
-                type={
-                  mostrarContrasenaActual
-                    ? "text"
-                    : "password"
-                }
+                type={mostrarContrasenaActual ? "text" : "password"}
                 value={contrasena.current_password}
                 onChange={actualizarContrasena}
                 autoComplete="current-password"
@@ -625,21 +677,16 @@ export default function MiPerfil() {
                           disabled={guardandoContrasena}
                           onClick={() =>
                             setMostrarContrasenaActual(
-                              (valorActual) =>
-                                !valorActual,
+                              (valorActual) => !valorActual,
                             )
                           }
-                          onMouseDown={
-                            evitarPerderFocoContrasena
-                          }
+                          onMouseDown={evitarPerderFocoContrasena}
                           aria-label={
                             mostrarContrasenaActual
                               ? "Ocultar contraseña actual"
                               : "Mostrar contraseña actual"
                           }
-                          aria-pressed={
-                            mostrarContrasenaActual
-                          }
+                          aria-pressed={mostrarContrasenaActual}
                         >
                           {mostrarContrasenaActual ? (
                             <VisibilityOffOutlinedIcon />
@@ -656,11 +703,7 @@ export default function MiPerfil() {
               <TextField
                 label="Nueva contraseña"
                 name="password"
-                type={
-                  mostrarNuevaContrasena
-                    ? "text"
-                    : "password"
-                }
+                type={mostrarNuevaContrasena ? "text" : "password"}
                 value={contrasena.password}
                 onChange={actualizarContrasena}
                 autoComplete="new-password"
@@ -678,21 +721,16 @@ export default function MiPerfil() {
                           disabled={guardandoContrasena}
                           onClick={() =>
                             setMostrarNuevaContrasena(
-                              (valorActual) =>
-                                !valorActual,
+                              (valorActual) => !valorActual,
                             )
                           }
-                          onMouseDown={
-                            evitarPerderFocoContrasena
-                          }
+                          onMouseDown={evitarPerderFocoContrasena}
                           aria-label={
                             mostrarNuevaContrasena
                               ? "Ocultar nueva contraseña"
                               : "Mostrar nueva contraseña"
                           }
-                          aria-pressed={
-                            mostrarNuevaContrasena
-                          }
+                          aria-pressed={mostrarNuevaContrasena}
                         >
                           {mostrarNuevaContrasena ? (
                             <VisibilityOffOutlinedIcon />
@@ -709,11 +747,7 @@ export default function MiPerfil() {
               <TextField
                 label="Confirmar nueva contraseña"
                 name="password_confirmation"
-                type={
-                  mostrarConfirmacionContrasena
-                    ? "text"
-                    : "password"
-                }
+                type={mostrarConfirmacionContrasena ? "text" : "password"}
                 value={contrasena.password_confirmation}
                 onChange={actualizarContrasena}
                 autoComplete="new-password"
@@ -730,21 +764,16 @@ export default function MiPerfil() {
                           disabled={guardandoContrasena}
                           onClick={() =>
                             setMostrarConfirmacionContrasena(
-                              (valorActual) =>
-                                !valorActual,
+                              (valorActual) => !valorActual,
                             )
                           }
-                          onMouseDown={
-                            evitarPerderFocoContrasena
-                          }
+                          onMouseDown={evitarPerderFocoContrasena}
                           aria-label={
                             mostrarConfirmacionContrasena
                               ? "Ocultar confirmación de contraseña"
                               : "Mostrar confirmación de contraseña"
                           }
-                          aria-pressed={
-                            mostrarConfirmacionContrasena
-                          }
+                          aria-pressed={mostrarConfirmacionContrasena}
                         >
                           {mostrarConfirmacionContrasena ? (
                             <VisibilityOffOutlinedIcon />
@@ -765,10 +794,7 @@ export default function MiPerfil() {
                 disabled={guardandoContrasena}
                 startIcon={
                   guardandoContrasena ? (
-                    <CircularProgress
-                      size={18}
-                      color="inherit"
-                    />
+                    <CircularProgress size={18} color="inherit" />
                   ) : (
                     <LockResetIcon />
                   )

@@ -39,6 +39,7 @@ function MisTickets() {
   const [estadoFiltro, setEstadoFiltro] = useState("todos");
   const [vigenciaFiltro, setVigenciaFiltro] = useState("todos");
   const [situacionFiltro, setSituacionFiltro] = useState("todos");
+  const [etiquetaFiltro, setEtiquetaFiltro] = useState("todos");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [openNuevoTicket, setOpenNuevoTicket] = useState(false);
@@ -60,6 +61,7 @@ function MisTickets() {
     estadoFiltro,
     vigenciaFiltro,
     situacionFiltro,
+    etiquetaFiltro,
   ]);
 
   const cargarTickets = async () => {
@@ -180,6 +182,29 @@ function MisTickets() {
     return `${year}-${month}-${day}`;
   };
 
+  const formatoFechaCreacion = (ticket) => {
+    if (!ticket.created_at) return "Sin fecha";
+
+    const fecha = new Date(ticket.created_at);
+
+    if (Number.isNaN(fecha.getTime())) {
+      return String(ticket.created_at);
+    }
+
+    const fechaTexto = fecha.toLocaleDateString("es-MX", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+    });
+
+    const horaTexto = fecha.toLocaleTimeString("es-MX", {
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+
+    return `${fechaTexto} · ${horaTexto}`;
+  };
+
   const esTicketPendiente = (ticket) => {
     const statusId = Number(ticket.status?.id ?? ticket.status_id ?? 0);
 
@@ -293,6 +318,28 @@ function MisTickets() {
       .sort((a, b) => a.localeCompare(b, "es"));
   }, [tickets]);
 
+  const etiquetasDisponibles = useMemo(() => {
+    const mapa = new Map();
+
+    tickets.forEach((ticket) => {
+      const tags = Array.isArray(ticket?.tags) ? ticket.tags : [];
+
+      tags.forEach((tag) => {
+        if (!tag?.id || !tag?.nombre) return;
+
+        const value = String(tag.id);
+
+        if (!mapa.has(value)) {
+          mapa.set(value, tag.nombre);
+        }
+      });
+    });
+
+    return Array.from(mapa.entries())
+      .map(([value, label]) => ({ value, label }))
+      .sort((a, b) => a.label.localeCompare(b.label, "es"));
+  }, [tickets]);
+
   const hayFiltrosActivos =
     busqueda.trim() ||
     clienteFiltro !== "todos" ||
@@ -300,7 +347,8 @@ function MisTickets() {
     prioridadFiltro !== "todos" ||
     estadoFiltro !== "todos" ||
     vigenciaFiltro !== "todos" ||
-    situacionFiltro !== "todos";
+    situacionFiltro !== "todos" ||
+    etiquetaFiltro !== "todos";
 
   const limpiarFiltros = () => {
     setBusqueda("");
@@ -310,6 +358,7 @@ function MisTickets() {
     setEstadoFiltro("todos");
     setVigenciaFiltro("todos");
     setSituacionFiltro("todos");
+    setEtiquetaFiltro("todos");
   };
 
   const ticketsFiltrados = useMemo(() => {
@@ -354,6 +403,12 @@ function MisTickets() {
         (situacionFiltro === "pendientes" && pendiente) ||
         (situacionFiltro === "finalizados" && !pendiente);
 
+      const tags = Array.isArray(ticket?.tags) ? ticket.tags : [];
+
+      const coincideEtiqueta =
+        etiquetaFiltro === "todos" ||
+        tags.some((tag) => String(tag?.id) === String(etiquetaFiltro));
+
       return (
         coincideTexto &&
         coincideCliente &&
@@ -361,7 +416,8 @@ function MisTickets() {
         coincidePrioridad &&
         coincideEstado &&
         coincideVigencia &&
-        coincideSituacion
+        coincideSituacion &&
+        coincideEtiqueta
       );
     });
   }, [
@@ -373,6 +429,7 @@ function MisTickets() {
     estadoFiltro,
     vigenciaFiltro,
     situacionFiltro,
+    etiquetaFiltro,
   ]);
 
   const ticketsPaginados = useMemo(() => {
@@ -468,6 +525,51 @@ function MisTickets() {
       )}
     </Stack>
   );
+
+  const EtiquetasTicket = ({ ticket }) => {
+    const tags = Array.isArray(ticket?.tags) ? ticket.tags : [];
+
+    if (tags.length === 0) {
+      return (
+        <Typography
+          variant="caption"
+          color="text.secondary"
+          sx={{ fontStyle: "italic" }}
+        >
+          Sin etiquetas
+        </Typography>
+      );
+    }
+
+    return (
+      <Stack
+        direction="row"
+        spacing={0.6}
+        useFlexGap
+        flexWrap="wrap"
+        sx={{ mt: 0.8 }}
+      >
+        {tags.map((tag) => (
+          <Chip
+            key={tag.id}
+            size="small"
+            label={tag.nombre}
+            variant="outlined"
+            color={tag.estado ? "primary" : "default"}
+            sx={{
+              height: 24,
+              fontWeight: 800,
+              maxWidth: "100%",
+              "& .MuiChip-label": {
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+              },
+            }}
+          />
+        ))}
+      </Stack>
+    );
+  };
 
   const PaginacionTickets = () => (
     <TablePagination
@@ -726,6 +828,25 @@ function MisTickets() {
                 <MenuItem value="finalizados">Finalizados</MenuItem>
               </TextField>
             </Grid>
+
+            <Grid item xs={12} sm={6} lg={3}>
+              <TextField
+                select
+                fullWidth
+                size="small"
+                label="Etiqueta"
+                value={etiquetaFiltro}
+                onChange={(event) => setEtiquetaFiltro(event.target.value)}
+              >
+                <MenuItem value="todos">Todas las etiquetas</MenuItem>
+
+                {etiquetasDisponibles.map((etiqueta) => (
+                  <MenuItem key={etiqueta.value} value={etiqueta.value}>
+                    {etiqueta.label}
+                  </MenuItem>
+                ))}
+              </TextField>
+            </Grid>
           </Grid>
         </Box>
 
@@ -787,7 +908,7 @@ function MisTickets() {
                 >
                   <TableHead>
                     <TableRow>
-                      <TableCell sx={{ ...headCell, width: 145 }}>
+                      <TableCell sx={{ ...headCell, width: 190 }}>
                         Folio
                       </TableCell>
 
@@ -857,9 +978,27 @@ function MisTickets() {
 
                               <Typography
                                 variant="caption"
-                                sx={{ wordBreak: "break-word" }}
+                                sx={{
+                                  display: "block",
+                                  wordBreak: "break-word",
+                                  fontWeight: 700,
+                                }}
                               >
                                 {ticket.folio_numero || ticket.id}
+                              </Typography>
+
+                              <Typography
+                                variant="caption"
+                                color="text.secondary"
+                                sx={{
+                                  display: "block",
+                                  mt: 0.35,
+                                  fontSize: 10.5,
+                                  lineHeight: 1.3,
+                                  whiteSpace: "nowrap",
+                                }}
+                              >
+                                Creado: {formatoFechaCreacion(ticket)}
                               </Typography>
                             </Box>
                           </Stack>
@@ -890,6 +1029,8 @@ function MisTickets() {
                               },
                             }}
                           />
+
+                          <EtiquetasTicket ticket={ticket} />
                         </TableCell>
 
                         <TableCell sx={bodyCell}>
@@ -996,6 +1137,19 @@ function MisTickets() {
                         >
                           {nombreSistema(ticket)}
                         </Typography>
+
+                        <Typography
+                          variant="caption"
+                          color="text.secondary"
+                          display="block"
+                          sx={{
+                            mt: 0.3,
+                            fontSize: 10.5,
+                            lineHeight: 1.3,
+                          }}
+                        >
+                          Creado: {formatoFechaCreacion(ticket)}
+                        </Typography>
                       </Box>
 
                       <Chip
@@ -1019,6 +1173,20 @@ function MisTickets() {
                     >
                       {ticket.titulo}
                     </Typography>
+
+                    <Box>
+                      <Typography
+                        variant="caption"
+                        color="text.secondary"
+                        fontWeight={800}
+                        display="block"
+                        sx={{ mb: 0.4 }}
+                      >
+                        Etiquetas
+                      </Typography>
+
+                      <EtiquetasTicket ticket={ticket} />
+                    </Box>
 
                     <Divider />
 

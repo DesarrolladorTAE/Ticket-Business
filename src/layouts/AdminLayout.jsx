@@ -34,6 +34,7 @@ import GroupsIcon from "@mui/icons-material/Groups";
 import LogoutIcon from "@mui/icons-material/Logout";
 import NotificationsIcon from "@mui/icons-material/Notifications";
 import AccountCircleIcon from "@mui/icons-material/AccountCircle";
+import LocalOfferIcon from "@mui/icons-material/LocalOffer";
 
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
 
@@ -273,6 +274,12 @@ function AdminLayout() {
         "client",
       ],
       icon: <ConfirmationNumberIcon fontSize="small" />,
+    },
+    {
+      label: "Etiquetas",
+      path: "/etiquetas",
+      roles: ["administrador", "admin", "supervisor"],
+      icon: <LocalOfferIcon fontSize="small" />,
     },
     {
       label: "Mi perfil",
