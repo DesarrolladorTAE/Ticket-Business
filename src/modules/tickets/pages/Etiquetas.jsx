@@ -29,6 +29,7 @@ import {
 
 import AddIcon from "@mui/icons-material/Add";
 import EditIcon from "@mui/icons-material/Edit";
+import DeleteIcon from "@mui/icons-material/Delete";
 import LocalOfferIcon from "@mui/icons-material/LocalOffer";
 
 import axiosCliente from "../../../services/axiosCliente";
@@ -38,6 +39,7 @@ function Etiquetas() {
   const [loading, setLoading] = useState(true);
   const [guardando, setGuardando] = useState(false);
   const [actualizandoId, setActualizandoId] = useState(null);
+  const [eliminandoId, setEliminandoId] = useState(null);
   const [error, setError] = useState("");
   const [mensaje, setMensaje] = useState("");
 
@@ -46,6 +48,9 @@ function Etiquetas() {
   const [etiquetaSeleccionada, setEtiquetaSeleccionada] = useState(null);
   const [nombre, setNombre] = useState("");
   const [estado, setEstado] = useState(true);
+
+  const [openEliminar, setOpenEliminar] = useState(false);
+  const [etiquetaAEliminar, setEtiquetaAEliminar] = useState(null);
 
   useEffect(() => {
     cargarEtiquetas();
@@ -165,6 +170,66 @@ function Etiquetas() {
     }
   };
 
+  const abrirEliminar = (etiqueta) => {
+    if (!etiqueta?.id) return;
+
+    setEtiquetaAEliminar(etiqueta);
+    setError("");
+    setMensaje("");
+    setOpenEliminar(true);
+  };
+
+  const cerrarEliminar = () => {
+    if (eliminandoId) return;
+
+    setOpenEliminar(false);
+    setEtiquetaAEliminar(null);
+    setError("");
+  };
+
+  const eliminarEtiqueta = async () => {
+    if (!etiquetaAEliminar?.id || eliminandoId) return;
+
+    setEliminandoId(etiquetaAEliminar.id);
+    setError("");
+    setMensaje("");
+
+    try {
+      const { data } = await axiosCliente.delete(
+        `/ticket-tags/${etiquetaAEliminar.id}`,
+      );
+
+      const asociacionesEliminadas = Number(
+        data?.data?.deleted_assignments || 0,
+      );
+
+      setMensaje(
+        asociacionesEliminadas > 0
+          ? `Etiqueta eliminada correctamente. Se retiró de ${asociacionesEliminadas} ticket${
+              asociacionesEliminadas === 1 ? "" : "s"
+            }.`
+          : "Etiqueta eliminada correctamente.",
+      );
+
+      setOpenEliminar(false);
+      setEtiquetaAEliminar(null);
+
+      await cargarEtiquetas();
+    } catch (error) {
+      console.error(
+        "ERROR ELIMINAR ETIQUETA:",
+        error.response?.data || error,
+      );
+
+      setError(
+        error.response?.data?.message ||
+          "No se pudo eliminar la etiqueta.",
+      );
+    } finally {
+      setEliminandoId(null);
+    }
+  };
+
   const cambiarEstado = async (etiqueta) => {
     if (!etiqueta?.id || actualizandoId === etiqueta.id) return;
 
@@ -241,13 +306,13 @@ function Etiquetas() {
         </Button>
       </Stack>
 
-      {error && !openModal && (
+      {error && !openModal && !openEliminar && (
         <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError("")}>
           {error}
         </Alert>
       )}
 
-      {mensaje && !openModal && (
+      {mensaje && !openModal && !openEliminar && (
         <Alert severity="success" sx={{ mb: 2 }} onClose={() => setMensaje("")}>
           {mensaje}
         </Alert>
@@ -265,7 +330,7 @@ function Etiquetas() {
           <Typography fontWeight={900}>Etiquetas registradas</Typography>
 
           <Typography variant="body2" color="text.secondary">
-            Las etiquetas inactivas se conservan para no afectar tickets históricos.
+            Puedes desactivar una etiqueta para conservarla o eliminarla definitivamente.
           </Typography>
         </Box>
 
@@ -311,7 +376,7 @@ function Etiquetas() {
                   <TableRow>
                     <TableCell sx={headCell}>Nombre</TableCell>
                     <TableCell sx={{ ...headCell, width: 150 }}>Estado</TableCell>
-                    <TableCell align="right" sx={{ ...headCell, width: 150 }}>
+                    <TableCell align="right" sx={{ ...headCell, width: 190 }}>
                       Acciones
                     </TableCell>
                   </TableRow>
@@ -351,9 +416,26 @@ function Etiquetas() {
                             <IconButton
                               size="small"
                               onClick={() => abrirEditar(etiqueta)}
+                              disabled={eliminandoId === etiqueta.id}
                             >
                               <EditIcon fontSize="small" />
                             </IconButton>
+                          </Tooltip>
+
+                          <Tooltip title="Eliminar etiqueta">
+                            <span>
+                              <IconButton
+                                size="small"
+                                color="error"
+                                onClick={() => abrirEliminar(etiqueta)}
+                                disabled={
+                                  actualizandoId === etiqueta.id ||
+                                  eliminandoId === etiqueta.id
+                                }
+                              >
+                                <DeleteIcon fontSize="small" />
+                              </IconButton>
+                            </span>
                           </Tooltip>
 
                           <Tooltip
@@ -367,7 +449,10 @@ function Etiquetas() {
                               <Switch
                                 size="small"
                                 checked={Boolean(etiqueta.estado)}
-                                disabled={actualizandoId === etiqueta.id}
+                                disabled={
+                                  actualizandoId === etiqueta.id ||
+                                  eliminandoId === etiqueta.id
+                                }
                                 onChange={() => cambiarEstado(etiqueta)}
                               />
                             </span>
@@ -428,24 +513,45 @@ function Etiquetas() {
                     <Divider />
 
                     <Stack
-                      direction="row"
+                      direction={{ xs: "column", sm: "row" }}
                       justifyContent="space-between"
-                      alignItems="center"
+                      alignItems={{ xs: "stretch", sm: "center" }}
+                      spacing={1}
                     >
-                      <Button
-                        size="small"
-                        startIcon={<EditIcon />}
-                        onClick={() => abrirEditar(etiqueta)}
-                        sx={{ textTransform: "none", fontWeight: 800 }}
-                      >
-                        Editar
-                      </Button>
+                      <Stack direction="row" spacing={0.5}>
+                        <Button
+                          size="small"
+                          startIcon={<EditIcon />}
+                          onClick={() => abrirEditar(etiqueta)}
+                          disabled={eliminandoId === etiqueta.id}
+                          sx={{ textTransform: "none", fontWeight: 800 }}
+                        >
+                          Editar
+                        </Button>
+
+                        <Button
+                          size="small"
+                          color="error"
+                          startIcon={<DeleteIcon />}
+                          onClick={() => abrirEliminar(etiqueta)}
+                          disabled={
+                            actualizandoId === etiqueta.id ||
+                            eliminandoId === etiqueta.id
+                          }
+                          sx={{ textTransform: "none", fontWeight: 800 }}
+                        >
+                          Eliminar
+                        </Button>
+                      </Stack>
 
                       <FormControlLabel
                         control={
                           <Switch
                             checked={Boolean(etiqueta.estado)}
-                            disabled={actualizandoId === etiqueta.id}
+                            disabled={
+                              actualizandoId === etiqueta.id ||
+                              eliminandoId === etiqueta.id
+                            }
                             onChange={() => cambiarEstado(etiqueta)}
                           />
                         }
@@ -530,6 +636,56 @@ function Etiquetas() {
               : modoEdicion
                 ? "Guardar cambios"
                 : "Crear etiqueta"}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog
+        open={openEliminar}
+        onClose={cerrarEliminar}
+        fullWidth
+        maxWidth="xs"
+        PaperProps={{ sx: { borderRadius: 3 } }}
+      >
+        <DialogTitle sx={{ fontWeight: 900 }}>
+          Eliminar etiqueta
+        </DialogTitle>
+
+        <DialogContent>
+          <Stack spacing={1.5} sx={{ pt: 0.5 }}>
+            {error && <Alert severity="error">{error}</Alert>}
+
+            <Typography>
+              ¿Seguro que deseas eliminar la etiqueta{" "}
+              <strong>{etiquetaAEliminar?.nombre || ""}</strong>?
+            </Typography>
+
+            <Alert severity="warning">
+              La etiqueta se eliminará definitivamente. Si está asignada a
+              tickets, únicamente se retirará de esos tickets; los tickets no
+              serán eliminados.
+            </Alert>
+          </Stack>
+        </DialogContent>
+
+        <DialogActions sx={{ px: 3, pb: 2.5 }}>
+          <Button
+            onClick={cerrarEliminar}
+            disabled={Boolean(eliminandoId)}
+            sx={{ textTransform: "none", fontWeight: 800 }}
+          >
+            Cancelar
+          </Button>
+
+          <Button
+            variant="contained"
+            color="error"
+            onClick={eliminarEtiqueta}
+            disabled={Boolean(eliminandoId)}
+            startIcon={<DeleteIcon />}
+            sx={{ textTransform: "none", fontWeight: 800 }}
+          >
+            {eliminandoId ? "Eliminando..." : "Eliminar"}
           </Button>
         </DialogActions>
       </Dialog>

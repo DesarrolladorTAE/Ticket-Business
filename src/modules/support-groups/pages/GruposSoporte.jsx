@@ -46,11 +46,7 @@ function GruposSoporte() {
 
   const rolesBase = Array.isArray(usuario?.roles) ? usuario.roles : [];
 
-  const rolesNormalizados = [
-    ...rolesBase,
-    usuario?.role,
-    usuario?.company_role,
-  ]
+  const rolesNormalizados = [...rolesBase, usuario?.role, usuario?.company_role]
     .filter(Boolean)
     .map((rol) => normalizarRol(rol));
 
@@ -64,10 +60,12 @@ function GruposSoporte() {
 
   const [grupos, setGrupos] = useState([]);
   const [agentes, setAgentes] = useState([]);
+  const [categoriasDisponibles, setCategoriasDisponibles] = useState([]);
 
   const [formulario, setFormulario] = useState({
     nombre: "",
     descripcion: "",
+    system_ids: [],
   });
 
   const [agenteSeleccionado, setAgenteSeleccionado] = useState({});
@@ -118,6 +116,24 @@ function GruposSoporte() {
     }
   };
 
+  const obtenerCategoriasDisponibles = async () => {
+    try {
+      const res = await axiosCliente.get("/systems");
+      const categorias = normalizarRespuesta(res);
+
+      setCategoriasDisponibles(
+        categorias.filter(
+          (categoria) =>
+            Number(categoria.estado) === 1 && !categoria.support_group_id,
+        ),
+      );
+    } catch (error) {
+      console.log("ERROR CATEGORIAS:", error.response?.data || error);
+
+      setCategoriasDisponibles([]);
+    }
+  };
+
   const obtenerDatos = async () => {
     setLoading(true);
     setError("");
@@ -128,6 +144,7 @@ function GruposSoporte() {
 
       if (puedeGestionar) {
         await obtenerAgentes();
+        await obtenerCategoriasDisponibles();
       }
     } catch (error) {
       console.log("ERROR GRUPOS:", error.response?.data || error);
@@ -147,11 +164,24 @@ function GruposSoporte() {
     });
   };
 
+  const cambiarCategorias = (e) => {
+    setFormulario({
+      ...formulario,
+      system_ids: e.target.value.map((id) => Number(id)),
+    });
+  };
+
   const crearGrupo = async (e) => {
     e.preventDefault();
 
     if (!puedeGestionar) {
       setError("No tienes permiso para crear grupos de soporte.");
+      setOk("");
+      return;
+    }
+
+    if (!formulario.system_ids.length) {
+      setError("Selecciona al menos una categoría.");
       setOk("");
       return;
     }
@@ -166,6 +196,7 @@ function GruposSoporte() {
       setFormulario({
         nombre: "",
         descripcion: "",
+        system_ids: [],
       });
 
       setOk("Grupo creado correctamente.");
@@ -278,11 +309,18 @@ function GruposSoporte() {
         .map((agente) => `${nombreAgente(agente)} ${agente.email || ""}`)
         .join(" ");
 
+      const categoriasGrupo = (grupo.systems || [])
+        .map(
+          (categoria) => `${categoria.nombre || ""} ${categoria.prefijo || ""}`,
+        )
+        .join(" ");
+
       const baseBusqueda = [
         grupo.nombre,
         grupo.descripcion,
         grupo.id,
         agentesGrupo,
+        categoriasGrupo,
       ]
         .join(" ")
         .toLowerCase();
@@ -317,9 +355,7 @@ function GruposSoporte() {
       onRowsPerPageChange={handleChangeRowsPerPage}
       rowsPerPageOptions={[4, 6, 10, 25]}
       labelRowsPerPage="Grupos por página"
-      labelDisplayedRows={({ from, to, count }) =>
-        `${from}-${to} de ${count}`
-      }
+      labelDisplayedRows={({ from, to, count }) => `${from}-${to} de ${count}`}
       sx={{
         borderTop: "1px solid #e5e7eb",
         bgcolor: "#ffffff",
@@ -360,8 +396,8 @@ function GruposSoporte() {
           </Typography>
 
           <Typography variant="body2" color="text.secondary">
-            Consulta grupos de atención y agentes responsables por área o
-            especialidad.
+            Consulta grupos de atención, categorías asociadas y agentes
+            responsables por área o especialidad.
           </Typography>
         </Box>
 
@@ -441,6 +477,39 @@ function GruposSoporte() {
                   size="small"
                 />
               </Grid>
+              <Grid item xs={12}>
+                <TextField
+                  select
+                  fullWidth
+                  size="small"
+                  label="Categorías que atenderá este grupo"
+                  value={formulario.system_ids}
+                  onChange={cambiarCategorias}
+                  disabled={cargando || categoriasDisponibles.length === 0}
+                  SelectProps={{
+                    multiple: true,
+                    renderValue: (seleccionadas) =>
+                      categoriasDisponibles
+                        .filter((categoria) =>
+                          seleccionadas.includes(Number(categoria.id)),
+                        )
+                        .map((categoria) => categoria.nombre)
+                        .join(", "),
+                  }}
+                  helperText={
+                    categoriasDisponibles.length
+                      ? "Selecciona una o varias categorías que serán atendidas por este grupo."
+                     : "Todas las categorías activas ya tienen un grupo de soporte asignado."
+                  }
+                >
+                  {categoriasDisponibles.map((categoria) => (
+                    <MenuItem key={categoria.id} value={Number(categoria.id)}>
+                      {categoria.nombre}
+                      {categoria.prefijo ? ` (${categoria.prefijo})` : ""}
+                    </MenuItem>
+                  ))}
+                </TextField>
+              </Grid>
             </Grid>
 
             <Box
@@ -502,7 +571,10 @@ function GruposSoporte() {
               spacing={1.5}
             >
               <Box>
-                <Typography fontWeight={900} sx={{ fontSize: { xs: 18, md: 20 } }}>
+                <Typography
+                  fontWeight={900}
+                  sx={{ fontSize: { xs: 18, md: 20 } }}
+                >
                   Grupos registrados
                 </Typography>
 
@@ -528,7 +600,7 @@ function GruposSoporte() {
               label="Buscar grupo"
               value={busqueda}
               onChange={(event) => setBusqueda(event.target.value)}
-              placeholder="Nombre, descripción, ID, agente o correo"
+              placeholder="Nombre, descripción, ID, categoría, agente o correo"
             />
 
             {gruposFiltrados.length === 0 ? (
@@ -599,15 +671,35 @@ function GruposSoporte() {
                               </Typography>
                             </Box>
 
-                            <Chip
-                              size="small"
-                              label={`${grupo.agents?.length || 0} agentes`}
-                              color="primary"
+                            <Stack
+                              direction="row"
+                              spacing={0.8}
                               sx={{
-                                fontWeight: 800,
                                 flexShrink: 0,
+                                flexWrap: "wrap",
+                                justifyContent: "flex-end",
+                                rowGap: 0.8,
                               }}
-                            />
+                            >
+                              <Chip
+                                size="small"
+                                label={`${grupo.systems?.length || 0} categoría(s)`}
+                                variant="outlined"
+                                color="secondary"
+                                sx={{
+                                  fontWeight: 800,
+                                }}
+                              />
+
+                              <Chip
+                                size="small"
+                                label={`${grupo.agents?.length || 0} agentes`}
+                                color="primary"
+                                sx={{
+                                  fontWeight: 800,
+                                }}
+                              />
+                            </Stack>
                           </Stack>
 
                           <Typography
@@ -623,6 +715,81 @@ function GruposSoporte() {
                           >
                             {grupo.descripcion || "Sin descripción"}
                           </Typography>
+                        </Box>
+
+                        <Divider />
+
+                        <Box>
+                          <Stack
+                            direction="row"
+                            justifyContent="space-between"
+                            alignItems="center"
+                            spacing={1}
+                            sx={{ mb: 1 }}
+                          >
+                            <Typography fontWeight={900} sx={{ fontSize: 14 }}>
+                              Categorías asignadas
+                            </Typography>
+
+                            <Chip
+                              size="small"
+                              label={`${grupo.systems?.length || 0} categoría(s)`}
+                              variant="outlined"
+                              color={
+                                grupo.systems?.length > 0
+                                  ? "secondary"
+                                  : "default"
+                              }
+                              sx={{
+                                fontWeight: 800,
+                                flexShrink: 0,
+                              }}
+                            />
+                          </Stack>
+
+                          {grupo.systems && grupo.systems.length > 0 ? (
+                            <Stack
+                              direction="row"
+                              spacing={1}
+                              sx={{
+                                flexWrap: "wrap",
+                                rowGap: 1,
+                              }}
+                            >
+                              {grupo.systems.map((categoria) => (
+                                <Chip
+                                  key={categoria.id}
+                                  label={
+                                    categoria.nombre ||
+                                    `Categoría #${categoria.id}`
+                                  }
+                                  size="small"
+                                  variant="outlined"
+                                  sx={{
+                                    fontWeight: 700,
+                                    maxWidth: "100%",
+                                  }}
+                                />
+                              ))}
+                            </Stack>
+                          ) : (
+                            <Box
+                              sx={{
+                                border: "1px dashed #cbd5e1",
+                                borderRadius: 2.5,
+                                bgcolor: "#f8fafc",
+                                p: 1.5,
+                                textAlign: "center",
+                              }}
+                            >
+                              <Typography
+                                variant="body2"
+                                color="text.secondary"
+                              >
+                                Este grupo no tiene categorías asignadas.
+                              </Typography>
+                            </Box>
+                          )}
                         </Box>
 
                         <Divider />
@@ -659,7 +826,10 @@ function GruposSoporte() {
                                     </MenuItem>
 
                                     {agentes.map((agente) => (
-                                      <MenuItem key={agente.id} value={agente.id}>
+                                      <MenuItem
+                                        key={agente.id}
+                                        value={agente.id}
+                                      >
                                         {nombreAgente(agente)}
                                       </MenuItem>
                                     ))}
@@ -690,7 +860,11 @@ function GruposSoporte() {
                         )}
 
                         <Box sx={{ flex: 1, minHeight: 0 }}>
-                          <Typography fontWeight={900} mb={1} sx={{ fontSize: 14 }}>
+                          <Typography
+                            fontWeight={900}
+                            mb={1}
+                            sx={{ fontSize: 14 }}
+                          >
                             Agentes del grupo
                           </Typography>
 
@@ -801,7 +975,10 @@ function GruposSoporte() {
                                 textAlign: "center",
                               }}
                             >
-                              <Typography variant="body2" color="text.secondary">
+                              <Typography
+                                variant="body2"
+                                color="text.secondary"
+                              >
                                 Este grupo no tiene agentes asignados.
                               </Typography>
                             </Box>

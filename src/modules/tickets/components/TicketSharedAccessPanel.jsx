@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import {
   Alert,
@@ -17,6 +17,7 @@ import EmailOutlinedIcon from "@mui/icons-material/EmailOutlined";
 import ContentCopyOutlinedIcon from "@mui/icons-material/ContentCopyOutlined";
 import BlockOutlinedIcon from "@mui/icons-material/BlockOutlined";
 import RefreshOutlinedIcon from "@mui/icons-material/RefreshOutlined";
+import LinkOutlinedIcon from "@mui/icons-material/LinkOutlined";
 
 import Swal from "sweetalert2";
 
@@ -26,15 +27,30 @@ export default function TicketSharedAccessPanel({ ticketId }) {
   const [email, setEmail] = useState("");
   const [accesos, setAccesos] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [enviando, setEnviando] = useState(false);
+
+  const [enviandoCorreo, setEnviandoCorreo] = useState(false);
+  const [generandoLink, setGenerandoLink] = useState(false);
   const [revocandoId, setRevocandoId] = useState(null);
-  const [publicUrl, setPublicUrl] = useState("");
+
+  const [directUrl, setDirectUrl] = useState("");
   const [error, setError] = useState("");
 
   useEffect(() => {
+    setEmail("");
+    setDirectUrl("");
     cargarAccesos();
+
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ticketId]);
+
+  const accesoLink = useMemo(
+    () =>
+      accesos.find(
+        (acceso) =>
+          String(acceso?.access_type || "email").toLowerCase() === "link",
+      ) || null,
+    [accesos],
+  );
 
   const cargarAccesos = async () => {
     if (!ticketId) return;
@@ -76,20 +92,18 @@ export default function TicketSharedAccessPanel({ ticketId }) {
       return;
     }
 
-    setEnviando(true);
+    setEnviandoCorreo(true);
     setError("");
 
     try {
       const response = await axiosCliente.post(
         `/tickets/${ticketId}/public-access`,
         {
+          access_type: "email",
           email: correo,
         },
       );
 
-      const data = response.data?.data || {};
-
-      setPublicUrl(data.public_url || "");
       setEmail("");
 
       await cargarAccesos();
@@ -99,7 +113,7 @@ export default function TicketSharedAccessPanel({ ticketId }) {
         title: "Acceso enviado",
         text:
           response.data?.message ||
-          "El acceso público fue enviado correctamente.",
+          "La invitación por correo fue enviada correctamente.",
       });
     } catch (error) {
       console.log(
@@ -112,39 +126,38 @@ export default function TicketSharedAccessPanel({ ticketId }) {
         title: "No se pudo compartir",
         text:
           error.response?.data?.message ||
-          "No fue posible enviar el acceso público.",
+          "No fue posible enviar la invitación por correo.",
       });
     } finally {
-      setEnviando(false);
+      setEnviandoCorreo(false);
     }
   };
 
   const reenviarAcceso = async (acceso) => {
     if (!acceso?.email) return;
 
-    setEnviando(true);
+    setEnviandoCorreo(true);
     setError("");
 
     try {
       const response = await axiosCliente.post(
         `/tickets/${ticketId}/public-access`,
         {
+          access_type: "email",
           email: acceso.email,
         },
       );
-
-      const data = response.data?.data || {};
-
-      setPublicUrl(data.public_url || "");
 
       await cargarAccesos();
 
       Swal.fire({
         icon: "success",
-        title: "Invitación reenviada",
+        title: acceso.status ? "Invitación reenviada" : "Acceso reactivado",
         text:
           response.data?.message ||
-          "La invitación fue reenviada correctamente.",
+          (acceso.status
+            ? "La invitación fue reenviada correctamente."
+            : "El acceso fue reactivado correctamente."),
       });
     } catch (error) {
       console.log(
@@ -154,21 +167,100 @@ export default function TicketSharedAccessPanel({ ticketId }) {
 
       Swal.fire({
         icon: "error",
-        title: "No se pudo reenviar",
+        title: "No se pudo completar la acción",
         text:
           error.response?.data?.message ||
-          "No fue posible reenviar la invitación.",
+          "No fue posible actualizar la invitación.",
       });
     } finally {
-      setEnviando(false);
+      setEnviandoCorreo(false);
+    }
+  };
+
+  const generarEnlaceDirecto = async () => {
+    if (accesoLink) {
+      const confirmar = await Swal.fire({
+        icon: accesoLink.status ? "warning" : "question",
+        title: accesoLink.status
+          ? "Regenerar enlace directo"
+          : "Generar nuevo enlace",
+        text: accesoLink.status
+          ? "Se creará un enlace nuevo. El enlace anterior y sus sesiones activas dejarán de funcionar."
+          : "Se generará un nuevo enlace directo para este ticket.",
+        showCancelButton: true,
+        confirmButtonText: accesoLink.status
+          ? "Sí, regenerar"
+          : "Sí, generar",
+        cancelButtonText: "Cancelar",
+      });
+
+      if (!confirmar.isConfirmed) return;
+    }
+
+    setGenerandoLink(true);
+    setError("");
+
+    try {
+      const response = await axiosCliente.post(
+        `/tickets/${ticketId}/public-access`,
+        {
+          access_type: "link",
+        },
+      );
+
+      const data = response.data?.data || {};
+      const url = String(data.public_url || "").trim();
+
+      if (!url) {
+        throw new Error(
+          "El servidor generó el acceso, pero no devolvió el enlace directo.",
+        );
+      }
+
+      setDirectUrl(url);
+
+      await cargarAccesos();
+
+      Swal.fire({
+        icon: "success",
+        title: accesoLink ? "Enlace regenerado" : "Enlace generado",
+        text:
+          response.data?.message ||
+          "El enlace directo fue generado correctamente.",
+      });
+    } catch (error) {
+      console.log(
+        "ERROR GENERAR ENLACE DIRECTO:",
+        error.response?.data || error,
+      );
+
+      Swal.fire({
+        icon: "error",
+        title: "No se pudo generar el enlace",
+        text:
+          error.response?.data?.message ||
+          error?.message ||
+          "No fue posible generar el enlace directo.",
+      });
+    } finally {
+      setGenerandoLink(false);
     }
   };
 
   const revocarAcceso = async (acceso) => {
+    const esLink =
+      String(acceso?.access_type || "email").toLowerCase() === "link";
+
+    const nombreAcceso = esLink
+      ? "el enlace directo"
+      : acceso?.email || "este acceso";
+
     const confirmar = await Swal.fire({
       icon: "warning",
-      title: "Revocar acceso",
-      text: `¿Deseas quitar el acceso a ${acceso.email}?`,
+      title: esLink ? "Revocar enlace directo" : "Revocar acceso",
+      text: esLink
+        ? "¿Deseas revocar el enlace directo? El enlace dejará de funcionar y se cerrarán sus sesiones activas."
+        : `¿Deseas quitar el acceso a ${nombreAcceso}?`,
       showCancelButton: true,
       confirmButtonText: "Sí, revocar",
       cancelButtonText: "Cancelar",
@@ -184,12 +276,19 @@ export default function TicketSharedAccessPanel({ ticketId }) {
         `/tickets/${ticketId}/public-access/${acceso.id}/revoke`,
       );
 
+      if (esLink) {
+        setDirectUrl("");
+      }
+
       await cargarAccesos();
 
       Swal.fire({
         icon: "success",
-        title: "Acceso revocado",
-        text: "El acceso público fue revocado correctamente.",
+        title: esLink ? "Enlace revocado" : "Acceso revocado",
+        text:
+          esLink
+            ? "El enlace directo fue revocado correctamente."
+            : "El acceso público fue revocado correctamente.",
         timer: 1800,
         showConfirmButton: false,
       });
@@ -211,17 +310,46 @@ export default function TicketSharedAccessPanel({ ticketId }) {
     }
   };
 
+  const copiarTextoPortapapeles = async (texto) => {
+    if (navigator.clipboard && window.isSecureContext) {
+      await navigator.clipboard.writeText(texto);
+      return;
+    }
+
+    const textarea = document.createElement("textarea");
+
+    textarea.value = texto;
+    textarea.setAttribute("readonly", "");
+    textarea.style.position = "fixed";
+    textarea.style.top = "-9999px";
+    textarea.style.left = "-9999px";
+
+    document.body.appendChild(textarea);
+    textarea.focus();
+    textarea.select();
+    document.execCommand("copy");
+    document.body.removeChild(textarea);
+  };
+
   const copiarLink = async () => {
-    if (!publicUrl) return;
+    if (!directUrl) {
+      Swal.fire({
+        icon: "info",
+        title: "Genera un enlace primero",
+        text: "Por seguridad, el enlace completo solo se muestra al generarlo o regenerarlo.",
+      });
+
+      return;
+    }
 
     try {
-      await navigator.clipboard.writeText(publicUrl);
+      await copiarTextoPortapapeles(directUrl);
 
       Swal.fire({
         icon: "success",
         title: "Enlace copiado",
-        text: "El enlace compartido fue copiado correctamente.",
-        timer: 1600,
+        text: "Ya puedes compartirlo por WhatsApp u otro medio.",
+        timer: 1700,
         showConfirmButton: false,
       });
     } catch (error) {
@@ -235,6 +363,17 @@ export default function TicketSharedAccessPanel({ ticketId }) {
     }
   };
 
+  const esAccesoLink = (acceso) =>
+    String(acceso?.access_type || "email").toLowerCase() === "link";
+
+  const nombreAcceso = (acceso) => {
+    if (esAccesoLink(acceso)) {
+      return acceso?.display_name || "Persona externa";
+    }
+
+    return acceso?.email || acceso?.display_name || "Correo externo";
+  };
+
   return (
     <Paper
       sx={{
@@ -246,7 +385,7 @@ export default function TicketSharedAccessPanel({ ticketId }) {
         boxShadow: "none",
       }}
     >
-      <Stack spacing={2}>
+      <Stack spacing={2.25}>
         <Box>
           <Typography
             variant="subtitle1"
@@ -263,93 +402,338 @@ export default function TicketSharedAccessPanel({ ticketId }) {
             sx={{
               color: "#64748b",
               mt: 0.25,
+              lineHeight: 1.6,
             }}
           >
-            Autoriza a una persona externa para consultar y dar seguimiento a
-            este ticket mediante correo y contraseña.
+            Comparte este ticket con una persona externa mediante correo o
+            mediante un enlace directo que puedes enviar por WhatsApp u otro
+            medio.
           </Typography>
         </Box>
 
         {error && <Alert severity="error">{error}</Alert>}
 
-        <Stack
-          direction={{ xs: "column", md: "row" }}
-          spacing={1.5}
-          alignItems={{ xs: "stretch", md: "center" }}
+        {/* ACCESO POR CORREO */}
+        <Paper
+          variant="outlined"
+          sx={{
+            p: { xs: 1.5, sm: 2 },
+            borderRadius: 2.5,
+            borderColor: "#dbeafe",
+            bgcolor: "#f8fbff",
+          }}
         >
-          <TextField
-            fullWidth
-            size="small"
-            type="email"
-            label="Correo de la persona"
-            placeholder="correo@ejemplo.com"
-            value={email}
-            disabled={enviando}
-            onChange={(event) => setEmail(event.target.value)}
-            onKeyDown={(event) => {
-              if (event.key === "Enter") {
-                event.preventDefault();
-                enviarAcceso();
-              }
-            }}
-          />
+          <Stack spacing={1.5}>
+            <Box>
+              <Stack
+                direction="row"
+                spacing={1}
+                alignItems="center"
+              >
+                <EmailOutlinedIcon
+                  sx={{
+                    color: "#2563eb",
+                    fontSize: 21,
+                  }}
+                />
 
-          <Button
-            variant="contained"
-            startIcon={<EmailOutlinedIcon />}
-            onClick={enviarAcceso}
-            disabled={enviando || !email.trim()}
-            sx={{
-              minWidth: { xs: "100%", md: 190 },
-              borderRadius: 2,
-              textTransform: "none",
-              fontWeight: 800,
-              boxShadow: "none",
-            }}
-          >
-            {enviando ? "Enviando..." : "Enviar acceso"}
-          </Button>
-        </Stack>
+                <Typography
+                  variant="subtitle2"
+                  sx={{
+                    fontWeight: 900,
+                    color: "#0f172a",
+                  }}
+                >
+                  Compartir por correo
+                </Typography>
+              </Stack>
 
-        {publicUrl && (
-          <Alert
-            severity="success"
-            action={
-              <Button
-                size="small"
-                startIcon={<ContentCopyOutlinedIcon />}
-                onClick={copiarLink}
+              <Typography
+                variant="body2"
                 sx={{
-                  textTransform: "none",
-                  fontWeight: 800,
+                  color: "#64748b",
+                  mt: 0.5,
+                  lineHeight: 1.6,
                 }}
               >
-                Copiar
+                La persona recibirá una invitación y accederá con su correo y
+                una contraseña propia para este ticket.
+              </Typography>
+            </Box>
+
+            <Stack
+              direction={{ xs: "column", md: "row" }}
+              spacing={1.5}
+              alignItems={{ xs: "stretch", md: "center" }}
+            >
+              <TextField
+                fullWidth
+                size="small"
+                type="email"
+                label="Correo de la persona"
+                placeholder="correo@ejemplo.com"
+                value={email}
+                disabled={enviandoCorreo}
+                onChange={(event) => setEmail(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter") {
+                    event.preventDefault();
+                    enviarAcceso();
+                  }
+                }}
+              />
+
+              <Button
+                variant="contained"
+                startIcon={<EmailOutlinedIcon />}
+                onClick={enviarAcceso}
+                disabled={enviandoCorreo || !email.trim()}
+                sx={{
+                  minWidth: { xs: "100%", md: 190 },
+                  borderRadius: 2,
+                  textTransform: "none",
+                  fontWeight: 800,
+                  boxShadow: "none",
+                }}
+              >
+                {enviandoCorreo ? "Enviando..." : "Enviar por correo"}
               </Button>
-            }
+            </Stack>
+          </Stack>
+        </Paper>
+
+        <Box
+          sx={{
+            display: "flex",
+            alignItems: "center",
+            gap: 1.5,
+          }}
+        >
+          <Divider sx={{ flex: 1 }} />
+
+          <Typography
+            variant="caption"
+            sx={{
+              color: "#94a3b8",
+              fontWeight: 900,
+              textTransform: "uppercase",
+              letterSpacing: 0.6,
+            }}
           >
-            El acceso fue preparado correctamente. También puedes copiar el
-            enlace para compartirlo manualmente con la persona autorizada.
-          </Alert>
-        )}
+            o
+          </Typography>
+
+          <Divider sx={{ flex: 1 }} />
+        </Box>
+
+        {/* ACCESO POR LINK */}
+        <Paper
+          variant="outlined"
+          sx={{
+            p: { xs: 1.5, sm: 2 },
+            borderRadius: 2.5,
+            borderColor: "#fed7aa",
+            bgcolor: "#fffaf5",
+          }}
+        >
+          <Stack spacing={1.5}>
+            <Box>
+              <Stack
+                direction="row"
+                spacing={1}
+                alignItems="center"
+              >
+                <LinkOutlinedIcon
+                  sx={{
+                    color: "#ea580c",
+                    fontSize: 22,
+                  }}
+                />
+
+                <Typography
+                  variant="subtitle2"
+                  sx={{
+                    fontWeight: 900,
+                    color: "#0f172a",
+                  }}
+                >
+                  Compartir mediante enlace directo
+                </Typography>
+              </Stack>
+
+              <Typography
+                variant="body2"
+                sx={{
+                  color: "#64748b",
+                  mt: 0.5,
+                  lineHeight: 1.6,
+                }}
+              >
+                No requiere correo, registro ni contraseña. Genera el enlace,
+                cópialo y envíalo por WhatsApp, mensaje o cualquier otro medio.
+                El enlace únicamente permite entrar a este ticket.
+              </Typography>
+            </Box>
+
+            {directUrl && (
+              <Stack
+                direction={{ xs: "column", md: "row" }}
+                spacing={1}
+                alignItems={{ xs: "stretch", md: "center" }}
+              >
+                <TextField
+                  fullWidth
+                  size="small"
+                  label="Enlace directo generado"
+                  value={directUrl}
+                  InputProps={{
+                    readOnly: true,
+                  }}
+                  sx={{
+                    "& .MuiInputBase-input": {
+                      fontSize: 13,
+                    },
+                  }}
+                />
+
+                <Button
+                  variant="contained"
+                  startIcon={<ContentCopyOutlinedIcon />}
+                  onClick={copiarLink}
+                  sx={{
+                    minWidth: { xs: "100%", md: 150 },
+                    borderRadius: 2,
+                    textTransform: "none",
+                    fontWeight: 800,
+                    boxShadow: "none",
+                  }}
+                >
+                  Copiar link
+                </Button>
+              </Stack>
+            )}
+
+            {!directUrl && accesoLink?.status && (
+              <Alert severity="info">
+                Este ticket ya tiene un enlace directo activo. Por seguridad,
+                el token completo no se guarda en texto plano y no puede
+                recuperarse después. Si necesitas volver a copiarlo, regenera
+                el enlace; el anterior dejará de funcionar.
+              </Alert>
+            )}
+
+            <Stack
+              direction={{ xs: "column", sm: "row" }}
+              spacing={1}
+              useFlexGap
+              flexWrap="wrap"
+            >
+              <Button
+                variant={accesoLink?.status ? "outlined" : "contained"}
+                startIcon={
+                  accesoLink ? (
+                    <RefreshOutlinedIcon />
+                  ) : (
+                    <LinkOutlinedIcon />
+                  )
+                }
+                onClick={generarEnlaceDirecto}
+                disabled={generandoLink}
+                sx={{
+                  minWidth: { xs: "100%", sm: 190 },
+                  borderRadius: 2,
+                  textTransform: "none",
+                  fontWeight: 800,
+                  boxShadow: "none",
+                }}
+              >
+                {generandoLink
+                  ? "Generando..."
+                  : accesoLink?.status
+                    ? "Regenerar enlace"
+                    : "Generar enlace"}
+              </Button>
+
+              {directUrl && (
+                <Button
+                  variant="outlined"
+                  startIcon={<ContentCopyOutlinedIcon />}
+                  onClick={copiarLink}
+                  sx={{
+                    minWidth: { xs: "100%", sm: 150 },
+                    borderRadius: 2,
+                    textTransform: "none",
+                    fontWeight: 800,
+                  }}
+                >
+                  Copiar link
+                </Button>
+              )}
+
+              {accesoLink?.status && (
+                <Button
+                  variant="outlined"
+                  color="error"
+                  startIcon={<BlockOutlinedIcon />}
+                  onClick={() => revocarAcceso(accesoLink)}
+                  disabled={revocandoId === accesoLink.id}
+                  sx={{
+                    minWidth: { xs: "100%", sm: 150 },
+                    borderRadius: 2,
+                    textTransform: "none",
+                    fontWeight: 800,
+                  }}
+                >
+                  {revocandoId === accesoLink.id
+                    ? "Revocando..."
+                    : "Revocar enlace"}
+                </Button>
+              )}
+            </Stack>
+
+            <Typography
+              variant="caption"
+              sx={{
+                color: "#64748b",
+                lineHeight: 1.5,
+              }}
+            >
+              Cualquier persona que tenga el enlace podrá entrar a este ticket
+              mientras el enlace permanezca activo. Puedes revocarlo o
+              regenerarlo cuando sea necesario.
+            </Typography>
+          </Stack>
+        </Paper>
 
         <Divider />
 
+        {/* LISTADO DE ACCESOS */}
         <Box
           display="flex"
           justifyContent="space-between"
           alignItems="center"
           gap={1}
         >
-          <Typography
-            variant="subtitle2"
-            sx={{
-              fontWeight: 900,
-              color: "#334155",
-            }}
-          >
-            Accesos compartidos
-          </Typography>
+          <Box>
+            <Typography
+              variant="subtitle2"
+              sx={{
+                fontWeight: 900,
+                color: "#334155",
+              }}
+            >
+              Accesos compartidos
+            </Typography>
+
+            <Typography
+              variant="caption"
+              sx={{
+                color: "#64748b",
+              }}
+            >
+              Historial de accesos por correo y enlace directo.
+            </Typography>
+          </Box>
 
           <Button
             size="small"
@@ -382,105 +766,153 @@ export default function TicketSharedAccessPanel({ ticketId }) {
           </Alert>
         ) : (
           <Stack spacing={1}>
-            {accesos.map((acceso) => (
-              <Paper
-                key={acceso.id}
-                variant="outlined"
-                sx={{
-                  p: 1.5,
-                  borderRadius: 2,
-                  borderColor: "#e2e8f0",
-                  bgcolor: "#f8fafc",
-                }}
-              >
-                <Stack
-                  direction={{ xs: "column", md: "row" }}
-                  justifyContent="space-between"
-                  alignItems={{ xs: "stretch", md: "center" }}
-                  spacing={1.5}
+            {accesos.map((acceso) => {
+              const esLink = esAccesoLink(acceso);
+
+              return (
+                <Paper
+                  key={acceso.id}
+                  variant="outlined"
+                  sx={{
+                    p: 1.5,
+                    borderRadius: 2,
+                    borderColor: "#e2e8f0",
+                    bgcolor: "#f8fafc",
+                  }}
                 >
-                  <Box sx={{ minWidth: 0 }}>
-                    <Typography
-                      variant="body2"
-                      sx={{
-                        fontWeight: 900,
-                        color: "#0f172a",
-                        wordBreak: "break-word",
-                      }}
-                    >
-                      {acceso.email}
-                    </Typography>
-
-                    <Stack
-                      direction="row"
-                      spacing={0.75}
-                      useFlexGap
-                      flexWrap="wrap"
-                      mt={0.75}
-                    >
-                      <Chip
-                        size="small"
-                        label={acceso.status ? "Activo" : "Revocado"}
-                        color={acceso.status ? "success" : "default"}
-                        sx={{ fontWeight: 800 }}
-                      />
-
-                      <Chip
-                        size="small"
-                        variant="outlined"
-                        label={
-                          acceso.has_password
-                            ? "Contraseña configurada"
-                            : "Registro pendiente"
-                        }
-                        color={acceso.has_password ? "primary" : "warning"}
-                        sx={{ fontWeight: 800 }}
-                      />
-                    </Stack>
-                  </Box>
-
                   <Stack
-                    direction={{ xs: "column", sm: "row" }}
-                    spacing={1}
+                    direction={{ xs: "column", md: "row" }}
+                    justifyContent="space-between"
+                    alignItems={{ xs: "stretch", md: "center" }}
+                    spacing={1.5}
                   >
-                    <Button
-                      size="small"
-                      variant="outlined"
-                      startIcon={<EmailOutlinedIcon />}
-                      onClick={() => reenviarAcceso(acceso)}
-                      disabled={enviando}
-                      sx={{
-                        borderRadius: 2,
-                        textTransform: "none",
-                        fontWeight: 800,
-                      }}
-                    >
-                      {acceso.status ? "Reenviar" : "Reactivar"}
-                    </Button>
-
-                    {acceso.status && (
-                      <Button
-                        size="small"
-                        variant="outlined"
-                        color="error"
-                        startIcon={<BlockOutlinedIcon />}
-                        onClick={() => revocarAcceso(acceso)}
-                        disabled={revocandoId === acceso.id}
+                    <Box sx={{ minWidth: 0 }}>
+                      <Typography
+                        variant="body2"
                         sx={{
-                          borderRadius: 2,
-                          textTransform: "none",
-                          fontWeight: 800,
+                          fontWeight: 900,
+                          color: "#0f172a",
+                          wordBreak: "break-word",
                         }}
                       >
-                        {revocandoId === acceso.id
-                          ? "Revocando..."
-                          : "Revocar"}
-                      </Button>
-                    )}
+                        {esLink
+                          ? "Enlace directo · Persona externa"
+                          : nombreAcceso(acceso)}
+                      </Typography>
+
+                      <Stack
+                        direction="row"
+                        spacing={0.75}
+                        useFlexGap
+                        flexWrap="wrap"
+                        mt={0.75}
+                      >
+                        <Chip
+                          size="small"
+                          label={esLink ? "Enlace directo" : "Correo"}
+                          variant="outlined"
+                          color={esLink ? "warning" : "primary"}
+                          sx={{ fontWeight: 800 }}
+                        />
+
+                        <Chip
+                          size="small"
+                          label={acceso.status ? "Activo" : "Revocado"}
+                          color={acceso.status ? "success" : "default"}
+                          sx={{ fontWeight: 800 }}
+                        />
+
+                        {esLink ? (
+                          <Chip
+                            size="small"
+                            variant="outlined"
+                            label="Sin correo ni contraseña"
+                            sx={{ fontWeight: 800 }}
+                          />
+                        ) : (
+                          <Chip
+                            size="small"
+                            variant="outlined"
+                            label={
+                              acceso.has_password
+                                ? "Contraseña configurada"
+                                : "Registro pendiente"
+                            }
+                            color={
+                              acceso.has_password
+                                ? "primary"
+                                : "warning"
+                            }
+                            sx={{ fontWeight: 800 }}
+                          />
+                        )}
+                      </Stack>
+                    </Box>
+
+                    <Stack
+                      direction={{ xs: "column", sm: "row" }}
+                      spacing={1}
+                    >
+                      {!esLink && (
+                        <Button
+                          size="small"
+                          variant="outlined"
+                          startIcon={<EmailOutlinedIcon />}
+                          onClick={() => reenviarAcceso(acceso)}
+                          disabled={enviandoCorreo}
+                          sx={{
+                            borderRadius: 2,
+                            textTransform: "none",
+                            fontWeight: 800,
+                          }}
+                        >
+                          {acceso.status ? "Reenviar" : "Reactivar"}
+                        </Button>
+                      )}
+
+                      {esLink && (
+                        <Button
+                          size="small"
+                          variant="outlined"
+                          startIcon={<RefreshOutlinedIcon />}
+                          onClick={generarEnlaceDirecto}
+                          disabled={generandoLink}
+                          sx={{
+                            borderRadius: 2,
+                            textTransform: "none",
+                            fontWeight: 800,
+                          }}
+                        >
+                          {acceso.status
+                            ? "Regenerar"
+                            : "Generar nuevo"}
+                        </Button>
+                      )}
+
+                      {acceso.status && (
+                        <Button
+                          size="small"
+                          variant="outlined"
+                          color="error"
+                          startIcon={<BlockOutlinedIcon />}
+                          onClick={() => revocarAcceso(acceso)}
+                          disabled={revocandoId === acceso.id}
+                          sx={{
+                            borderRadius: 2,
+                            textTransform: "none",
+                            fontWeight: 800,
+                          }}
+                        >
+                          {revocandoId === acceso.id
+                            ? "Revocando..."
+                            : "Revocar"}
+                        </Button>
+                      )}
+                    </Stack>
                   </Stack>
-                </Stack>
-              </Paper>
-            ))}
+                </Paper>
+              );
+            })}
           </Stack>
         )}
       </Stack>

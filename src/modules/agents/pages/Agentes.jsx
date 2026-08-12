@@ -94,23 +94,73 @@ const getGroupsText = (agent) => {
   return grupos.map((grupo) => grupo.nombre).join(", ");
 };
 
+const normalizarRol = (role) => {
+  const value = String(role || "")
+    .trim()
+    .toLowerCase();
+
+  if (["agent", "agente"].includes(value)) {
+    return "agent";
+  }
+
+  if (value === "supervisor") {
+    return "supervisor";
+  }
+
+  if (["admin", "administrador"].includes(value)) {
+    return "admin";
+  }
+
+  return value;
+};
+
+const etiquetaRol = (role) => {
+  const normalized = normalizarRol(role);
+
+  if (normalized === "supervisor") {
+    return "Supervisor";
+  }
+
+  if (normalized === "agent") {
+    return "Agente";
+  }
+
+  if (normalized === "admin") {
+    return "Administrador";
+  }
+
+  return role || "Sin rol";
+};
+
+const esAgenteOperativo = (agent) =>
+  normalizarRol(agent?.company_role) === "agent";
+
 function MetricCard({ title, value, description }) {
   return (
     <Card
       sx={{
         height: "100%",
-        borderRadius: 3,
+        borderRadius: { xs: 2.5, sm: 3 },
         border: "1px solid #e5e7eb",
         boxShadow: "0 10px 25px rgba(15, 23, 42, 0.06)",
       }}
     >
-      <CardContent>
+      <CardContent
+        sx={{
+          p: { xs: 1.25, sm: 2 },
+          "&:last-child": {
+            pb: { xs: 1.25, sm: 2 },
+          },
+        }}
+      >
         <Typography
           variant="body2"
           sx={{
             color: "#64748b",
             fontWeight: 700,
-            mb: 1,
+            mb: { xs: 0.5, sm: 1 },
+            fontSize: { xs: 11, sm: 13 },
+            lineHeight: 1.25,
           }}
         >
           {title}
@@ -121,7 +171,8 @@ function MetricCard({ title, value, description }) {
           sx={{
             color: "#0f172a",
             fontWeight: 900,
-            lineHeight: 1.1,
+            lineHeight: 1,
+            fontSize: { xs: 22, sm: 28, md: 34 },
           }}
         >
           {formatNumber(value)}
@@ -133,7 +184,9 @@ function MetricCard({ title, value, description }) {
             sx={{
               display: "block",
               color: "#64748b",
-              mt: 1,
+              mt: { xs: 0.6, sm: 1 },
+              fontSize: { xs: 9.5, sm: 11 },
+              lineHeight: 1.25,
             }}
           >
             {description}
@@ -149,6 +202,8 @@ function AgentCard({
   onEdit,
   onToggleStatus,
   onDelete,
+  onChangeRole,
+  canChangeRole,
   changingStatusId,
   deletingAgentId,
 }) {
@@ -158,6 +213,7 @@ function AgentCard({
   const activo = Number(agent?.company_status) === 1;
   const changingThisAgent = Number(changingStatusId) === Number(agent.id);
   const deletingThisAgent = Number(deletingAgentId) === Number(agent.id);
+  const esAgente = esAgenteOperativo(agent);
 
   return (
     <Paper
@@ -233,15 +289,34 @@ function AgentCard({
             </Box>
           </Stack>
 
-          <Chip
-            label={activo ? "Activo" : "Inactivo"}
-            color={activo ? "success" : "default"}
-            size="small"
+          <Stack
+            direction="row"
+            spacing={0.75}
+            useFlexGap
+            flexWrap="wrap"
             sx={{
-              fontWeight: 800,
               alignSelf: { xs: "flex-start", sm: "center" },
             }}
-          />
+          >
+            <Chip
+              label={etiquetaRol(agent?.company_role)}
+              color={
+                normalizarRol(agent?.company_role) === "supervisor"
+                  ? "secondary"
+                  : "primary"
+              }
+              variant="outlined"
+              size="small"
+              sx={{ fontWeight: 800 }}
+            />
+
+            <Chip
+              label={activo ? "Activo" : "Inactivo"}
+              color={activo ? "success" : "default"}
+              size="small"
+              sx={{ fontWeight: 800 }}
+            />
+          </Stack>
         </Stack>
 
         <Divider />
@@ -309,11 +384,8 @@ function AgentCard({
         <Box
           sx={{
             display: "grid",
-            gridTemplateColumns: {
-              xs: "1fr",
-              sm: "repeat(3, minmax(0, 1fr))",
-            },
-            gap: 1.5,
+            gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
+            gap: { xs: 0.75, sm: 1.5 },
           }}
         >
           <Box
@@ -414,56 +486,75 @@ function AgentCard({
           spacing={1}
           justifyContent="flex-end"
         >
-          <Button
-            variant="outlined"
-            size="small"
-            startIcon={<EditIcon />}
-            onClick={() => onEdit(agent)}
-            sx={{
-              borderRadius: 2,
-              textTransform: "none",
-              fontWeight: 800,
-            }}
-          >
-            Editar
-          </Button>
+          {canChangeRole && (
+            <Button
+              variant="outlined"
+              size="small"
+              onClick={() => onChangeRole(agent)}
+              sx={{
+                borderRadius: 2,
+                textTransform: "none",
+                fontWeight: 800,
+              }}
+            >
+              Cambiar rol
+            </Button>
+          )}
 
-          <Button
-            variant="contained"
-            size="small"
-            color={activo ? "warning" : "success"}
-            startIcon={activo ? <ToggleOffIcon /> : <ToggleOnIcon />}
-            onClick={() => onToggleStatus(agent)}
-            disabled={changingThisAgent || deletingThisAgent}
-            sx={{
-              borderRadius: 2,
-              textTransform: "none",
-              fontWeight: 800,
-              boxShadow: "none",
-            }}
-          >
-            {changingThisAgent
-              ? "Procesando..."
-              : activo
-                ? "Inactivar"
-                : "Activar"}
-          </Button>
+          {esAgente && (
+            <>
+              <Button
+                variant="outlined"
+                size="small"
+                startIcon={<EditIcon />}
+                onClick={() => onEdit(agent)}
+                sx={{
+                  borderRadius: 2,
+                  textTransform: "none",
+                  fontWeight: 800,
+                }}
+              >
+                Editar
+              </Button>
 
-          <Button
-            variant="outlined"
-            size="small"
-            color="error"
-            startIcon={<DeleteIcon />}
-            onClick={() => onDelete(agent)}
-            disabled={deletingThisAgent || changingThisAgent}
-            sx={{
-              borderRadius: 2,
-              textTransform: "none",
-              fontWeight: 800,
-            }}
-          >
-            {deletingThisAgent ? "Eliminando..." : "Eliminar"}
-          </Button>
+              <Button
+                variant="contained"
+                size="small"
+                color={activo ? "warning" : "success"}
+                startIcon={activo ? <ToggleOffIcon /> : <ToggleOnIcon />}
+                onClick={() => onToggleStatus(agent)}
+                disabled={changingThisAgent || deletingThisAgent}
+                sx={{
+                  borderRadius: 2,
+                  textTransform: "none",
+                  fontWeight: 800,
+                  boxShadow: "none",
+                }}
+              >
+                {changingThisAgent
+                  ? "Procesando..."
+                  : activo
+                    ? "Inactivar"
+                    : "Activar"}
+              </Button>
+
+              <Button
+                variant="outlined"
+                size="small"
+                color="error"
+                startIcon={<DeleteIcon />}
+                onClick={() => onDelete(agent)}
+                disabled={deletingThisAgent || changingThisAgent}
+                sx={{
+                  borderRadius: 2,
+                  textTransform: "none",
+                  fontWeight: 800,
+                }}
+              >
+                {deletingThisAgent ? "Eliminando..." : "Eliminar"}
+              </Button>
+            </>
+          )}
         </Stack>
       </Stack>
     </Paper>
@@ -475,6 +566,8 @@ function AgentsTable({
   onEdit,
   onToggleStatus,
   onDelete,
+  onChangeRole,
+  canChangeRoleFor,
   changingStatusId,
   deletingAgentId,
 }) {
@@ -559,6 +652,8 @@ function AgentsTable({
               Number(changingStatusId) === Number(agent.id);
             const deletingThisAgent =
               Number(deletingAgentId) === Number(agent.id);
+            const esAgente = esAgenteOperativo(agent);
+            const canChangeRole = canChangeRoleFor(agent);
 
             return (
               <TableRow
@@ -614,7 +709,7 @@ function AgentsTable({
                           wordBreak: "break-word",
                         }}
                       >
-                        Rol: {agent?.company_role || "agent"}
+                        Rol: {etiquetaRol(agent?.company_role)}
                       </Typography>
                     </Box>
                   </Stack>
@@ -706,59 +801,81 @@ function AgentsTable({
 
                 <TableCell sx={{ verticalAlign: "top" }}>
                   <Stack spacing={1}>
-                    <Button
-                      variant="outlined"
-                      size="small"
-                      startIcon={<EditIcon />}
-                      onClick={() => onEdit(agent)}
-                      sx={{
-                        borderRadius: 2,
-                        textTransform: "none",
-                        fontWeight: 800,
-                        justifyContent: "flex-start",
-                      }}
-                    >
-                      Editar
-                    </Button>
+                    {canChangeRole && (
+                      <Button
+                        variant="outlined"
+                        size="small"
+                        onClick={() => onChangeRole(agent)}
+                        sx={{
+                          borderRadius: 2,
+                          textTransform: "none",
+                          fontWeight: 800,
+                          justifyContent: "flex-start",
+                        }}
+                      >
+                        Cambiar rol
+                      </Button>
+                    )}
 
-                    <Button
-                      variant="contained"
-                      size="small"
-                      color={activo ? "warning" : "success"}
-                      startIcon={activo ? <ToggleOffIcon /> : <ToggleOnIcon />}
-                      onClick={() => onToggleStatus(agent)}
-                      disabled={changingThisAgent || deletingThisAgent}
-                      sx={{
-                        borderRadius: 2,
-                        textTransform: "none",
-                        fontWeight: 800,
-                        boxShadow: "none",
-                        justifyContent: "flex-start",
-                      }}
-                    >
-                      {changingThisAgent
-                        ? "..."
-                        : activo
-                          ? "Inactivar"
-                          : "Activar"}
-                    </Button>
+                    {esAgente && (
+                      <>
+                        <Button
+                          variant="outlined"
+                          size="small"
+                          startIcon={<EditIcon />}
+                          onClick={() => onEdit(agent)}
+                          sx={{
+                            borderRadius: 2,
+                            textTransform: "none",
+                            fontWeight: 800,
+                            justifyContent: "flex-start",
+                          }}
+                        >
+                          Editar
+                        </Button>
 
-                    <Button
-                      variant="outlined"
-                      size="small"
-                      color="error"
-                      startIcon={<DeleteIcon />}
-                      onClick={() => onDelete(agent)}
-                      disabled={deletingThisAgent || changingThisAgent}
-                      sx={{
-                        borderRadius: 2,
-                        textTransform: "none",
-                        fontWeight: 800,
-                        justifyContent: "flex-start",
-                      }}
-                    >
-                      {deletingThisAgent ? "Eliminando..." : "Eliminar"}
-                    </Button>
+                        <Button
+                          variant="contained"
+                          size="small"
+                          color={activo ? "warning" : "success"}
+                          startIcon={
+                            activo ? <ToggleOffIcon /> : <ToggleOnIcon />
+                          }
+                          onClick={() => onToggleStatus(agent)}
+                          disabled={changingThisAgent || deletingThisAgent}
+                          sx={{
+                            borderRadius: 2,
+                            textTransform: "none",
+                            fontWeight: 800,
+                            boxShadow: "none",
+                            justifyContent: "flex-start",
+                          }}
+                        >
+                          {changingThisAgent
+                            ? "..."
+                            : activo
+                              ? "Inactivar"
+                              : "Activar"}
+                        </Button>
+
+                        <Button
+                          variant="outlined"
+                          size="small"
+                          color="error"
+                          startIcon={<DeleteIcon />}
+                          onClick={() => onDelete(agent)}
+                          disabled={deletingThisAgent || changingThisAgent}
+                          sx={{
+                            borderRadius: 2,
+                            textTransform: "none",
+                            fontWeight: 800,
+                            justifyContent: "flex-start",
+                          }}
+                        >
+                          {deletingThisAgent ? "Eliminando..." : "Eliminar"}
+                        </Button>
+                      </>
+                    )}
                   </Stack>
                 </TableCell>
               </TableRow>
@@ -787,9 +904,7 @@ function AgentesPagination({
       onRowsPerPageChange={onRowsPerPageChange}
       rowsPerPageOptions={[5, 10, 25]}
       labelRowsPerPage="Filas por página"
-      labelDisplayedRows={({ from, to, count }) =>
-        `${from}-${to} de ${count}`
-      }
+      labelDisplayedRows={({ from, to, count }) => `${from}-${to} de ${count}`}
       sx={{
         borderTop: "1px solid #e5e7eb",
         bgcolor: "#ffffff",
@@ -1040,25 +1155,25 @@ function CrearAgenteDialog({ open, onClose, onCreated }) {
                         input: {
                           endAdornment: (
                             <InputAdornment position="end">
-                            <IconButton
-                              edge="end"
-                              onClick={() =>
-                                setMostrarPassword((prev) => !prev)
-                              }
-                              onMouseDown={(event) => event.preventDefault()}
-                              disabled={cargando}
-                              aria-label={
-                                mostrarPassword
-                                  ? "Ocultar contraseña"
-                                  : "Mostrar contraseña"
-                              }
-                            >
-                              {mostrarPassword ? (
-                                <VisibilityOffIcon />
-                              ) : (
-                                <VisibilityIcon />
-                              )}
-                            </IconButton>
+                              <IconButton
+                                edge="end"
+                                onClick={() =>
+                                  setMostrarPassword((prev) => !prev)
+                                }
+                                onMouseDown={(event) => event.preventDefault()}
+                                disabled={cargando}
+                                aria-label={
+                                  mostrarPassword
+                                    ? "Ocultar contraseña"
+                                    : "Mostrar contraseña"
+                                }
+                              >
+                                {mostrarPassword ? (
+                                  <VisibilityOffIcon />
+                                ) : (
+                                  <VisibilityIcon />
+                                )}
+                              </IconButton>
                             </InputAdornment>
                           ),
                         },
@@ -1378,25 +1493,25 @@ function EditarAgenteDialog({ open, agent, onClose, onUpdated }) {
                         input: {
                           endAdornment: (
                             <InputAdornment position="end">
-                            <IconButton
-                              edge="end"
-                              onClick={() =>
-                                setMostrarPassword((prev) => !prev)
-                              }
-                              onMouseDown={(event) => event.preventDefault()}
-                              disabled={cargando}
-                              aria-label={
-                                mostrarPassword
-                                  ? "Ocultar contraseña"
-                                  : "Mostrar contraseña"
-                              }
-                            >
-                              {mostrarPassword ? (
-                                <VisibilityOffIcon />
-                              ) : (
-                                <VisibilityIcon />
-                              )}
-                            </IconButton>
+                              <IconButton
+                                edge="end"
+                                onClick={() =>
+                                  setMostrarPassword((prev) => !prev)
+                                }
+                                onMouseDown={(event) => event.preventDefault()}
+                                disabled={cargando}
+                                aria-label={
+                                  mostrarPassword
+                                    ? "Ocultar contraseña"
+                                    : "Mostrar contraseña"
+                                }
+                              >
+                                {mostrarPassword ? (
+                                  <VisibilityOffIcon />
+                                ) : (
+                                  <VisibilityIcon />
+                                )}
+                              </IconButton>
                             </InputAdornment>
                           ),
                         },
@@ -1442,6 +1557,164 @@ function EditarAgenteDialog({ open, agent, onClose, onUpdated }) {
           }}
         >
           {cargando ? "Guardando..." : "Guardar cambios"}
+        </Button>
+      </DialogActions>
+    </Dialog>
+  );
+}
+
+function CambiarRolDialog({ open, agent, onClose, onChanged }) {
+  const [role, setRole] = useState("agent");
+  const [error, setError] = useState("");
+  const [cargando, setCargando] = useState(false);
+
+  useEffect(() => {
+    if (open && agent) {
+      setRole(normalizarRol(agent.company_role) || "agent");
+      setError("");
+    }
+  }, [open, agent]);
+
+  const cerrar = () => {
+    if (cargando) return;
+
+    setError("");
+    onClose();
+  };
+
+  const guardarRol = async () => {
+    if (!agent?.id) return;
+
+    const actual = normalizarRol(agent.company_role);
+
+    if (role === actual) {
+      setError("Selecciona un rol diferente al actual.");
+      return;
+    }
+
+    setCargando(true);
+    setError("");
+
+    try {
+      const response = await axiosCliente.patch(`/agents/${agent.id}/role`, {
+        role,
+      });
+
+      await onChanged(
+        response.data?.message || "Rol actualizado correctamente.",
+      );
+
+      cerrar();
+    } catch (requestError) {
+      console.log(
+        "ERROR CAMBIAR ROL:",
+        requestError.response?.data || requestError,
+      );
+
+      const errores = requestError.response?.data?.errors;
+
+      setError(
+        errores
+          ? Object.values(errores).flat().join(" ")
+          : requestError.response?.data?.message ||
+              "No se pudo cambiar el rol.",
+      );
+    } finally {
+      setCargando(false);
+    }
+  };
+
+  return (
+    <Dialog
+      open={open}
+      onClose={cerrar}
+      fullWidth
+      maxWidth="xs"
+      PaperProps={{
+        sx: {
+          borderRadius: 3,
+        },
+      }}
+    >
+      <DialogTitle
+        sx={{
+          fontWeight: 900,
+          color: "#0f172a",
+        }}
+      >
+        Cambiar rol
+      </DialogTitle>
+
+      <DialogContent dividers>
+        <Stack spacing={2}>
+          <Box>
+            <Typography
+              sx={{
+                fontWeight: 900,
+                color: "#0f172a",
+              }}
+            >
+              {nombreCompleto(agent) || "Usuario sin nombre"}
+            </Typography>
+
+            <Typography
+              variant="body2"
+              sx={{
+                color: "#64748b",
+                mt: 0.3,
+              }}
+            >
+              Rol actual: {etiquetaRol(agent?.company_role)}
+            </Typography>
+          </Box>
+
+          <Alert severity="info">
+            Solo puedes alternar entre los roles Agente y Supervisor.
+          </Alert>
+
+          {error && <Alert severity="error">{error}</Alert>}
+
+          <TextField
+            select
+            fullWidth
+            size="small"
+            label="Nuevo rol"
+            value={role}
+            onChange={(event) => setRole(event.target.value)}
+            disabled={cargando}
+          >
+            <MenuItem value="agent">Agente</MenuItem>
+            <MenuItem value="supervisor">Supervisor</MenuItem>
+          </TextField>
+        </Stack>
+      </DialogContent>
+
+      <DialogActions sx={{ p: 2 }}>
+        <Button
+          variant="outlined"
+          onClick={cerrar}
+          disabled={cargando}
+          sx={{
+            borderRadius: 2,
+            textTransform: "none",
+            fontWeight: 800,
+          }}
+        >
+          Cancelar
+        </Button>
+
+        <Button
+          variant="contained"
+          onClick={guardarRol}
+          disabled={cargando || role === normalizarRol(agent?.company_role)}
+          sx={{
+            borderRadius: 2,
+            textTransform: "none",
+            fontWeight: 800,
+            boxShadow: "none",
+          }}
+        >
+          {cargando ? "Guardando..." : "Cambiar rol"}
         </Button>
       </DialogActions>
     </Dialog>
@@ -1649,6 +1922,11 @@ export default function Agentes() {
 
   const [summary, setSummary] = useState({});
   const [agents, setAgents] = useState([]);
+  const [permissions, setPermissions] = useState({
+    current_user_id: null,
+    current_role: "",
+    can_change_roles: false,
+  });
 
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
@@ -1663,6 +1941,8 @@ export default function Agentes() {
 
   const [statusAgent, setStatusAgent] = useState(null);
   const [changingStatus, setChangingStatus] = useState(false);
+
+  const [roleAgent, setRoleAgent] = useState(null);
 
   const [deleteAgent, setDeleteAgent] = useState(null);
   const [deletingAgent, setDeletingAgent] = useState(false);
@@ -1687,6 +1967,13 @@ export default function Agentes() {
 
       setSummary(response.data.summary || {});
       setAgents(response.data.data || []);
+      setPermissions(
+        response.data.permissions || {
+          current_user_id: null,
+          current_role: "",
+          can_change_roles: false,
+        },
+      );
     } catch (requestError) {
       console.log(
         "ERROR AGENTES SUMMARY:",
@@ -1830,6 +2117,51 @@ export default function Agentes() {
     }
   };
 
+  const puedeCambiarRol = (agent) => {
+    if (!permissions?.can_change_roles) {
+      return false;
+    }
+
+    const actorRole = normalizarRol(permissions.current_role);
+    const targetRole = normalizarRol(agent?.company_role);
+
+    if (!["agent", "supervisor"].includes(targetRole)) {
+      return false;
+    }
+
+    if (
+      actorRole === "supervisor" &&
+      Number(permissions.current_user_id) === Number(agent?.id)
+    ) {
+      return false;
+    }
+
+    return ["admin", "supervisor"].includes(actorRole);
+  };
+
+  const abrirCambiarRol = (agent) => {
+    if (!puedeCambiarRol(agent)) {
+      return;
+    }
+
+    setRoleAgent(agent);
+    setError("");
+    setSuccess("");
+  };
+
+  const cerrarCambiarRol = () => {
+    setRoleAgent(null);
+  };
+
+  const handleRoleChanged = async (message) => {
+    setSuccess(message || "Rol actualizado correctamente.");
+    setRoleAgent(null);
+
+    await loadAgents({
+      refresh: true,
+    });
+  };
+
   const handleChangePage = (event, newPage) => {
     setPage(newPage);
   };
@@ -1951,7 +2283,8 @@ export default function Agentes() {
                 color: "#64748b",
               }}
             >
-              Consulta agentes, grupos asignados y tickets atendidos.
+              Consulta agentes y supervisores, grupos asignados y tickets
+              atendidos.
             </Typography>
           </Box>
         </Stack>
@@ -1963,12 +2296,12 @@ export default function Agentes() {
           sx={{
             display: "grid",
             gridTemplateColumns: {
-              xs: "1fr",
+              xs: "repeat(2, minmax(0, 1fr))",
               sm: "repeat(2, minmax(0, 1fr))",
               md: "repeat(3, minmax(0, 1fr))",
               lg: "repeat(4, minmax(0, 1fr))",
             },
-            gap: 2,
+            gap: { xs: 1, sm: 2 },
           }}
         >
           <MetricCard
@@ -2104,7 +2437,7 @@ export default function Agentes() {
                 color: "#0f172a",
               }}
             >
-              Lista de agentes
+              Lista de agentes y supervisores
             </Typography>
 
             <Typography
@@ -2113,7 +2446,7 @@ export default function Agentes() {
                 color: "#64748b",
               }}
             >
-              Administra agentes, estado operativo y datos de contacto.
+              Administra agentes, supervisores, roles y datos de contacto.
             </Typography>
           </Box>
 
@@ -2205,6 +2538,8 @@ export default function Agentes() {
                   onEdit={abrirEditarAgente}
                   onToggleStatus={abrirConfirmarEstado}
                   onDelete={abrirConfirmarEliminar}
+                  onChangeRole={abrirCambiarRol}
+                  canChangeRole={puedeCambiarRol(agent)}
                   changingStatusId={changingStatus ? statusAgent?.id : null}
                   deletingAgentId={deletingAgent ? deleteAgent?.id : null}
                 />
@@ -2241,6 +2576,8 @@ export default function Agentes() {
               onEdit={abrirEditarAgente}
               onToggleStatus={abrirConfirmarEstado}
               onDelete={abrirConfirmarEliminar}
+              onChangeRole={abrirCambiarRol}
+              canChangeRoleFor={puedeCambiarRol}
               changingStatusId={changingStatus ? statusAgent?.id : null}
               deletingAgentId={deletingAgent ? deleteAgent?.id : null}
             />
@@ -2267,6 +2604,13 @@ export default function Agentes() {
         agent={selectedAgent}
         onClose={cerrarEditarAgente}
         onUpdated={handleAgentUpdated}
+      />
+
+      <CambiarRolDialog
+        open={Boolean(roleAgent)}
+        agent={roleAgent}
+        onClose={cerrarCambiarRol}
+        onChanged={handleRoleChanged}
       />
 
       <ConfirmarEstadoDialog

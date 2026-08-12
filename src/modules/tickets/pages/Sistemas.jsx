@@ -34,6 +34,9 @@ import CloseIcon from "@mui/icons-material/Close";
 import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
 import ImageIcon from "@mui/icons-material/Image";
 import SettingsOutlinedIcon from "@mui/icons-material/SettingsOutlined";
+import DeleteIcon from "@mui/icons-material/Delete";
+
+import Swal from "sweetalert2";
 
 const API_ORIGIN = "https://api.thebusinessticket.com";
 
@@ -52,6 +55,7 @@ function Sistemas() {
 
   const [loading, setLoading] = useState(true);
   const [cargando, setCargando] = useState(false);
+  const [eliminandoId, setEliminandoId] = useState(null);
 
   const [modalAbierto, setModalAbierto] = useState(false);
   const [modoModal, setModoModal] = useState("crear");
@@ -231,12 +235,7 @@ function Sistemas() {
 
     const formData = new FormData();
 
-    /*
-     * Laravel procesa de forma segura los archivos multipart usando POST
-     * y method spoofing para ejecutar la ruta PUT existente.
-     */
     formData.append("_method", "PUT");
-
     formData.append("nombre", formulario.nombre);
     formData.append("descripcion", formulario.descripcion);
     formData.append("prefijo", formulario.prefijo.toUpperCase());
@@ -306,6 +305,67 @@ function Sistemas() {
       }
     } finally {
       setCargando(false);
+    }
+  };
+
+  const eliminarCategoria = async (sistema) => {
+    if (!sistema?.id || eliminandoId) return;
+
+    const confirmacion = await Swal.fire({
+      icon: "warning",
+      title: "Eliminar categoría",
+      html: `¿Seguro que deseas eliminar la categoría <strong>${sistema.nombre}</strong>?`,
+      showCancelButton: true,
+      confirmButtonText: "Sí, eliminar",
+      cancelButtonText: "Cancelar",
+      confirmButtonColor: "#dc2626",
+      reverseButtons: true,
+    });
+
+    if (!confirmacion.isConfirmed) return;
+
+    setEliminandoId(sistema.id);
+    setError("");
+    setMensajeExito("");
+
+    try {
+      const respuesta = await axiosCliente.delete(`/systems/${sistema.id}`);
+
+      if (Number(categoriaExpandidaId) === Number(sistema.id)) {
+        setCategoriaExpandidaId(null);
+      }
+
+      await obtenerSistemas();
+
+      setMensajeExito(
+        respuesta.data?.message || "Categoría eliminada correctamente.",
+      );
+
+      Swal.fire({
+        icon: "success",
+        title: "Categoría eliminada",
+        text:
+          respuesta.data?.message ||
+          "La categoría fue eliminada correctamente.",
+        timer: 1800,
+        showConfirmButton: false,
+      });
+    } catch (error) {
+      console.log("ERROR ELIMINAR SISTEMA:", error.response?.data || error);
+
+      const mensaje =
+        error.response?.data?.message ||
+        "No fue posible eliminar la categoría.";
+
+      setError(mensaje);
+
+      Swal.fire({
+        icon: "error",
+        title: "No se pudo eliminar",
+        text: mensaje,
+      });
+    } finally {
+      setEliminandoId(null);
     }
   };
 
@@ -402,7 +462,7 @@ function Sistemas() {
         </Typography>
 
         <Typography variant="body2" color="text.secondary">
-          Consulta, edita y configura el portal público de cada categoría.
+          Consulta, edita, configura o elimina cada categoría.
         </Typography>
       </Box>
 
@@ -484,7 +544,7 @@ function Sistemas() {
 
                     <TableCell
                       align="right"
-                      sx={{ fontWeight: 900, width: 120 }}
+                      sx={{ fontWeight: 900, width: 160 }}
                     >
                       Acciones
                     </TableCell>
@@ -499,6 +559,9 @@ function Sistemas() {
 
                     const expandida =
                       Number(categoriaExpandidaId) === Number(sistema.id);
+
+                    const eliminando =
+                      Number(eliminandoId) === Number(sistema.id);
 
                     return (
                       <Fragment key={`desktop-${sistema.id}`}>
@@ -618,21 +681,24 @@ function Sistemas() {
                               justifyContent="flex-end"
                             >
                               <Tooltip title="Editar categoría" arrow>
-                                <IconButton
-                                  size="small"
-                                  onClick={() => abrirModalEditar(sistema)}
-                                  sx={{
-                                    border: "1px solid #dbe2ea",
-                                    borderRadius: 1.5,
-                                    color: "#2563eb",
-                                    bgcolor: "#ffffff",
-                                    "&:hover": {
-                                      bgcolor: "#eff6ff",
-                                    },
-                                  }}
-                                >
-                                  <EditOutlinedIcon fontSize="small" />
-                                </IconButton>
+                                <span>
+                                  <IconButton
+                                    size="small"
+                                    onClick={() => abrirModalEditar(sistema)}
+                                    disabled={eliminando}
+                                    sx={{
+                                      border: "1px solid #dbe2ea",
+                                      borderRadius: 1.5,
+                                      color: "#2563eb",
+                                      bgcolor: "#ffffff",
+                                      "&:hover": {
+                                        bgcolor: "#eff6ff",
+                                      },
+                                    }}
+                                  >
+                                    <EditOutlinedIcon fontSize="small" />
+                                  </IconButton>
+                                </span>
                               </Tooltip>
 
                               <Tooltip
@@ -643,27 +709,55 @@ function Sistemas() {
                                 }
                                 arrow
                               >
-                                <IconButton
-                                  size="small"
-                                  onClick={() =>
-                                    toggleConfiguracion(sistema.id)
-                                  }
-                                  sx={{
-                                    border: "1px solid #dbe2ea",
-                                    borderRadius: 1.5,
-                                    color: expandida ? "#ffffff" : "#475569",
-                                    bgcolor: expandida
-                                      ? "#2563eb"
-                                      : "#ffffff",
-                                    "&:hover": {
+                                <span>
+                                  <IconButton
+                                    size="small"
+                                    onClick={() =>
+                                      toggleConfiguracion(sistema.id)
+                                    }
+                                    disabled={eliminando}
+                                    sx={{
+                                      border: "1px solid #dbe2ea",
+                                      borderRadius: 1.5,
+                                      color: expandida ? "#ffffff" : "#475569",
                                       bgcolor: expandida
-                                        ? "#1d4ed8"
-                                        : "#f8fafc",
-                                    },
-                                  }}
-                                >
-                                  <SettingsOutlinedIcon fontSize="small" />
-                                </IconButton>
+                                        ? "#2563eb"
+                                        : "#ffffff",
+                                      "&:hover": {
+                                        bgcolor: expandida
+                                          ? "#1d4ed8"
+                                          : "#f8fafc",
+                                      },
+                                    }}
+                                  >
+                                    <SettingsOutlinedIcon fontSize="small" />
+                                  </IconButton>
+                                </span>
+                              </Tooltip>
+
+                              <Tooltip title="Eliminar categoría" arrow>
+                                <span>
+                                  <IconButton
+                                    size="small"
+                                    onClick={() => eliminarCategoria(sistema)}
+                                    disabled={eliminando}
+                                    sx={{
+                                      border: "1px solid #fecaca",
+                                      borderRadius: 1.5,
+                                      color: "#dc2626",
+                                      bgcolor: "#ffffff",
+                                      "&:hover": {
+                                        bgcolor: "#fef2f2",
+                                      },
+                                    }}
+                                  >
+                                    {eliminando ? (
+                                      <CircularProgress size={18} />
+                                    ) : (
+                                      <DeleteIcon fontSize="small" />
+                                    )}
+                                  </IconButton>
+                                </span>
                               </Tooltip>
                             </Stack>
                           </TableCell>
@@ -750,7 +844,7 @@ function Sistemas() {
             </TableContainer>
           </Box>
 
-          {/* MÓVIL Y TABLET PEQUEÑA: TARJETAS COMPACTAS */}
+          {/* MÓVIL Y TABLET PEQUEÑA */}
           <Stack
             spacing={1.5}
             sx={{
@@ -764,6 +858,9 @@ function Sistemas() {
 
               const expandida =
                 Number(categoriaExpandidaId) === Number(sistema.id);
+
+              const eliminando =
+                Number(eliminandoId) === Number(sistema.id);
 
               return (
                 <Paper
@@ -886,20 +983,23 @@ function Sistemas() {
                         sx={{ flexShrink: 0 }}
                       >
                         <Tooltip title="Editar categoría" arrow>
-                          <IconButton
-                            size="small"
-                            onClick={() => abrirModalEditar(sistema)}
-                            sx={{
-                              width: 34,
-                              height: 34,
-                              border: "1px solid #dbe2ea",
-                              borderRadius: 1.5,
-                              color: "#2563eb",
-                              bgcolor: "#ffffff",
-                            }}
-                          >
-                            <EditOutlinedIcon fontSize="small" />
-                          </IconButton>
+                          <span>
+                            <IconButton
+                              size="small"
+                              onClick={() => abrirModalEditar(sistema)}
+                              disabled={eliminando}
+                              sx={{
+                                width: 34,
+                                height: 34,
+                                border: "1px solid #dbe2ea",
+                                borderRadius: 1.5,
+                                color: "#2563eb",
+                                bgcolor: "#ffffff",
+                              }}
+                            >
+                              <EditOutlinedIcon fontSize="small" />
+                            </IconButton>
+                          </span>
                         </Tooltip>
 
                         <Tooltip
@@ -910,22 +1010,49 @@ function Sistemas() {
                           }
                           arrow
                         >
-                          <IconButton
-                            size="small"
-                            onClick={() =>
-                              toggleConfiguracion(sistema.id)
-                            }
-                            sx={{
-                              width: 34,
-                              height: 34,
-                              border: "1px solid #dbe2ea",
-                              borderRadius: 1.5,
-                              color: expandida ? "#ffffff" : "#475569",
-                              bgcolor: expandida ? "#2563eb" : "#ffffff",
-                            }}
-                          >
-                            <SettingsOutlinedIcon fontSize="small" />
-                          </IconButton>
+                          <span>
+                            <IconButton
+                              size="small"
+                              onClick={() =>
+                                toggleConfiguracion(sistema.id)
+                              }
+                              disabled={eliminando}
+                              sx={{
+                                width: 34,
+                                height: 34,
+                                border: "1px solid #dbe2ea",
+                                borderRadius: 1.5,
+                                color: expandida ? "#ffffff" : "#475569",
+                                bgcolor: expandida ? "#2563eb" : "#ffffff",
+                              }}
+                            >
+                              <SettingsOutlinedIcon fontSize="small" />
+                            </IconButton>
+                          </span>
+                        </Tooltip>
+
+                        <Tooltip title="Eliminar categoría" arrow>
+                          <span>
+                            <IconButton
+                              size="small"
+                              onClick={() => eliminarCategoria(sistema)}
+                              disabled={eliminando}
+                              sx={{
+                                width: 34,
+                                height: 34,
+                                border: "1px solid #fecaca",
+                                borderRadius: 1.5,
+                                color: "#dc2626",
+                                bgcolor: "#ffffff",
+                              }}
+                            >
+                              {eliminando ? (
+                                <CircularProgress size={17} />
+                              ) : (
+                                <DeleteIcon fontSize="small" />
+                              )}
+                            </IconButton>
+                          </span>
                         </Tooltip>
                       </Stack>
                     </Stack>
@@ -1105,7 +1232,7 @@ function Sistemas() {
                   size="small"
                   disabled={cargando}
                   inputProps={{
-                    maxLength: 5,
+                    maxLength: 20,
                     style: { textTransform: "uppercase" },
                   }}
                   helperText="Ejemplo: WEB, ADM, INV"

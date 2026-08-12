@@ -72,6 +72,16 @@ export default function TicketCompartido() {
 
   const chatEndRef = useRef(null);
 
+  const [processingDirectLink, setProcessingDirectLink] = useState(() => {
+    if (typeof window === "undefined") {
+      return false;
+    }
+
+    return Boolean(
+      new URLSearchParams(window.location.search).get("access_token"),
+    );
+  });
+
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
@@ -99,14 +109,115 @@ export default function TicketCompartido() {
   const ticketCerrado = Number(ticket?.status_id || 0) === 4;
 
   useEffect(() => {
-    if (!sessionToken || !trackingCode) {
+    if (!trackingCode || typeof window === "undefined") {
+      setProcessingDirectLink(false);
+      return;
+    }
+
+    const currentUrl = new URL(window.location.href);
+    const directToken = String(
+      currentUrl.searchParams.get("access_token") || "",
+    ).trim();
+
+    if (!directToken) {
+      setProcessingDirectLink(false);
+      return;
+    }
+
+    let active = true;
+
+    /*
+     * Quitamos el token secreto de la barra del navegador
+     * inmediatamente. Conservamos el valor en memoria para
+     * intercambiarlo por una sesión pública.
+     */
+    currentUrl.searchParams.delete("access_token");
+
+    window.history.replaceState(
+      window.history.state,
+      document.title,
+      `${currentUrl.pathname}${currentUrl.search}${currentUrl.hash}`,
+    );
+
+    const iniciarAccesoDirecto = async () => {
+      setProcessingDirectLink(true);
+      setLoading(true);
+      setError("");
+
+      try {
+        const response = await axiosCliente.post(
+          `/public/shared-tickets/${trackingCode}/access`,
+          {
+            access_token: directToken,
+          },
+        );
+
+        const data = response.data?.data || {};
+        const token = data.session_token || "";
+
+        if (!token) {
+          throw new Error(
+            "El servidor no devolvió una sesión pública.",
+          );
+        }
+
+        if (!active) {
+          return;
+        }
+
+        sessionStorage.setItem(
+          getStorageKey(trackingCode),
+          token,
+        );
+
+        setSessionToken(token);
+      } catch (error) {
+        if (!active) {
+          return;
+        }
+
+        console.log(
+          "ERROR ACCESO DIRECTO TICKET COMPARTIDO:",
+          error.response?.data || error,
+        );
+
+        setError(
+          error.response?.data?.message ||
+            error?.message ||
+            "El enlace compartido no es válido o fue revocado.",
+        );
+      } finally {
+        if (active) {
+          setLoading(false);
+          setProcessingDirectLink(false);
+        }
+      }
+    };
+
+    iniciarAccesoDirecto();
+
+    return () => {
+      active = false;
+    };
+  }, [trackingCode]);
+
+  useEffect(() => {
+    if (
+      processingDirectLink ||
+      !sessionToken ||
+      !trackingCode
+    ) {
       return;
     }
 
     cargarSesion(sessionToken);
 
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [trackingCode, sessionToken]);
+  }, [
+    trackingCode,
+    sessionToken,
+    processingDirectLink,
+  ]);
 
   useEffect(() => {
     if (!messages.length) return;
@@ -394,8 +505,10 @@ export default function TicketCompartido() {
 
     const propio =
       msg?.author_type === "external" &&
-      String(msg?.author_email || "").toLowerCase() ===
-        String(access?.email || "").toLowerCase();
+      (access?.access_type === "link"
+        ? !msg?.author_email
+        : String(msg?.author_email || "").toLowerCase() ===
+          String(access?.email || "").toLowerCase());
 
     if (sistema) {
       return (
@@ -433,7 +546,13 @@ export default function TicketCompartido() {
     }
 
     const nombre =
-      msg.author_name || msg.user?.name || (propio ? access?.email : "Soporte");
+      msg.author_name ||
+      msg.user?.name ||
+      (propio
+        ? access?.display_name ||
+          access?.email ||
+          "Persona externa"
+        : "Soporte");
 
     return (
       <Box
@@ -568,6 +687,35 @@ export default function TicketCompartido() {
   const cerrarArchivo = () => {
     setArchivoPreview(null);
   };
+
+  if (processingDirectLink) {
+    return (
+      <Box
+        sx={{
+          minHeight: "100dvh",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          bgcolor: "#f8fafc",
+          px: 2,
+        }}
+      >
+        <Stack spacing={1.5} alignItems="center">
+          <CircularProgress />
+
+          <Typography
+            variant="body2"
+            sx={{
+              color: "#64748b",
+              fontWeight: 700,
+            }}
+          >
+            Validando enlace compartido...
+          </Typography>
+        </Stack>
+      </Box>
+    );
+  }
 
   if (sessionToken && loadingTicket && !ticket) {
     return (
@@ -768,7 +916,10 @@ export default function TicketCompartido() {
                       mt: 0.5,
                     }}
                   >
-                    Acceso autorizado para {access?.email || "correo externo"}.
+                    Acceso autorizado para{" "}
+                    {access?.display_name ||
+                      access?.email ||
+                      "Persona externa"}.
                   </Typography>
                 </Box>
 

@@ -248,20 +248,6 @@ function AdminLayout() {
       icon: <DashboardIcon fontSize="small" />,
     },
     {
-      label: "Métricas generales",
-      path: "/metricas-generales",
-      roles: [
-        "administrador",
-        "admin",
-        "agente",
-        "agent",
-        "supervisor",
-        "cliente",
-        "client",
-      ],
-      icon: <QueryStatsIcon fontSize="small" />,
-    },
-    {
       label: "Mis tickets",
       path: "/mis-tickets",
       roles: [
@@ -276,32 +262,37 @@ function AdminLayout() {
       icon: <ConfirmationNumberIcon fontSize="small" />,
     },
     {
-      label: "Etiquetas",
-      path: "/etiquetas",
-      roles: ["administrador", "admin", "supervisor"],
-      icon: <LocalOfferIcon fontSize="small" />,
+      label: "Métricas generales",
+      path: "/metricas-generales",
+      roles: [
+        "administrador",
+        "admin",
+        "agente",
+        "agent",
+        "supervisor",
+        "cliente",
+        "client",
+      ],
+      icon: <QueryStatsIcon fontSize="small" />,
     },
-    {
-      label: "Mi perfil",
-      path: "/mi-perfil",
-      roles: ["administrador", "admin", "agente", "agent", "supervisor"],
-      icon: <AccountCircleIcon fontSize="small" />,
-    },
-
-    {
-      label: "Agentes",
-      path: "/agentes",
-      roles: ["administrador", "admin", "supervisor"],
-      icon: <GroupsIcon fontSize="small" />,
-    },
-
     {
       label: "Clientes",
       path: "/clientes",
       roles: ["administrador", "admin", "supervisor", "agente", "agent"],
       icon: <GroupsIcon fontSize="small" />,
     },
-
+    {
+      label: "Etiquetas",
+      path: "/etiquetas",
+      roles: ["administrador", "admin", "supervisor"],
+      icon: <LocalOfferIcon fontSize="small" />,
+    },
+    {
+      label: "Agentes",
+      path: "/agentes",
+      roles: ["administrador", "admin", "supervisor"],
+      icon: <GroupsIcon fontSize="small" />,
+    },
     {
       label: "Categorías",
       path: "/sistemas",
@@ -319,6 +310,12 @@ function AdminLayout() {
       path: "/grupos-soporte",
       roles: ["administrador", "admin", "supervisor"],
       icon: <GroupsIcon fontSize="small" />,
+    },
+    {
+      label: "Mi perfil",
+      path: "/mi-perfil",
+      roles: ["administrador", "admin", "agente", "agent", "supervisor"],
+      icon: <AccountCircleIcon fontSize="small" />,
     },
     {
       label: "API externa",
