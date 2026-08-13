@@ -2,7 +2,6 @@ import { useEffect, useState } from "react";
 
 import {
   Alert,
-  Avatar,
   Box,
   Button,
   CircularProgress,
@@ -16,13 +15,16 @@ import {
   Typography,
 } from "@mui/material";
 
-import AccountCircleIcon from "@mui/icons-material/AccountCircle";
 import LockResetIcon from "@mui/icons-material/LockReset";
 import SaveIcon from "@mui/icons-material/Save";
 import VisibilityOutlinedIcon from "@mui/icons-material/VisibilityOutlined";
 import VisibilityOffOutlinedIcon from "@mui/icons-material/VisibilityOffOutlined";
+import PhotoCameraOutlinedIcon from "@mui/icons-material/PhotoCameraOutlined";
+
 
 import axiosCliente from "../../../services/axiosCliente";
+import { useAuth } from "../../../auth/context/AuthContext";
+import UserAvatar from "../../../components/UserAvatar";
 
 const perfilInicial = {
   id: null,
@@ -57,6 +59,8 @@ const obtenerMensajeError = (error) => {
 };
 
 export default function MiPerfil() {
+  const { refreshUser } = useAuth();
+
   const [perfil, setPerfil] = useState(perfilInicial);
 
   const [contacto, setContacto] = useState({
@@ -79,6 +83,8 @@ export default function MiPerfil() {
   const [cargando, setCargando] = useState(true);
   const [guardandoContacto, setGuardandoContacto] = useState(false);
   const [guardandoContrasena, setGuardandoContrasena] = useState(false);
+  const [guardandoAvatar, setGuardandoAvatar] = useState(false);
+  const [mensajeAvatar, setMensajeAvatar] = useState(null);
 
   const [mensajeContacto, setMensajeContacto] = useState(null);
   const [mensajeContrasena, setMensajeContrasena] = useState(null);
@@ -203,29 +209,15 @@ export default function MiPerfil() {
           email: usuarioActualizado.email || "",
           telefono: usuarioActualizado.telefono || "",
         });
+      }
 
-        try {
-          const usuarioGuardado = JSON.parse(
-            localStorage.getItem("USUARIO") || "{}",
-          );
-
-          localStorage.setItem(
-            "USUARIO",
-            JSON.stringify({
-              ...usuarioGuardado,
-              name: usuarioActualizado.name,
-              apellido_paterno: usuarioActualizado.apellido_paterno,
-              apellido_materno: usuarioActualizado.apellido_materno,
-              email: usuarioActualizado.email,
-              telefono: usuarioActualizado.telefono,
-            }),
-          );
-        } catch (error) {
-          console.error(
-            "No se pudo actualizar el usuario guardado localmente.",
-            error,
-          );
-        }
+      try {
+        await refreshUser();
+      } catch (refreshError) {
+        console.error(
+          "El perfil se actualizó, pero no fue posible refrescar la sesión.",
+          refreshError,
+        );
       }
 
       setMensajeContacto({
@@ -239,6 +231,97 @@ export default function MiPerfil() {
       });
     } finally {
       setGuardandoContacto(false);
+    }
+  };
+
+  const cambiarAvatar = async (event) => {
+    const archivo = event.target.files?.[0];
+
+    // Permite volver a seleccionar posteriormente el mismo archivo.
+    event.target.value = "";
+
+    if (!archivo) return;
+
+    const tiposPermitidos = ["image/jpeg", "image/png", "image/webp"];
+
+    if (!tiposPermitidos.includes(archivo.type)) {
+      setMensajeAvatar({
+        type: "error",
+        text: "La imagen debe ser JPG, PNG o WEBP.",
+      });
+
+      return;
+    }
+
+    if (archivo.size > 5 * 1024 * 1024) {
+      setMensajeAvatar({
+        type: "error",
+        text: "La imagen no debe superar los 5 MB.",
+      });
+
+      return;
+    }
+
+    setGuardandoAvatar(true);
+    setMensajeAvatar(null);
+
+    try {
+      const formData = new FormData();
+
+      formData.append("avatar", archivo);
+
+      const { data } = await axiosCliente.post("/profile/avatar", formData, {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      });
+
+      setPerfil((prev) => ({
+        ...prev,
+        avatar_url: data?.avatar_url || null,
+      }));
+
+      await refreshUser();
+
+      setMensajeAvatar({
+        type: "success",
+        text: data?.message || "Foto de perfil actualizada correctamente.",
+      });
+    } catch (error) {
+      setMensajeAvatar({
+        type: "error",
+        text: obtenerMensajeError(error),
+      });
+    } finally {
+      setGuardandoAvatar(false);
+    }
+  };
+
+  const quitarAvatar = async () => {
+    setGuardandoAvatar(true);
+    setMensajeAvatar(null);
+
+    try {
+      const { data } = await axiosCliente.delete("/profile/avatar");
+
+      setPerfil((prev) => ({
+        ...prev,
+        avatar_url: null,
+      }));
+
+      await refreshUser();
+
+      setMensajeAvatar({
+        type: "success",
+        text: data?.message || "Foto de perfil eliminada correctamente.",
+      });
+    } catch (error) {
+      setMensajeAvatar({
+        type: "error",
+        text: obtenerMensajeError(error),
+      });
+    } finally {
+      setGuardandoAvatar(false);
     }
   };
 
@@ -419,19 +502,14 @@ export default function MiPerfil() {
               sm: "center",
             }}
           >
-            <Avatar
+            <UserAvatar
+              user={perfil}
+              size={64}
+              fontSize={20}
               sx={{
-                width: 64,
-                height: 64,
-                bgcolor: "primary.main",
+                boxShadow: "0 0 0 4px #eff6ff",
               }}
-            >
-              <AccountCircleIcon
-                sx={{
-                  fontSize: 42,
-                }}
-              />
-            </Avatar>
+            />
 
             <Box>
               <Typography
@@ -465,6 +543,57 @@ export default function MiPerfil() {
                   sx={{ fontWeight: 800 }}
                 />
               </Stack>
+              <Stack
+                direction={{ xs: "column", sm: "row" }}
+                spacing={1}
+                sx={{ mt: 1.5 }}
+              >
+                <Button
+                  component="label"
+                  size="small"
+                  variant="outlined"
+                  startIcon={<PhotoCameraOutlinedIcon />}
+                  disabled={guardandoAvatar}
+                  sx={{
+                    textTransform: "none",
+                    fontWeight: 800,
+                    borderRadius: 2,
+                  }}
+                >
+                  {perfil?.avatar_url ? "Cambiar foto" : "Agregar foto"}
+
+                  <input
+                    hidden
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp"
+                    onChange={cambiarAvatar}
+                  />
+                </Button>
+
+                {perfil?.avatar_url && (
+                  <Button
+                    type="button"
+                    size="small"
+                    color="error"
+                    variant="outlined"
+                    
+                    onClick={quitarAvatar}
+                    disabled={guardandoAvatar}
+                    sx={{
+                      textTransform: "none",
+                      fontWeight: 800,
+                      borderRadius: 2,
+                    }}
+                  >
+                    Quitar foto
+                  </Button>
+                )}
+              </Stack>
+              {mensajeAvatar && (
+                <Alert severity={mensajeAvatar.type} sx={{ mt: 1.5 }}>
+                  {mensajeAvatar.text}
+                </Alert>
+              )}
             </Box>
           </Stack>
         </Paper>
@@ -564,8 +693,6 @@ export default function MiPerfil() {
                   },
                 }}
               />
-
-
 
               <TextField
                 label="Correo electrónico"

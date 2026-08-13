@@ -20,15 +20,15 @@ import CloseIcon from "@mui/icons-material/Close";
 export default function ChatInput({
   text,
   setText,
-  archivo,
-  setArchivo,
+  archivos,
+  setArchivos,
   puedeGestionar,
   enviando,
   enviarMensaje,
 }) {
   const [tipoMensaje, setTipoMensaje] = useState("private");
 
-  const puedeEnviar = !enviando && (text.trim() || archivo);
+  const puedeEnviar = !enviando && (text.trim() || archivos.length > 0);
 
   const enviar = () => {
     if (!puedeEnviar) return;
@@ -43,18 +43,43 @@ export default function ChatInput({
     }
   };
 
-  const seleccionarArchivo = (e) => {
-    const file = e.target.files?.[0] || null;
+  const seleccionarArchivos = (e) => {
+    const seleccionados = Array.from(e.target.files || []);
 
-    setArchivo(file);
+    if (seleccionados.length === 0) return;
+
+    const extensionesPermitidas = [
+      "jpg",
+      "jpeg",
+      "png",
+      "webp",
+      "pdf",
+      "doc",
+      "docx",
+      "xls",
+      "xlsx",
+      "txt",
+    ];
+
+    const archivosValidos = seleccionados.filter((file) => {
+      const extension = file.name.split(".").pop()?.toLowerCase();
+
+      return (
+        extensionesPermitidas.includes(extension) &&
+        file.size <= 10 * 1024 * 1024
+      );
+    });
+
+    setArchivos((prev) => [...prev, ...archivosValidos]);
 
     e.target.value = "";
   };
 
-  const quitarArchivo = () => {
-    setArchivo(null);
+  const quitarArchivo = (index) => {
+    setArchivos((prev) =>
+      prev.filter((_, archivoIndex) => archivoIndex !== index),
+    );
   };
-
   const formatoPeso = (bytes) => {
     if (!bytes) return "0 KB";
 
@@ -78,79 +103,84 @@ export default function ChatInput({
       }}
     >
       <Stack spacing={1}>
-        {archivo && (
-          <Box
-            sx={{
-              display: "flex",
-              alignItems: "center",
-              gap: 1,
-              p: 1,
-              bgcolor: "#ffffff",
-              border: "1px solid #e5e7eb",
-              borderRadius: 2.5,
-              minWidth: 0,
-            }}
-          >
-            <Box
-              sx={{
-                width: 34,
-                height: 34,
-                borderRadius: 2,
-                bgcolor: "#eff6ff",
-                color: "#2563eb",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                flexShrink: 0,
-              }}
-            >
-              <InsertDriveFileIcon fontSize="small" />
-            </Box>
-
-            <Box sx={{ minWidth: 0, flex: 1 }}>
-              <Typography
+        {archivos.length > 0 && (
+          <Stack spacing={0.75}>
+            {archivos.map((archivo, index) => (
+              <Box
+                key={`${archivo.name}-${archivo.size}-${archivo.lastModified}-${index}`}
                 sx={{
-                  fontSize: { xs: 11.5, sm: 12 },
-                  fontWeight: 900,
-                  color: "#1f2937",
-                  overflow: "hidden",
-                  textOverflow: "ellipsis",
-                  whiteSpace: "nowrap",
-                  lineHeight: 1.25,
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 1,
+                  p: 1,
+                  bgcolor: "#ffffff",
+                  border: "1px solid #e5e7eb",
+                  borderRadius: 2.5,
+                  minWidth: 0,
                 }}
               >
-                {archivo.name}
-              </Typography>
+                <Box
+                  sx={{
+                    width: 34,
+                    height: 34,
+                    borderRadius: 2,
+                    bgcolor: "#eff6ff",
+                    color: "#2563eb",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    flexShrink: 0,
+                  }}
+                >
+                  <InsertDriveFileIcon fontSize="small" />
+                </Box>
 
-              <Typography
-                sx={{
-                  fontSize: 10.5,
-                  color: "#64748b",
-                  mt: 0.2,
-                }}
-              >
-                Archivo listo para enviar · {formatoPeso(archivo.size)}
-              </Typography>
-            </Box>
+                <Box sx={{ minWidth: 0, flex: 1 }}>
+                  <Typography
+                    sx={{
+                      fontSize: { xs: 11.5, sm: 12 },
+                      fontWeight: 900,
+                      color: "#1f2937",
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      whiteSpace: "nowrap",
+                      lineHeight: 1.25,
+                    }}
+                  >
+                    {archivo.name}
+                  </Typography>
 
-            <IconButton
-              size="small"
-              color="error"
-              onClick={quitarArchivo}
-              disabled={enviando}
-              sx={{
-                flexShrink: 0,
-                bgcolor: "#fff1f2",
-                width: 30,
-                height: 30,
-                "&:hover": {
-                  bgcolor: "#ffe4e6",
-                },
-              }}
-            >
-              <CloseIcon fontSize="small" />
-            </IconButton>
-          </Box>
+                  <Typography
+                    sx={{
+                      fontSize: 10.5,
+                      color: "#64748b",
+                      mt: 0.2,
+                    }}
+                  >
+                    Archivo listo para enviar · {formatoPeso(archivo.size)}
+                  </Typography>
+                </Box>
+
+                <IconButton
+                  size="small"
+                  color="error"
+                  onClick={() => quitarArchivo(index)}
+                  disabled={enviando}
+                  sx={{
+                    flexShrink: 0,
+                    bgcolor: "#fff1f2",
+                    width: 30,
+                    height: 30,
+                    "&:hover": {
+                      bgcolor: "#ffe4e6",
+                    },
+                  }}
+                >
+                  <CloseIcon fontSize="small" />
+                </IconButton>
+              </Box>
+            ))}
+          </Stack>
         )}
 
         {puedeGestionar && (
@@ -192,7 +222,7 @@ export default function ChatInput({
             minWidth: 0,
           }}
         >
-          <Tooltip title="Adjuntar archivo">
+          <Tooltip title="Adjuntar archivos">
             <span>
               <IconButton
                 component="label"
@@ -212,9 +242,10 @@ export default function ChatInput({
 
                 <input
                   hidden
+                  multiple
                   type="file"
-                  accept="*/*"
-                  onChange={seleccionarArchivo}
+                  accept=".jpg,.jpeg,.png,.webp,.pdf,.doc,.docx,.xls,.xlsx,.txt"
+                  onChange={seleccionarArchivos}
                 />
               </IconButton>
             </span>

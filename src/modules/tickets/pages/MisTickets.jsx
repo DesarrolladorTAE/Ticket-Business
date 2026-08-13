@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 
 import axiosCliente from "../../../services/axiosCliente";
 import NuevoTicketModal from "../components/NuevoTicketModal";
+import UserAvatar from "../../../components/UserAvatar";
 
 import {
   Alert,
@@ -151,6 +152,25 @@ function MisTickets() {
     } ${ticket.responsable.apellido_materno || ""}`
       .trim()
       .replace(/\s+/g, " ");
+  };
+
+  const responsableConAvatar = (ticket) => {
+    const responsable = ticket?.responsable;
+
+    if (!responsable) return null;
+
+    let avatarUrl = responsable.avatar_url || null;
+
+    if (!avatarUrl && responsable.avatar_path) {
+      const avatarPath = String(responsable.avatar_path).replace(/^\/+/, "");
+
+      avatarUrl = `${API_ORIGIN}/storage/${avatarPath}`;
+    }
+
+    return {
+      ...responsable,
+      avatar_url: avatarUrl,
+    };
   };
 
   const nombreCliente = (ticket) => {
@@ -684,7 +704,6 @@ function MisTickets() {
               size="small"
               color="inherit"
               onClick={limpiarFiltros}
-              
               sx={{
                 textTransform: "none",
                 fontWeight: 800,
@@ -1066,16 +1085,45 @@ function MisTickets() {
                           <VigenciaTicket ticket={ticket} />
                         </TableCell>
 
-                        <TableCell sx={bodyCell}>
-                          <Typography
-                            variant="body2"
-                            sx={{
-                              wordBreak: "break-word",
-                              lineHeight: 1.35,
-                            }}
-                          >
-                            {nombreAgente(ticket)}
-                          </Typography>
+                        <TableCell>
+                          {ticket.responsable ? (
+                            <Stack
+                              direction="row"
+                              spacing={1}
+                              alignItems="center"
+                              sx={{
+                                minWidth: 0,
+                              }}
+                            >
+                              <UserAvatar
+                                user={responsableConAvatar(ticket)}
+                                size={32}
+                                fontSize={11}
+                              />
+
+                              <Typography
+                                variant="body2"
+                                sx={{
+                                  wordBreak: "break-word",
+                                  lineHeight: 1.35,
+                                  fontWeight: 600,
+                                  minWidth: 0,
+                                }}
+                              >
+                                {nombreAgente(ticket)}
+                              </Typography>
+                            </Stack>
+                          ) : (
+                            <Typography
+                              variant="body2"
+                              color="text.secondary"
+                              sx={{
+                                lineHeight: 1.35,
+                              }}
+                            >
+                              Sin asignar
+                            </Typography>
+                          )}
                         </TableCell>
                       </TableRow>
                     ))}
@@ -1224,7 +1272,50 @@ function MisTickets() {
                       </Grid>
 
                       <Grid item xs={12} sm={6}>
-                        <InfoItem label="Agente" value={nombreAgente(ticket)} />
+                        <Box>
+                          <Typography
+                            variant="caption"
+                            color="text.secondary"
+                            fontWeight={800}
+                            display="block"
+                            sx={{ mb: 0.5 }}
+                          >
+                            Agente
+                          </Typography>
+
+                          {ticket.responsable ? (
+                            <Stack
+                              direction="row"
+                              spacing={1}
+                              alignItems="center"
+                            >
+                              <UserAvatar
+                                user={responsableConAvatar(ticket)}
+                                size={30}
+                                fontSize={10}
+                              />
+
+                              <Typography
+                                variant="body2"
+                                fontWeight={700}
+                                sx={{
+                                  wordBreak: "break-word",
+                                  lineHeight: 1.3,
+                                }}
+                              >
+                                {nombreAgente(ticket)}
+                              </Typography>
+                            </Stack>
+                          ) : (
+                            <Typography
+                              variant="body2"
+                              color="text.secondary"
+                              fontWeight={700}
+                            >
+                              Sin asignar
+                            </Typography>
+                          )}
+                        </Box>
                       </Grid>
                     </Grid>
 

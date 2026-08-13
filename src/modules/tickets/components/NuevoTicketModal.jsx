@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import axiosCliente from "../../../services/axiosCliente";
+import { useAuth } from "../../../auth/context/AuthContext";
 
 import {
   Alert,
@@ -45,7 +46,6 @@ const obtenerFechaVigenciaDefault = () => {
   return formatearFechaInput(fecha);
 };
 
-
 const normalizarRol = (rol) => {
   const valor = String(rol || "")
     .trim()
@@ -57,36 +57,6 @@ const normalizarRol = (rol) => {
   if (["client", "cliente"].includes(valor)) return "client";
 
   return valor;
-};
-
-const obtenerRolesUsuario = () => {
-  try {
-    const usuario = JSON.parse(localStorage.getItem("USUARIO") || "{}");
-
-    const roles = [];
-
-    if (Array.isArray(usuario?.roles)) {
-      usuario.roles.forEach((rol) => {
-        if (typeof rol === "string") {
-          roles.push(rol);
-        } else if (rol?.name) {
-          roles.push(rol.name);
-        }
-      });
-    }
-
-    if (usuario?.role) {
-      roles.push(usuario.role);
-    }
-
-    if (usuario?.company_role) {
-      roles.push(usuario.company_role);
-    }
-
-    return [...new Set(roles.map(normalizarRol).filter(Boolean))];
-  } catch {
-    return [];
-  }
 };
 
 const nombreCompletoCliente = (cliente) => {
@@ -110,7 +80,22 @@ const etiquetaCliente = (cliente) => {
 };
 
 function NuevoTicketModal({ open, onClose, onCreated }) {
-  const rolesUsuario = obtenerRolesUsuario();
+  const { user } = useAuth();
+
+  const rolesBase = Array.isArray(user?.roles) ? user.roles : [];
+
+  const rolEmpresa = user?.company_role || user?.role || null;
+
+  const rolesUsuario = rolEmpresa
+    ? [normalizarRol(rolEmpresa)]
+    : rolesBase
+        .map((rol) =>
+          typeof rol === "string"
+            ? normalizarRol(rol)
+            : normalizarRol(rol?.name),
+        )
+        .filter(Boolean);
+
   const esCliente = rolesUsuario.includes("client");
   const puedeAsignar = !esCliente;
 
@@ -196,11 +181,9 @@ function NuevoTicketModal({ open, onClose, onCreated }) {
         const etiquetasActivas = normalizar(resEtiquetas)
           .filter((etiqueta) => Number(etiqueta.estado) === 1)
           .sort((a, b) =>
-            String(a.nombre || "").localeCompare(
-              String(b.nombre || ""),
-              "es",
-              { sensitivity: "base" },
-            ),
+            String(a.nombre || "").localeCompare(String(b.nombre || ""), "es", {
+              sensitivity: "base",
+            }),
           );
 
         setClientes(clientesActivos);
@@ -340,7 +323,9 @@ function NuevoTicketModal({ open, onClose, onCreated }) {
       if (errores) {
         setError(Object.values(errores).flat().join(" "));
       } else {
-        setError(error.response?.data?.message || "No se pudo crear el ticket.");
+        setError(
+          error.response?.data?.message || "No se pudo crear el ticket.",
+        );
       }
     } finally {
       setCargando(false);
@@ -553,7 +538,8 @@ function NuevoTicketModal({ open, onClose, onCreated }) {
                   </Typography>
 
                   <Typography variant="caption" color="text.secondary">
-                    Selecciona la categoría, sección, prioridad y vigencia del ticket.
+                    Selecciona la categoría, sección, prioridad y vigencia del
+                    ticket.
                   </Typography>
                 </Box>
 
@@ -725,7 +711,8 @@ function NuevoTicketModal({ open, onClose, onCreated }) {
                   </Typography>
 
                   <Typography variant="caption" color="text.secondary">
-                    Puedes adjuntar una captura, documento o archivo relacionado.
+                    Puedes adjuntar una captura, documento o archivo
+                    relacionado.
                   </Typography>
                 </Box>
 

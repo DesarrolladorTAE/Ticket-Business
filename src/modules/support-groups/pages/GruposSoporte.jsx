@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import axiosCliente from "../../../services/axiosCliente";
+import { useAuth } from "../../../auth/context/AuthContext";
 
 import {
   Alert,
@@ -33,30 +34,25 @@ const normalizarTexto = (valor) => {
     .toLowerCase();
 };
 
-const obtenerUsuarioActual = () => {
-  try {
-    return JSON.parse(localStorage.getItem("USUARIO") || "{}");
-  } catch (error) {
-    return {};
-  }
-};
 
 function GruposSoporte() {
-  const usuario = obtenerUsuarioActual();
+const { user } = useAuth();
 
-  const rolesBase = Array.isArray(usuario?.roles) ? usuario.roles : [];
+const rolesBase = Array.isArray(user?.roles) ? user.roles : [];
 
-  const rolesNormalizados = [...rolesBase, usuario?.role, usuario?.company_role]
-    .filter(Boolean)
-    .map((rol) => normalizarRol(rol));
+const rolEmpresa = user?.company_role || user?.role || null;
 
-  const isAdmin =
-    rolesNormalizados.includes("administrador") ||
-    rolesNormalizados.includes("admin");
+const rolesNormalizados = rolEmpresa
+  ? [normalizarRol(rolEmpresa)]
+  : rolesBase.map((rol) => normalizarRol(rol));
 
-  const isSupervisor = rolesNormalizados.includes("supervisor");
+const isAdmin =
+  rolesNormalizados.includes("administrador") ||
+  rolesNormalizados.includes("admin");
 
-  const puedeGestionar = isAdmin || isSupervisor;
+const isSupervisor = rolesNormalizados.includes("supervisor");
+
+const puedeGestionar = isAdmin || isSupervisor;
 
   const [grupos, setGrupos] = useState([]);
   const [agentes, setAgentes] = useState([]);

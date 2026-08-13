@@ -1,10 +1,12 @@
 import { Routes, Route, Navigate } from "react-router-dom";
+import { useAuth } from "../auth/context/AuthContext";
 
 import IniciarSesion from "../auth/pages/IniciarSesion";
 import Registro from "../auth/pages/Registro";
 import OlvideContrasena from "../auth/pages/OlvideContrasena";
 import RestablecerContrasena from "../auth/pages/RestablecerContrasena";
 import VerificarCorreo from "../auth/pages/VerificarCorreo";
+
 
 import Dashboard from "../modules/tickets/pages/Dashboard";
 
@@ -42,30 +44,40 @@ const normalizarRol = (rol) => {
 };
 
 function RutaPorRol({ roles, children }) {
-  let usuario = null;
+  const { user, loading } = useAuth();
 
-  try {
-    usuario = JSON.parse(localStorage.getItem("USUARIO"));
-  } catch (error) {
-    usuario = null;
+  if (loading) {
+    return null;
   }
 
-  const token = localStorage.getItem("TOKEN");
-
-  if (!token || !usuario) {
+  if (!user) {
     return <Navigate to="/login" replace />;
   }
 
-  const rolesBase = Array.isArray(usuario?.roles) ? usuario.roles : [];
+  /*
+   * El rol de la empresa actual tiene prioridad.
+   *
+   * Esto es importante porque un usuario puede tener roles generales,
+   * pero dentro de la empresa actual debe respetarse company_role.
+   */
+  const companyRole = normalizarRol(
+    user?.company_role || user?.role,
+  );
 
-  const userRoles = [...rolesBase, usuario?.role, usuario?.company_role]
-    .filter(Boolean)
-    .map((rol) => normalizarRol(rol));
+  const rolesGlobales = Array.isArray(user?.roles)
+    ? user.roles.map((rol) => normalizarRol(rol))
+    : [];
 
-  const rolesPermitidos = roles.map((rol) => normalizarRol(rol));
+  const userRoles = companyRole
+    ? [companyRole]
+    : rolesGlobales;
 
-  const permitido = rolesPermitidos.some((rolPermitido) =>
-    userRoles.includes(rolPermitido),
+  const rolesPermitidos = roles.map((rol) =>
+    normalizarRol(rol),
+  );
+
+  const permitido = rolesPermitidos.some(
+    (rolPermitido) => userRoles.includes(rolPermitido),
   );
 
   if (!permitido) {

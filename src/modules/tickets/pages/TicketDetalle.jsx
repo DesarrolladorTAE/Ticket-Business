@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 
 import axiosCliente from "../../../services/axiosCliente";
+import { useAuth } from "../../../auth/context/AuthContext";
 import ChatMessages from "../components/chat/ChatMessages";
 import ChatInput from "../components/chat/ChatInput";
 import TicketHeader from "../components/TicketHeader";
@@ -38,13 +39,17 @@ export default function TicketDetalle() {
   const { id } = useParams();
   const navigate = useNavigate();
 
-  const usuario = JSON.parse(localStorage.getItem("USUARIO") || "{}");
+  const { user } = useAuth();
 
-  const rolesBase = Array.isArray(usuario?.roles) ? usuario.roles : [];
+  const rolesBase = Array.isArray(user?.roles) ? user.roles : [];
 
-  const rolesNormalizados = [...rolesBase, usuario?.role, usuario?.company_role]
-    .filter(Boolean)
-    .map((role) => String(role).trim().toLowerCase());
+  const rolEmpresa = user?.company_role || user?.role || null;
+
+  const rolesNormalizados = rolEmpresa
+    ? [String(rolEmpresa).trim().toLowerCase()]
+    : rolesBase
+        .map((role) => String(role).trim().toLowerCase())
+        .filter(Boolean);
 
   const isAdmin =
     rolesNormalizados.includes("administrador") ||
@@ -70,7 +75,7 @@ export default function TicketDetalle() {
   const [messages, setMessages] = useState([]);
   const [estados, setEstados] = useState([]);
   const [text, setText] = useState("");
-  const [archivo, setArchivo] = useState(null);
+  const [archivos, setArchivos] = useState([]);
   const [loading, setLoading] = useState(true);
   const [enviando, setEnviando] = useState(false);
   const [error, setError] = useState("");
@@ -94,6 +99,7 @@ export default function TicketDetalle() {
     Number(ticket?.status_id || ticket?.status?.id || 0) === 4;
 
   const chatRef = useRef(null);
+  const chatContainerRef = useRef(null);
 
   useEffect(() => {
     if (!id || Number.isNaN(Number(id))) {
@@ -112,7 +118,7 @@ export default function TicketDetalle() {
   useEffect(() => {
     if (ticketCerrado) {
       setText("");
-      setArchivo(null);
+      setArchivos([]);
     }
   }, [ticketCerrado]);
 
@@ -153,6 +159,20 @@ export default function TicketDetalle() {
     }
   };
 
+  const cargarMensajes = async () => {
+    if (!id) return;
+
+    try {
+      const response = await axiosCliente.get(`/tickets/${id}/messages`);
+
+      setMessages(response.data.data || []);
+    } catch (error) {
+      console.log("ERROR CARGAR MENSAJES:", error.response?.data || error);
+
+      setError("No se pudieron actualizar los mensajes.");
+    }
+  };
+
   const cargarAgentesDisponibles = async () => {
     if (!id || !puedeAsignarResponsable) return;
 
@@ -190,10 +210,7 @@ export default function TicketDetalle() {
       setEtiquetasDisponibles(catalogoRes.data?.data || []);
       setEtiquetasAsignadas(asignadasRes.data?.data || []);
     } catch (error) {
-      console.log(
-        "ERROR CARGAR ETIQUETAS:",
-        error.response?.data || error,
-      );
+      console.log("ERROR CARGAR ETIQUETAS:", error.response?.data || error);
 
       setEtiquetasDisponibles([]);
       setEtiquetasAsignadas([]);
@@ -231,10 +248,7 @@ export default function TicketDetalle() {
         showConfirmButton: false,
       });
     } catch (error) {
-      console.log(
-        "ERROR ASIGNAR ETIQUETA:",
-        error.response?.data || error,
-      );
+      console.log("ERROR ASIGNAR ETIQUETA:", error.response?.data || error);
 
       Swal.fire({
         icon: "error",
@@ -263,14 +277,9 @@ export default function TicketDetalle() {
     if (!confirmar.isConfirmed) return;
 
     try {
-      await axiosCliente.delete(
-        `/tickets/${id}/tags/${etiqueta.id}`,
-      );
+      await axiosCliente.delete(`/tickets/${id}/tags/${etiqueta.id}`);
 
-      if (
-        String(etiquetaSeleccionadaId) ===
-        String(etiqueta.id)
-      ) {
+      if (String(etiquetaSeleccionadaId) === String(etiqueta.id)) {
         setEtiquetaSeleccionadaId("");
       }
 
@@ -284,10 +293,7 @@ export default function TicketDetalle() {
         showConfirmButton: false,
       });
     } catch (error) {
-      console.log(
-        "ERROR QUITAR ETIQUETA:",
-        error.response?.data || error,
-      );
+      console.log("ERROR QUITAR ETIQUETA:", error.response?.data || error);
 
       Swal.fire({
         icon: "error",
@@ -303,8 +309,7 @@ export default function TicketDetalle() {
     (etiqueta) =>
       Boolean(etiqueta?.estado) &&
       !etiquetasAsignadas.some(
-        (asignada) =>
-          String(asignada.id) === String(etiqueta.id),
+        (asignada) => String(asignada.id) === String(etiqueta.id),
       ),
   );
 
@@ -645,60 +650,125 @@ export default function TicketDetalle() {
         };
     }
   };
+const enviarMensaje = async (visibility = "public") => {
+  if (ticketCerrado) {
+    await Swal.fire({
+      icon: "info",
+      title: "Ticket cerrado",
+      text: "Este ticket está cerrado. Para continuar, un administrador o supervisor debe cambiarlo a En proceso.",
+      confirmButtonText: "Entendido",
+    });
 
-  const enviarMensaje = async (visibility = "public") => {
-    if (ticketCerrado) {
-      await Swal.fire({
-        icon: "info",
-        title: "Ticket cerrado",
-        text: "Este ticket está cerrado. Para continuar, un administrador o supervisor debe cambiarlo a En proceso.",
-        confirmButtonText: "Entendido",
-      });
+    return;
+  }
 
-      return;
-    }
+  if (!text.trim() && archivos.length === 0) return;
 
-    if (!text.trim() && !archivo) return;
+  setEnviando(true);
+  setError("");
 
-    setEnviando(true);
-    setError("");
-
-    try {
-      const res = await axiosCliente.post(`/tickets/${id}/messages`, {
+  try {
+    /*
+     * Primero se crea un solo mensaje.
+     * Todos los archivos seleccionados quedarán
+     * asociados a este mismo message_id.
+     */
+    const res = await axiosCliente.post(
+      `/tickets/${id}/messages`,
+      {
         message: text.trim(),
         visibility,
-      });
+      },
+    );
 
-      const messageId = res.data.data.id;
+    const messageId = res.data.data.id;
 
-      if (archivo) {
+    const archivosFallidos = [];
+
+    /*
+     * Cada archivo se sube mediante el endpoint
+     * existente. Si uno falla, continuamos con
+     * los demás para no perder los que sí pueden
+     * guardarse.
+     */
+    for (const archivo of archivos) {
+      try {
         const formData = new FormData();
 
         formData.append("ticket_id", id);
         formData.append("message_id", messageId);
         formData.append("archivo", archivo);
 
-        await axiosCliente.post("/ticket-attachments", formData, {
-          headers: {
-            "Content-Type": "multipart/form-data",
+        await axiosCliente.post(
+          "/ticket-attachments",
+          formData,
+          {
+            headers: {
+              "Content-Type": "multipart/form-data",
+            },
           },
-        });
+        );
+      } catch (errorArchivo) {
+        console.log(
+          `ERROR SUBIR ARCHIVO ${archivo.name}:`,
+          errorArchivo.response?.data || errorArchivo,
+        );
+
+        archivosFallidos.push(archivo.name);
       }
-
-      setText("");
-      setArchivo(null);
-
-      cargarTodo();
-    } catch (error) {
-      console.log("ERROR ENVIAR MENSAJE:", error.response?.data || error);
-
-      setError(
-        error.response?.data?.message || "No se pudo enviar el mensaje.",
-      );
-    } finally {
-      setEnviando(false);
     }
-  };
+
+    /*
+     * Limpiamos el formulario porque el mensaje
+     * ya fue creado correctamente.
+     */
+    setText("");
+    setArchivos([]);
+
+    /*
+     * Solamente actualizamos la conversación.
+     * No se vuelve a cargar todo el ticket.
+     */
+    await cargarMensajes();
+
+    /*
+     * Si uno o más archivos fallaron, informamos
+     * claramente que el mensaje sí fue enviado.
+     */
+    if (archivosFallidos.length > 0) {
+      await Swal.fire({
+        icon: "warning",
+        title: "Mensaje enviado",
+        html: `
+          <div style="text-align:left;">
+            <p>El mensaje fue enviado, pero algunos archivos no pudieron adjuntarse:</p>
+            <ul>
+              ${archivosFallidos
+                .map(
+                  (nombre) =>
+                    `<li>${nombre}</li>`,
+                )
+                .join("")}
+            </ul>
+          </div>
+        `,
+        confirmButtonText: "Entendido",
+      });
+    }
+  } catch (error) {
+    console.log(
+      "ERROR ENVIAR MENSAJE:",
+      error.response?.data || error,
+    );
+
+    setError(
+      error.response?.data?.message ||
+        "No se pudo enviar el mensaje.",
+    );
+  } finally {
+    setEnviando(false);
+  }
+};
 
   const eliminarTicket = async () => {
     const confirmar = await Swal.fire({
@@ -738,7 +808,7 @@ export default function TicketDetalle() {
 
     try {
       await axiosCliente.delete(`/ticket-messages/${mensaje.id}`);
-      cargarTodo();
+      await cargarMensajes();
     } catch (error) {
       setError(error.response?.data?.message || "No se pudo eliminar mensaje.");
     }
@@ -792,14 +862,18 @@ export default function TicketDetalle() {
 
   const scrollBottom = () => {
     setTimeout(() => {
-      chatRef.current?.scrollIntoView({
+      const contenedor = chatContainerRef.current;
+
+      if (!contenedor) return;
+
+      contenedor.scrollTo({
+        top: contenedor.scrollHeight,
         behavior: "smooth",
-        block: "end",
       });
     }, 100);
   };
 
-  const esMio = (msg) => Number(msg.user_id) === Number(usuario?.id);
+  const esMio = (msg) => Number(msg.user_id) === Number(user?.id);
 
   const inicial = (msg) => (msg.user?.name || "U").charAt(0).toUpperCase();
 
@@ -816,34 +890,28 @@ export default function TicketDetalle() {
     );
   };
 
-const puedeEliminarMensaje = (msg) => {
-  /*
-   * Los mensajes del acceso compartido viven en
-   * ticket_public_messages, no en ticket_messages.
-   *
-   * Todavía no tenemos endpoint de eliminación
-   * para ellos.
-   */
-  if (
-    msg?.source === "public_access" ||
-    msg?.author_type === "external"
-  ) {
+  const puedeEliminarMensaje = (msg) => {
+    /*
+     * Los mensajes del acceso compartido viven en
+     * ticket_public_messages, no en ticket_messages.
+     *
+     * Todavía no tenemos endpoint de eliminación
+     * para ellos.
+     */
+    if (msg?.source === "public_access" || msg?.author_type === "external") {
+      return false;
+    }
+
+    if (isAdmin || isSupervisor) {
+      return true;
+    }
+
+    if (isAgent || isClient) {
+      return Number(msg.user_id) === Number(user?.id);
+    }
+
     return false;
-  }
-
-  if (isAdmin || isSupervisor) {
-    return true;
-  }
-
-  if (isAgent || isClient) {
-    return (
-      Number(msg.user_id) ===
-      Number(usuario?.id)
-    );
-  }
-
-  return false;
-};
+  };
 
   if (loading) {
     return (
@@ -1281,10 +1349,7 @@ const puedeEliminarMensaje = (msg) => {
             >
               <Box>
                 <Stack direction="row" spacing={1} alignItems="center">
-                  <LocalOfferIcon
-                    fontSize="small"
-                    sx={{ color: "#2563eb" }}
-                  />
+                  <LocalOfferIcon fontSize="small" sx={{ color: "#2563eb" }} />
 
                   <Typography
                     variant="subtitle1"
@@ -1341,12 +1406,7 @@ const puedeEliminarMensaje = (msg) => {
                   </Typography>
                 </Stack>
               ) : etiquetasAsignadas.length > 0 ? (
-                <Stack
-                  direction="row"
-                  spacing={0.8}
-                  useFlexGap
-                  flexWrap="wrap"
-                >
+                <Stack direction="row" spacing={0.8} useFlexGap flexWrap="wrap">
                   {etiquetasAsignadas.map((etiqueta) => (
                     <Chip
                       key={etiqueta.id}
@@ -1386,9 +1446,7 @@ const puedeEliminarMensaje = (msg) => {
                   etiquetasParaAsignar.length === 0
                 }
               >
-                <InputLabel id="etiqueta-select-label">
-                  Etiqueta
-                </InputLabel>
+                <InputLabel id="etiqueta-select-label">Etiqueta</InputLabel>
 
                 <Select
                   labelId="etiqueta-select-label"
@@ -1403,10 +1461,7 @@ const puedeEliminarMensaje = (msg) => {
                   </MenuItem>
 
                   {etiquetasParaAsignar.map((etiqueta) => (
-                    <MenuItem
-                      key={etiqueta.id}
-                      value={String(etiqueta.id)}
-                    >
+                    <MenuItem key={etiqueta.id} value={String(etiqueta.id)}>
                       {etiqueta.nombre}
                     </MenuItem>
                   ))}
@@ -1438,13 +1493,12 @@ const puedeEliminarMensaje = (msg) => {
               </Button>
             </Stack>
 
-            {!cargandoEtiquetas &&
-              etiquetasDisponibles.length === 0 && (
-                <Alert severity="info">
-                  No hay etiquetas activas disponibles. Un administrador o
-                  supervisor debe crearlas desde el apartado Etiquetas.
-                </Alert>
-              )}
+            {!cargandoEtiquetas && etiquetasDisponibles.length === 0 && (
+              <Alert severity="info">
+                No hay etiquetas activas disponibles. Un administrador o
+                supervisor debe crearlas desde el apartado Etiquetas.
+              </Alert>
+            )}
 
             {!cargandoEtiquetas &&
               etiquetasDisponibles.length > 0 &&
@@ -1460,6 +1514,7 @@ const puedeEliminarMensaje = (msg) => {
       )}
 
       <Paper
+        ref={chatContainerRef}
         sx={{
           height: {
             xs: "58dvh",
@@ -1537,8 +1592,8 @@ const puedeEliminarMensaje = (msg) => {
           <ChatInput
             text={text}
             setText={setText}
-            archivo={archivo}
-            setArchivo={setArchivo}
+            archivos={archivos}
+            setArchivos={setArchivos}
             puedeGestionar={puedeGestionar}
             enviando={enviando}
             enviarMensaje={enviarMensaje}

@@ -39,6 +39,8 @@ import LocalOfferIcon from "@mui/icons-material/LocalOffer";
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
 
 import axiosCliente from "../services/axiosCliente";
+import { useAuth } from "../auth/context/AuthContext";
+import UserAvatar from "../components/UserAvatar";
 
 const drawerExpandedWidth = 270;
 const drawerCollapsedWidth = 78;
@@ -79,6 +81,9 @@ const obtenerRolVisible = (role) => {
 function AdminLayout() {
   const navigate = useNavigate();
   const theme = useTheme();
+
+  const { user, logout } = useAuth();
+
   const isMobile = useMediaQuery(theme.breakpoints.down("md"));
 
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -89,17 +94,20 @@ function AdminLayout() {
   const [unreadCount, setUnreadCount] = useState(0);
   const [notificationsLoading, setNotificationsLoading] = useState(false);
 
-  const usuario = JSON.parse(localStorage.getItem("USUARIO") || "null");
+  const rolesBase = Array.isArray(user?.roles) ? user.roles : [];
 
-  const rolesBase = Array.isArray(usuario?.roles) ? usuario.roles : [];
+  const rolEmpresa = user?.company_role || user?.role || null;
 
-  const rolesNormalizados = [...rolesBase, usuario?.role, usuario?.company_role]
-    .filter(Boolean)
-    .map((role) => normalizarRol(role));
+  const rolesNormalizados = rolEmpresa
+    ? [normalizarRol(rolEmpresa)]
+    : rolesBase.map((role) => normalizarRol(role));
 
-  const rolVisible = obtenerRolVisible(
-    rolesBase?.[0] || usuario?.role || usuario?.company_role,
-  );
+  const rolVisible = obtenerRolVisible(rolEmpresa || rolesBase?.[0]);
+
+  const nombreCompleto =
+    [user?.name, user?.apellido_paterno, user?.apellido_materno]
+      .filter(Boolean)
+      .join(" ") || "Usuario";
 
   const notificationsOpen = Boolean(notificationAnchorEl);
 
@@ -109,10 +117,9 @@ function AdminLayout() {
     ? drawerCollapsedWidth
     : drawerExpandedWidth;
 
-  const cerrarSesion = () => {
-    localStorage.removeItem("TOKEN");
-    localStorage.removeItem("USUARIO");
-    navigate("/login");
+  const cerrarSesion = async () => {
+    await logout();
+    navigate("/login", { replace: true });
   };
 
   const toggleSidebar = () => {
@@ -560,8 +567,8 @@ function AdminLayout() {
       {isMobile && (
         <>
           <Box sx={{ px: 2, py: 2 }}>
-            <Typography fontWeight={800} noWrap>
-              {usuario?.name || "Usuario"}
+            <Typography fontWeight={800} noWrap title={nombreCompleto}>
+              {nombreCompleto}
             </Typography>
 
             <Chip
@@ -769,12 +776,49 @@ function AdminLayout() {
             <Stack direction="row" alignItems="center" spacing={1.2}>
               <IconButton
                 onClick={abrirNotificaciones}
+                aria-label={
+                  unreadCount > 0
+                    ? `${unreadCount} notificación(es) sin leer`
+                    : "Notificaciones"
+                }
                 sx={{
                   border: "1px solid #e5e7eb",
                   borderRadius: 2,
-                  bgcolor: "#f8fafc",
+                  bgcolor: unreadCount > 0 ? "#fff7ed" : "#f8fafc",
+                  color: unreadCount > 0 ? "#ea580c" : "#334155",
+                  transition: "all 0.2s ease",
+
                   "&:hover": {
-                    bgcolor: "#eef2ff",
+                    bgcolor: unreadCount > 0 ? "#ffedd5" : "#eef2ff",
+                  },
+
+                  "& .notification-bell": {
+                    transformOrigin: "50% 15%",
+                    animation:
+                      unreadCount > 0
+                        ? "notificationBell 2.8s ease-in-out infinite"
+                        : "none",
+                  },
+
+                  "@keyframes notificationBell": {
+                    "0%, 72%, 100%": {
+                      transform: "rotate(0deg)",
+                    },
+                    "76%": {
+                      transform: "rotate(14deg)",
+                    },
+                    "80%": {
+                      transform: "rotate(-12deg)",
+                    },
+                    "84%": {
+                      transform: "rotate(9deg)",
+                    },
+                    "88%": {
+                      transform: "rotate(-6deg)",
+                    },
+                    "92%": {
+                      transform: "rotate(0deg)",
+                    },
                   },
                 }}
               >
@@ -784,7 +828,7 @@ function AdminLayout() {
                   max={99}
                   invisible={unreadCount <= 0}
                 >
-                  <NotificationsIcon />
+                  <NotificationsIcon className="notification-bell" />
                 </Badge>
               </IconButton>
 
@@ -949,17 +993,58 @@ function AdminLayout() {
               </Menu>
 
               {!isMobile && (
-                <Box sx={{ textAlign: "right", maxWidth: 240 }}>
-                  <Typography fontWeight={800} noWrap>
-                    {usuario?.name || "Usuario"}
-                  </Typography>
-
-                  <Chip
-                    label={rolVisible}
-                    size="small"
-                    sx={{ mt: 0.5, fontWeight: 700 }}
+                <Stack
+                  direction="row"
+                  spacing={1.2}
+                  alignItems="center"
+                  sx={{
+                    minWidth: 0,
+                    maxWidth: 430,
+                  }}
+                >
+                  <UserAvatar
+                    user={user}
+                    size={42}
+                    fontSize={14}
+                    sx={{
+                      boxShadow: "0 0 0 3px #eff6ff",
+                    }}
                   />
-                </Box>
+
+                  <Box
+                    sx={{
+                      minWidth: 0,
+                      textAlign: "left",
+                    }}
+                  >
+                    <Typography
+                      fontWeight={900}
+                      noWrap
+                      title={nombreCompleto}
+                      sx={{
+                        color: "#0f172a",
+                        fontSize: 14,
+                        lineHeight: 1.25,
+                        maxWidth: 300,
+                      }}
+                    >
+                      {nombreCompleto}
+                    </Typography>
+
+                    <Typography
+                      variant="caption"
+                      noWrap
+                      sx={{
+                        display: "block",
+                        color: "#64748b",
+                        fontWeight: 700,
+                        mt: 0.2,
+                      }}
+                    >
+                      {rolVisible}
+                    </Typography>
+                  </Box>
+                </Stack>
               )}
             </Stack>
           </Toolbar>

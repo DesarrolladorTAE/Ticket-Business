@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link as RouterLink, useNavigate } from "react-router-dom";
 
 import axiosCliente from "../../services/axiosCliente";
+import { useAuth } from "../context/AuthContext";
 
 import {
   Alert,
@@ -33,6 +34,7 @@ function IniciarSesion() {
     password: "",
   });
 
+  const { refreshUser } = useAuth();
   const [mostrarPassword, setMostrarPassword] = useState(false);
 
   const [error, setError] = useState("");
@@ -88,7 +90,7 @@ function IniciarSesion() {
 
       localStorage.setItem("TOKEN", respuesta.data.token);
 
-      localStorage.setItem("USUARIO", JSON.stringify(user));
+      await refreshUser();
 
       if (
         roles.includes("Administrador") ||
