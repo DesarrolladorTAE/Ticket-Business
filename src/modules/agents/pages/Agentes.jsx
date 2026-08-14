@@ -27,6 +27,8 @@ import {
   TablePagination,
   TableRow,
   TextField,
+  ToggleButton,
+  ToggleButtonGroup,
   Tooltip,
   Typography,
   useMediaQuery,
@@ -920,6 +922,7 @@ function AgentesPagination({
 }
 
 function CrearAgenteDialog({ open, onClose, onCreated }) {
+  const [modo, setModo] = useState("new");
   const [formulario, setFormulario] = useState(formularioInicial);
   const [error, setError] = useState("");
   const [cargando, setCargando] = useState(false);
@@ -928,24 +931,34 @@ function CrearAgenteDialog({ open, onClose, onCreated }) {
   const cerrar = () => {
     if (cargando) return;
 
+    setModo("new");
     setFormulario(formularioInicial);
     setError("");
     setMostrarPassword(false);
     onClose();
   };
 
+  const cambiarModo = (_, nuevoModo) => {
+    if (!nuevoModo || cargando) return;
+
+    setModo(nuevoModo);
+    setFormulario(formularioInicial);
+    setError("");
+    setMostrarPassword(false);
+  };
+
   const cambiarValor = (e) => {
-    setFormulario({
-      ...formulario,
+    setFormulario((actual) => ({
+      ...actual,
       [e.target.name]: e.target.value,
-    });
+    }));
   };
 
   const cambiarTelefono = (e) => {
-    setFormulario({
-      ...formulario,
+    setFormulario((actual) => ({
+      ...actual,
       telefono: e.target.value.replace(/\D/g, "").slice(0, 10),
-    });
+    }));
   };
 
   const crearAgente = async (e) => {
@@ -953,20 +966,55 @@ function CrearAgenteDialog({ open, onClose, onCreated }) {
 
     setError("");
 
-    if (formulario.telefono.length !== 10) {
-      setError("El teléfono debe tener exactamente 10 dígitos.");
+    const email = formulario.email.trim();
+
+    if (!email) {
+      setError("Ingresa el correo electrónico.");
       return;
+    }
+
+    if (modo === "new") {
+      if (formulario.telefono.length !== 10) {
+        setError("El teléfono debe tener exactamente 10 dígitos.");
+        return;
+      }
+
+      if (formulario.password.length < 8) {
+        setError("La contraseña debe contener al menos 8 caracteres.");
+        return;
+      }
     }
 
     setCargando(true);
 
     try {
-      await axiosCliente.post("/agents", formulario);
+      const payload =
+        modo === "existing"
+          ? {
+              email,
+            }
+          : {
+              name: formulario.name.trim(),
+              apellido_paterno: formulario.apellido_paterno.trim(),
+              apellido_materno: formulario.apellido_materno.trim(),
+              telefono: formulario.telefono,
+              email,
+              password: formulario.password,
+            };
 
+      const response = await axiosCliente.post("/agents", payload);
+
+      setModo("new");
       setFormulario(formularioInicial);
       setError("");
+      setMostrarPassword(false);
 
-      await onCreated();
+      await onCreated(
+        response.data?.message ||
+          (modo === "existing"
+            ? "El usuario fue agregado como agente a esta empresa."
+            : "Agente creado correctamente."),
+      );
 
       onClose();
     } catch (error) {
@@ -977,12 +1025,19 @@ function CrearAgenteDialog({ open, onClose, onCreated }) {
       if (errores) {
         setError(Object.values(errores).flat().join(" "));
       } else {
-        setError(error.response?.data?.message || "No se pudo crear el agente");
+        setError(
+          error.response?.data?.message ||
+            (modo === "existing"
+              ? "No se pudo agregar la cuenta existente."
+              : "No se pudo crear el agente."),
+        );
       }
     } finally {
       setCargando(false);
     }
   };
+
+  const esCuentaExistente = modo === "existing";
 
   return (
     <Dialog
@@ -1014,175 +1069,264 @@ function CrearAgenteDialog({ open, onClose, onCreated }) {
               color: "#64748b",
             }}
           >
-            Registra un nuevo usuario agente para atención y seguimiento de
-            tickets.
+            Crea una cuenta nueva o agrega como agente a una persona que ya
+            utiliza The Business Ticket.
           </Typography>
+
+          <Paper
+            variant="outlined"
+            sx={{
+              p: 1.5,
+              borderRadius: 3,
+              borderColor: "#e5e7eb",
+              bgcolor: "#f8fafc",
+            }}
+          >
+            <Stack spacing={1.2}>
+              <Typography fontWeight={900} sx={{ fontSize: 14 }}>
+                ¿Cómo deseas agregar al agente?
+              </Typography>
+
+              <ToggleButtonGroup
+                exclusive
+                fullWidth
+                size="small"
+                value={modo}
+                onChange={cambiarModo}
+                disabled={cargando}
+                sx={{
+                  gap: 1,
+                  "& .MuiToggleButtonGroup-grouped": {
+                    border: "1px solid #cbd5e1 !important",
+                    borderRadius: "8px !important",
+                    textTransform: "none",
+                    fontWeight: 800,
+                  },
+                }}
+              >
+                <ToggleButton value="new">Cuenta nueva</ToggleButton>
+
+                <ToggleButton value="existing">Cuenta existente</ToggleButton>
+              </ToggleButtonGroup>
+            </Stack>
+          </Paper>
 
           {error && <Alert severity="error">{error}</Alert>}
 
           <Box component="form" id="crear-agente-form" onSubmit={crearAgente}>
-            <Paper
-              variant="outlined"
-              sx={{
-                p: { xs: 1.5, md: 2 },
-                borderRadius: 3,
-                borderColor: "#e5e7eb",
-                bgcolor: "#ffffff",
-              }}
-            >
-              <Stack spacing={2}>
-                <Box>
-                  <Typography fontWeight={900} sx={{ fontSize: 15 }}>
-                    Información personal
-                  </Typography>
+            {esCuentaExistente ? (
+              <Paper
+                variant="outlined"
+                sx={{
+                  p: { xs: 1.5, md: 2 },
+                  borderRadius: 3,
+                  borderColor: "#e5e7eb",
+                  bgcolor: "#ffffff",
+                }}
+              >
+                <Stack spacing={2}>
+                  <Box>
+                    <Typography fontWeight={900} sx={{ fontSize: 15 }}>
+                      Agregar cuenta existente
+                    </Typography>
 
-                  <Typography variant="caption" color="text.secondary">
-                    Estos datos identifican al agente dentro del sistema.
-                  </Typography>
-                </Box>
+                    <Typography variant="caption" color="text.secondary">
+                      Busca a la persona mediante el correo que ya utiliza para
+                      iniciar sesión.
+                    </Typography>
+                  </Box>
 
-                <Grid container spacing={2}>
-                  <Grid item xs={12} md={4}>
-                    <TextField
-                      fullWidth
-                      size="small"
-                      label="Nombre(s)"
-                      name="name"
-                      value={formulario.name}
-                      onChange={cambiarValor}
-                      required
-                      disabled={cargando}
-                    />
-                  </Grid>
+                  <Alert severity="info">
+                    Sus datos personales y contraseña actuales no serán
+                    modificados. Solo se agregará como agente de esta empresa.
+                  </Alert>
 
-                  <Grid item xs={12} md={4}>
-                    <TextField
-                      fullWidth
-                      size="small"
-                      label="Apellido paterno"
-                      name="apellido_paterno"
-                      value={formulario.apellido_paterno}
-                      onChange={cambiarValor}
-                      required
-                      disabled={cargando}
-                    />
-                  </Grid>
+                  <TextField
+                    fullWidth
+                    size="small"
+                    label="Correo electrónico"
+                    name="email"
+                    type="email"
+                    value={formulario.email}
+                    onChange={cambiarValor}
+                    required
+                    disabled={cargando}
+                    autoComplete="email"
+                    helperText="Ingresa el correo de la cuenta que ya existe."
+                  />
+                </Stack>
+              </Paper>
+            ) : (
+              <>
+                <Paper
+                  variant="outlined"
+                  sx={{
+                    p: { xs: 1.5, md: 2 },
+                    borderRadius: 3,
+                    borderColor: "#e5e7eb",
+                    bgcolor: "#ffffff",
+                  }}
+                >
+                  <Stack spacing={2}>
+                    <Box>
+                      <Typography fontWeight={900} sx={{ fontSize: 15 }}>
+                        Información personal
+                      </Typography>
 
-                  <Grid item xs={12} md={4}>
-                    <TextField
-                      fullWidth
-                      size="small"
-                      label="Apellido materno"
-                      name="apellido_materno"
-                      value={formulario.apellido_materno}
-                      onChange={cambiarValor}
-                      required
-                      disabled={cargando}
-                    />
-                  </Grid>
-                </Grid>
-              </Stack>
-            </Paper>
+                      <Typography variant="caption" color="text.secondary">
+                        Estos datos identifican al agente dentro del sistema.
+                      </Typography>
+                    </Box>
 
-            <Divider sx={{ my: 2.5 }} />
+                    <Grid container spacing={2}>
+                      <Grid item xs={12} md={4}>
+                        <TextField
+                          fullWidth
+                          size="small"
+                          label="Nombre(s)"
+                          name="name"
+                          value={formulario.name}
+                          onChange={cambiarValor}
+                          required
+                          disabled={cargando}
+                        />
+                      </Grid>
 
-            <Paper
-              variant="outlined"
-              sx={{
-                p: { xs: 1.5, md: 2 },
-                borderRadius: 3,
-                borderColor: "#e5e7eb",
-                bgcolor: "#ffffff",
-              }}
-            >
-              <Stack spacing={2}>
-                <Box>
-                  <Typography fontWeight={900} sx={{ fontSize: 15 }}>
-                    Contacto y acceso
-                  </Typography>
+                      <Grid item xs={12} md={4}>
+                        <TextField
+                          fullWidth
+                          size="small"
+                          label="Apellido paterno"
+                          name="apellido_paterno"
+                          value={formulario.apellido_paterno}
+                          onChange={cambiarValor}
+                          required
+                          disabled={cargando}
+                        />
+                      </Grid>
 
-                  <Typography variant="caption" color="text.secondary">
-                    El correo y la contraseña se usarán para iniciar sesión.
-                  </Typography>
-                </Box>
+                      <Grid item xs={12} md={4}>
+                        <TextField
+                          fullWidth
+                          size="small"
+                          label="Apellido materno"
+                          name="apellido_materno"
+                          value={formulario.apellido_materno}
+                          onChange={cambiarValor}
+                          required
+                          disabled={cargando}
+                        />
+                      </Grid>
+                    </Grid>
+                  </Stack>
+                </Paper>
 
-                <Grid container spacing={2}>
-                  <Grid item xs={12} md={6}>
-                    <TextField
-                      fullWidth
-                      size="small"
-                      label="Teléfono"
-                      name="telefono"
-                      value={formulario.telefono}
-                      onChange={cambiarTelefono}
-                      required
-                      disabled={cargando}
-                      inputProps={{
-                        maxLength: 10,
-                        inputMode: "numeric",
-                      }}
-                      helperText="Debe contener exactamente 10 dígitos"
-                    />
-                  </Grid>
+                <Divider sx={{ my: 2.5 }} />
 
-                  <Grid item xs={12} md={6}>
-                    <TextField
-                      fullWidth
-                      size="small"
-                      label="Correo electrónico"
-                      name="email"
-                      type="email"
-                      value={formulario.email}
-                      onChange={cambiarValor}
-                      required
-                      disabled={cargando}
-                    />
-                  </Grid>
+                <Paper
+                  variant="outlined"
+                  sx={{
+                    p: { xs: 1.5, md: 2 },
+                    borderRadius: 3,
+                    borderColor: "#e5e7eb",
+                    bgcolor: "#ffffff",
+                  }}
+                >
+                  <Stack spacing={2}>
+                    <Box>
+                      <Typography fontWeight={900} sx={{ fontSize: 15 }}>
+                        Contacto y acceso
+                      </Typography>
 
-                  <Grid item xs={12} md={6}>
-                    <TextField
-                      fullWidth
-                      size="small"
-                      label="Contraseña"
-                      name="password"
-                      type={mostrarPassword ? "text" : "password"}
-                      value={formulario.password}
-                      onChange={cambiarValor}
-                      required
-                      disabled={cargando}
-                      helperText="Define la contraseña inicial del agente"
-                      slotProps={{
-                        input: {
-                          endAdornment: (
-                            <InputAdornment position="end">
-                              <IconButton
-                                edge="end"
-                                onClick={() =>
-                                  setMostrarPassword((prev) => !prev)
-                                }
-                                onMouseDown={(event) => event.preventDefault()}
-                                disabled={cargando}
-                                aria-label={
-                                  mostrarPassword
-                                    ? "Ocultar contraseña"
-                                    : "Mostrar contraseña"
-                                }
-                              >
-                                {mostrarPassword ? (
-                                  <VisibilityOffIcon />
-                                ) : (
-                                  <VisibilityIcon />
-                                )}
-                              </IconButton>
-                            </InputAdornment>
-                          ),
-                        },
-                      }}
-                    />
-                  </Grid>
-                </Grid>
-              </Stack>
-            </Paper>
+                      <Typography variant="caption" color="text.secondary">
+                        El correo y la contraseña se usarán para iniciar sesión.
+                      </Typography>
+                    </Box>
+
+                    <Grid container spacing={2}>
+                      <Grid item xs={12} md={6}>
+                        <TextField
+                          fullWidth
+                          size="small"
+                          label="Teléfono"
+                          name="telefono"
+                          value={formulario.telefono}
+                          onChange={cambiarTelefono}
+                          required
+                          disabled={cargando}
+                          inputProps={{
+                            maxLength: 10,
+                            inputMode: "numeric",
+                          }}
+                          helperText="Debe contener exactamente 10 dígitos"
+                        />
+                      </Grid>
+
+                      <Grid item xs={12} md={6}>
+                        <TextField
+                          fullWidth
+                          size="small"
+                          label="Correo electrónico"
+                          name="email"
+                          type="email"
+                          value={formulario.email}
+                          onChange={cambiarValor}
+                          required
+                          disabled={cargando}
+                        />
+                      </Grid>
+
+                      <Grid item xs={12} md={6}>
+                        <TextField
+                          fullWidth
+                          size="small"
+                          label="Contraseña"
+                          name="password"
+                          type={mostrarPassword ? "text" : "password"}
+                          value={formulario.password}
+                          onChange={cambiarValor}
+                          required
+                          disabled={cargando}
+                          inputProps={{
+                            minLength: 8,
+                          }}
+                          helperText="Define la contraseña inicial del agente"
+                          slotProps={{
+                            input: {
+                              endAdornment: (
+                                <InputAdornment position="end">
+                                  <IconButton
+                                    edge="end"
+                                    onClick={() =>
+                                      setMostrarPassword((prev) => !prev)
+                                    }
+                                    onMouseDown={(event) =>
+                                      event.preventDefault()
+                                    }
+                                    disabled={cargando}
+                                    aria-label={
+                                      mostrarPassword
+                                        ? "Ocultar contraseña"
+                                        : "Mostrar contraseña"
+                                    }
+                                  >
+                                    {mostrarPassword ? (
+                                      <VisibilityOffIcon />
+                                    ) : (
+                                      <VisibilityIcon />
+                                    )}
+                                  </IconButton>
+                                </InputAdornment>
+                              ),
+                            },
+                          }}
+                        />
+                      </Grid>
+                    </Grid>
+                  </Stack>
+                </Paper>
+              </>
+            )}
           </Box>
         </Stack>
       </DialogContent>
@@ -1218,7 +1362,13 @@ function CrearAgenteDialog({ open, onClose, onCreated }) {
             },
           }}
         >
-          {cargando ? "Creando..." : "Crear agente"}
+          {cargando
+            ? esCuentaExistente
+              ? "Agregando..."
+              : "Creando..."
+            : esCuentaExistente
+              ? "Agregar agente"
+              : "Crear agente"}
         </Button>
       </DialogActions>
     </Dialog>
@@ -1226,10 +1376,15 @@ function CrearAgenteDialog({ open, onClose, onCreated }) {
 }
 
 function EditarAgenteDialog({ open, agent, onClose, onUpdated }) {
-  const [formulario, setFormulario] = useState(formularioInicial);
+  const [formulario, setFormulario] = useState({
+    name: "",
+    apellido_paterno: "",
+    apellido_materno: "",
+    telefono: "",
+  });
+
   const [error, setError] = useState("");
   const [cargando, setCargando] = useState(false);
-  const [mostrarPassword, setMostrarPassword] = useState(false);
 
   useEffect(() => {
     if (open && agent) {
@@ -1238,36 +1393,38 @@ function EditarAgenteDialog({ open, agent, onClose, onUpdated }) {
         apellido_paterno: agent.apellido_paterno || "",
         apellido_materno: agent.apellido_materno || "",
         telefono: agent.telefono || "",
-        email: agent.email || "",
-        password: "",
       });
 
       setError("");
-      setMostrarPassword(false);
     }
   }, [open, agent]);
 
   const cerrar = () => {
     if (cargando) return;
 
-    setFormulario(formularioInicial);
+    setFormulario({
+      name: "",
+      apellido_paterno: "",
+      apellido_materno: "",
+      telefono: "",
+    });
+
     setError("");
-    setMostrarPassword(false);
     onClose();
   };
 
   const cambiarValor = (e) => {
-    setFormulario({
-      ...formulario,
+    setFormulario((actual) => ({
+      ...actual,
       [e.target.name]: e.target.value,
-    });
+    }));
   };
 
   const cambiarTelefono = (e) => {
-    setFormulario({
-      ...formulario,
+    setFormulario((actual) => ({
+      ...actual,
       telefono: e.target.value.replace(/\D/g, "").slice(0, 10),
-    });
+    }));
   };
 
   const actualizarAgente = async (e) => {
@@ -1286,32 +1443,39 @@ function EditarAgenteDialog({ open, agent, onClose, onUpdated }) {
 
     try {
       const payload = {
-        name: formulario.name,
-        apellido_paterno: formulario.apellido_paterno,
-        apellido_materno: formulario.apellido_materno,
-        telefono: formulario.telefono,
-        email: formulario.email,
+        name: formulario.name.trim(),
+        apellido_paterno: formulario.apellido_paterno.trim(),
+        apellido_materno: formulario.apellido_materno.trim(),
+        telefono: formulario.telefono.trim(),
       };
 
-      if (formulario.password.trim()) {
-        payload.password = formulario.password.trim();
-      }
-
-      await axiosCliente.patch(`/agents/${agent.id}`, payload);
+      await axiosCliente.patch(
+        `/agents/${agent.id}`,
+        payload,
+      );
 
       await onUpdated();
 
       cerrar();
     } catch (error) {
-      console.log("ERROR EDITAR AGENTE:", error.response?.data || error);
+      console.log(
+        "ERROR EDITAR AGENTE:",
+        error.response?.data || error,
+      );
 
-      const errores = error.response?.data?.errors;
+      const errores =
+        error.response?.data?.errors;
 
       if (errores) {
-        setError(Object.values(errores).flat().join(" "));
+        setError(
+          Object.values(errores)
+            .flat()
+            .join(" "),
+        );
       } else {
         setError(
-          error.response?.data?.message || "No se pudo actualizar el agente",
+          error.response?.data?.message ||
+            "No se pudo actualizar el agente",
         );
       }
     } finally {
@@ -1349,11 +1513,22 @@ function EditarAgenteDialog({ open, agent, onClose, onUpdated }) {
               color: "#64748b",
             }}
           >
-            Actualiza los datos principales del agente. La contraseña solo se
-            cambiará si capturas una nueva.
+            Estos datos corresponden únicamente a este agente dentro de la
+            empresa actual.
           </Typography>
 
-          {error && <Alert severity="error">{error}</Alert>}
+          <Alert severity="info">
+            El correo electrónico es la cuenta global de acceso y no puede
+            modificarse desde la administración de esta empresa. La contraseña
+            se administra desde la propia cuenta o mediante recuperación de
+            contraseña.
+          </Alert>
+
+          {error && (
+            <Alert severity="error">
+              {error}
+            </Alert>
+          )}
 
           <Box
             component="form"
@@ -1363,7 +1538,10 @@ function EditarAgenteDialog({ open, agent, onClose, onUpdated }) {
             <Paper
               variant="outlined"
               sx={{
-                p: { xs: 1.5, md: 2 },
+                p: {
+                  xs: 1.5,
+                  md: 2,
+                },
                 borderRadius: 3,
                 borderColor: "#e5e7eb",
                 bgcolor: "#ffffff",
@@ -1371,12 +1549,21 @@ function EditarAgenteDialog({ open, agent, onClose, onUpdated }) {
             >
               <Stack spacing={2}>
                 <Box>
-                  <Typography fontWeight={900} sx={{ fontSize: 15 }}>
-                    Información personal
+                  <Typography
+                    fontWeight={900}
+                    sx={{
+                      fontSize: 15,
+                    }}
+                  >
+                    Información dentro de esta empresa
                   </Typography>
 
-                  <Typography variant="caption" color="text.secondary">
-                    Estos datos identifican al agente dentro del sistema.
+                  <Typography
+                    variant="caption"
+                    color="text.secondary"
+                  >
+                    Puedes utilizar datos diferentes a los que esta persona
+                    tenga en otras empresas.
                   </Typography>
                 </Box>
 
@@ -1419,33 +1606,7 @@ function EditarAgenteDialog({ open, agent, onClose, onUpdated }) {
                       disabled={cargando}
                     />
                   </Grid>
-                </Grid>
-              </Stack>
-            </Paper>
 
-            <Divider sx={{ my: 2.5 }} />
-
-            <Paper
-              variant="outlined"
-              sx={{
-                p: { xs: 1.5, md: 2 },
-                borderRadius: 3,
-                borderColor: "#e5e7eb",
-                bgcolor: "#ffffff",
-              }}
-            >
-              <Stack spacing={2}>
-                <Box>
-                  <Typography fontWeight={900} sx={{ fontSize: 15 }}>
-                    Contacto y acceso
-                  </Typography>
-
-                  <Typography variant="caption" color="text.secondary">
-                    Correo, teléfono y contraseña de acceso.
-                  </Typography>
-                </Box>
-
-                <Grid container spacing={2}>
                   <Grid item xs={12} md={6}>
                     <TextField
                       fullWidth
@@ -1460,7 +1621,7 @@ function EditarAgenteDialog({ open, agent, onClose, onUpdated }) {
                         maxLength: 10,
                         inputMode: "numeric",
                       }}
-                      helperText="Debe contener exactamente 10 dígitos"
+                      helperText="Teléfono utilizado dentro de esta empresa"
                     />
                   </Grid>
 
@@ -1468,54 +1629,10 @@ function EditarAgenteDialog({ open, agent, onClose, onUpdated }) {
                     <TextField
                       fullWidth
                       size="small"
-                      label="Correo electrónico"
-                      name="email"
-                      type="email"
-                      value={formulario.email}
-                      onChange={cambiarValor}
-                      required
-                      disabled={cargando}
-                    />
-                  </Grid>
-
-                  <Grid item xs={12} md={6}>
-                    <TextField
-                      fullWidth
-                      size="small"
-                      label="Nueva contraseña"
-                      name="password"
-                      type={mostrarPassword ? "text" : "password"}
-                      value={formulario.password}
-                      onChange={cambiarValor}
-                      disabled={cargando}
-                      helperText="Opcional. Déjala vacía si no deseas cambiarla."
-                      slotProps={{
-                        input: {
-                          endAdornment: (
-                            <InputAdornment position="end">
-                              <IconButton
-                                edge="end"
-                                onClick={() =>
-                                  setMostrarPassword((prev) => !prev)
-                                }
-                                onMouseDown={(event) => event.preventDefault()}
-                                disabled={cargando}
-                                aria-label={
-                                  mostrarPassword
-                                    ? "Ocultar contraseña"
-                                    : "Mostrar contraseña"
-                                }
-                              >
-                                {mostrarPassword ? (
-                                  <VisibilityOffIcon />
-                                ) : (
-                                  <VisibilityIcon />
-                                )}
-                              </IconButton>
-                            </InputAdornment>
-                          ),
-                        },
-                      }}
+                      label="Correo de acceso"
+                      value={agent?.email || ""}
+                      disabled
+                      helperText="Es global para todas las empresas"
                     />
                   </Grid>
                 </Grid>
@@ -1525,7 +1642,11 @@ function EditarAgenteDialog({ open, agent, onClose, onUpdated }) {
         </Stack>
       </DialogContent>
 
-      <DialogActions sx={{ p: 2 }}>
+      <DialogActions
+        sx={{
+          p: 2,
+        }}
+      >
         <Button
           variant="outlined"
           onClick={cerrar}
@@ -1556,7 +1677,9 @@ function EditarAgenteDialog({ open, agent, onClose, onUpdated }) {
             },
           }}
         >
-          {cargando ? "Guardando..." : "Guardar cambios"}
+          {cargando
+            ? "Guardando..."
+            : "Guardar cambios"}
         </Button>
       </DialogActions>
     </Dialog>
@@ -1990,8 +2113,8 @@ export default function Agentes() {
     }
   };
 
-  const handleAgentCreated = async () => {
-    setSuccess("Agente creado correctamente.");
+  const handleAgentCreated = async (message) => {
+    setSuccess(message || "Agente creado correctamente.");
 
     await loadAgents({
       refresh: true,

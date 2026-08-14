@@ -7,9 +7,12 @@ import {
   CircularProgress,
   Chip,
   Divider,
+  FormControlLabel,
   IconButton,
   InputAdornment,
   Paper,
+  Radio,
+  RadioGroup,
   Stack,
   TextField,
   Typography,
@@ -20,7 +23,6 @@ import SaveIcon from "@mui/icons-material/Save";
 import VisibilityOutlinedIcon from "@mui/icons-material/VisibilityOutlined";
 import VisibilityOffOutlinedIcon from "@mui/icons-material/VisibilityOffOutlined";
 import PhotoCameraOutlinedIcon from "@mui/icons-material/PhotoCameraOutlined";
-
 
 import axiosCliente from "../../../services/axiosCliente";
 import { useAuth } from "../../../auth/context/AuthContext";
@@ -34,6 +36,8 @@ const perfilInicial = {
   email: "",
   telefono: "",
   role: "",
+  avatar_url: null,
+  default_internal_note: null,
 };
 
 const contrasenaInicial = {
@@ -88,10 +92,14 @@ export default function MiPerfil() {
 
   const [mensajeContacto, setMensajeContacto] = useState(null);
   const [mensajeContrasena, setMensajeContrasena] = useState(null);
+  const [preferenciaMensaje, setPreferenciaMensaje] = useState("");
+  const [guardandoPreferencia, setGuardandoPreferencia] = useState(false);
+  const [mensajePreferencia, setMensajePreferencia] = useState(null);
 
   const cargarPerfil = async () => {
     setCargando(true);
     setMensajeContacto(null);
+    setMensajePreferencia(null);
 
     try {
       const { data } = await axiosCliente.get("/profile");
@@ -99,6 +107,14 @@ export default function MiPerfil() {
       const usuario = data?.user || perfilInicial;
 
       setPerfil(usuario);
+
+      setPreferenciaMensaje(
+        usuario.default_internal_note === true
+          ? "private"
+          : usuario.default_internal_note === false
+            ? "public"
+            : "",
+      );
 
       setContacto({
         name: usuario.name || "",
@@ -325,6 +341,49 @@ export default function MiPerfil() {
     }
   };
 
+  const guardarPreferenciaMensaje = async () => {
+    if (!["private", "public"].includes(preferenciaMensaje)) {
+      setMensajePreferencia({
+        type: "warning",
+        text: "Selecciona cómo deseas iniciar tus mensajes.",
+      });
+
+      return;
+    }
+
+    setGuardandoPreferencia(true);
+    setMensajePreferencia(null);
+
+    try {
+      const defaultInternalNote = preferenciaMensaje === "private";
+
+      const { data } = await axiosCliente.patch("/profile/message-preference", {
+        default_internal_note: defaultInternalNote,
+      });
+
+      setPerfil((prev) => ({
+        ...prev,
+        default_internal_note:
+          data?.default_internal_note ?? defaultInternalNote,
+      }));
+
+      await refreshUser();
+
+      setMensajePreferencia({
+        type: "success",
+        text:
+          data?.message || "Preferencia de mensajes actualizada correctamente.",
+      });
+    } catch (error) {
+      setMensajePreferencia({
+        type: "error",
+        text: obtenerMensajeError(error),
+      });
+    } finally {
+      setGuardandoPreferencia(false);
+    }
+  };
+
   const guardarContrasena = async (event) => {
     event.preventDefault();
 
@@ -421,6 +480,17 @@ export default function MiPerfil() {
   ]
     .filter(Boolean)
     .join(" ");
+  const rolNormalizado = String(perfil.role || "")
+    .trim()
+    .toLowerCase();
+
+  const puedeConfigurarPreferencia = [
+    "admin",
+    "administrador",
+    "supervisor",
+    "agent",
+    "agente",
+  ].includes(rolNormalizado);
 
   if (cargando) {
     return (
@@ -576,7 +646,6 @@ export default function MiPerfil() {
                     size="small"
                     color="error"
                     variant="outlined"
-                    
                     onClick={quitarAvatar}
                     disabled={guardandoAvatar}
                     sx={{
@@ -597,6 +666,182 @@ export default function MiPerfil() {
             </Box>
           </Stack>
         </Paper>
+
+        {puedeConfigurarPreferencia && (
+          <Paper
+            elevation={0}
+            sx={{
+              p: {
+                xs: 2,
+                md: 3,
+              },
+              borderRadius: 3,
+              border: "1px solid",
+              borderColor: "divider",
+            }}
+          >
+            <Stack spacing={2}>
+              <Box>
+                <Typography
+                  variant="h6"
+                  sx={{
+                    fontWeight: 700,
+                  }}
+                >
+                  Preferencia de mensajes
+                </Typography>
+
+                <Typography
+                  variant="body2"
+                  color="text.secondary"
+                  sx={{
+                    mt: 0.5,
+                  }}
+                >
+                  Selecciona qué tipo de mensaje quieres tener seleccionado
+                  automáticamente al abrir el chat de un ticket.
+                </Typography>
+              </Box>
+
+              <Divider />
+
+              {!preferenciaMensaje && (
+                <Alert severity="warning">
+                  Aún no has configurado una preferencia de mensajes. Podrás
+                  seguir seleccionando manualmente el tipo de mensaje dentro de
+                  cada ticket.
+                </Alert>
+              )}
+
+              {mensajePreferencia && (
+                <Alert severity={mensajePreferencia.type}>
+                  {mensajePreferencia.text}
+                </Alert>
+              )}
+
+              <RadioGroup
+                value={preferenciaMensaje}
+                onChange={(event) => {
+                  setPreferenciaMensaje(event.target.value);
+                  setMensajePreferencia(null);
+                }}
+              >
+                <Paper
+                  elevation={0}
+                  sx={{
+                    p: 1.5,
+                    mb: 1,
+                    border: "1px solid",
+                    borderColor:
+                      preferenciaMensaje === "public"
+                        ? "primary.main"
+                        : "divider",
+                    borderRadius: 2,
+                    bgcolor:
+                      preferenciaMensaje === "public" ? "#f8fbff" : "#ffffff",
+                  }}
+                >
+                  <FormControlLabel
+                    value="public"
+                    control={<Radio />}
+                    label={
+                      <Box>
+                        <Typography
+                          variant="body2"
+                          sx={{
+                            fontWeight: 800,
+                          }}
+                        >
+                          Responder al cliente
+                        </Typography>
+
+                        <Typography variant="caption" color="text.secondary">
+                          Los chats iniciarán preparados para enviar una
+                          respuesta visible al cliente.
+                        </Typography>
+                      </Box>
+                    }
+                    sx={{
+                      m: 0,
+                      width: "100%",
+                      alignItems: "flex-start",
+                    }}
+                  />
+                </Paper>
+
+                <Paper
+                  elevation={0}
+                  sx={{
+                    p: 1.5,
+                    border: "1px solid",
+                    borderColor:
+                      preferenciaMensaje === "private"
+                        ? "warning.main"
+                        : "divider",
+                    borderRadius: 2,
+                    bgcolor:
+                      preferenciaMensaje === "private" ? "#fffdf5" : "#ffffff",
+                  }}
+                >
+                  <FormControlLabel
+                    value="private"
+                    control={<Radio />}
+                    label={
+                      <Box>
+                        <Typography
+                          variant="body2"
+                          sx={{
+                            fontWeight: 800,
+                          }}
+                        >
+                          Nota interna
+                        </Typography>
+
+                        <Typography variant="caption" color="text.secondary">
+                          Los chats iniciarán preparados para escribir una nota
+                          que el cliente no puede ver.
+                        </Typography>
+                      </Box>
+                    }
+                    sx={{
+                      m: 0,
+                      width: "100%",
+                      alignItems: "flex-start",
+                    }}
+                  />
+                </Paper>
+              </RadioGroup>
+
+              <Box>
+                <Button
+                  type="button"
+                  variant="contained"
+                  onClick={guardarPreferenciaMensaje}
+                  disabled={
+                    guardandoPreferencia ||
+                    !["public", "private"].includes(preferenciaMensaje)
+                  }
+                  startIcon={
+                    guardandoPreferencia ? (
+                      <CircularProgress size={18} color="inherit" />
+                    ) : (
+                      <SaveIcon />
+                    )
+                  }
+                  sx={{
+                    textTransform: "none",
+                    fontWeight: 800,
+                    borderRadius: 2,
+                  }}
+                >
+                  {guardandoPreferencia
+                    ? "Guardando..."
+                    : "Guardar preferencia"}
+                </Button>
+              </Box>
+            </Stack>
+          </Paper>
+        )}
 
         <Box
           sx={{

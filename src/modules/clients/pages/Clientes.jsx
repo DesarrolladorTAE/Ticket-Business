@@ -26,6 +26,8 @@ import {
   TableRow,
   TextField,
   Typography,
+  ToggleButton,
+  ToggleButtonGroup,
   useMediaQuery,
 } from "@mui/material";
 
@@ -192,12 +194,14 @@ function ClienteFormFields({ formulario, setFormulario, cargando }) {
 }
 
 function CrearClienteDialog({ open, onClose, onCreated }) {
+  const [modo, setModo] = useState("new");
   const [formulario, setFormulario] = useState(formularioInicial);
   const [error, setError] = useState("");
   const [cargando, setCargando] = useState(false);
 
   useEffect(() => {
     if (open) {
+      setModo("new");
       setFormulario(formularioInicial);
       setError("");
     }
@@ -205,16 +209,41 @@ function CrearClienteDialog({ open, onClose, onCreated }) {
 
   const cerrar = () => {
     if (cargando) return;
+
+    setModo("new");
     setFormulario(formularioInicial);
     setError("");
     onClose();
   };
 
+  const cambiarModo = (_, nuevoModo) => {
+    if (!nuevoModo || cargando) return;
+
+    setModo(nuevoModo);
+    setFormulario(formularioInicial);
+    setError("");
+  };
+
+  const cambiarEmail = (event) => {
+    setFormulario((actual) => ({
+      ...actual,
+      email: event.target.value,
+    }));
+  };
+
   const crearCliente = async (event) => {
     event.preventDefault();
+
     setError("");
 
-    if (formulario.telefono.length !== 10) {
+    const email = formulario.email.trim();
+
+    if (!email) {
+      setError("Ingresa el correo electrónico.");
+      return;
+    }
+
+    if (modo === "new" && formulario.telefono.length !== 10) {
       setError("El teléfono debe tener exactamente 10 dígitos.");
       return;
     }
@@ -222,10 +251,26 @@ function CrearClienteDialog({ open, onClose, onCreated }) {
     setCargando(true);
 
     try {
-      const response = await axiosCliente.post("/clients", formulario);
+      const payload =
+        modo === "existing"
+          ? {
+              email,
+            }
+          : {
+              name: formulario.name.trim(),
+              apellido_paterno: formulario.apellido_paterno.trim(),
+              apellido_materno: formulario.apellido_materno.trim(),
+              telefono: formulario.telefono,
+              email,
+            };
+
+      const response = await axiosCliente.post("/clients", payload);
 
       await onCreated(
-        response.data?.message || "Cliente registrado correctamente.",
+        response.data?.message ||
+          (modo === "existing"
+            ? "El usuario fue agregado como cliente a esta empresa."
+            : "Cliente registrado correctamente."),
       );
 
       cerrar();
@@ -241,12 +286,16 @@ function CrearClienteDialog({ open, onClose, onCreated }) {
         errores
           ? Object.values(errores).flat().join(" ")
           : requestError.response?.data?.message ||
-              "No se pudo registrar el cliente.",
+              (modo === "existing"
+                ? "No se pudo agregar la cuenta existente."
+                : "No se pudo registrar el cliente."),
       );
     } finally {
       setCargando(false);
     }
   };
+
+  const esCuentaExistente = modo === "existing";
 
   return (
     <Dialog
@@ -254,50 +303,199 @@ function CrearClienteDialog({ open, onClose, onCreated }) {
       onClose={cerrar}
       fullWidth
       maxWidth="md"
-      PaperProps={{ sx: { borderRadius: 3 } }}
+      PaperProps={{
+        sx: {
+          borderRadius: 3,
+        },
+      }}
     >
-      <DialogTitle sx={{ fontWeight: 900, color: "#0f172a", pb: 1 }}>
+      <DialogTitle
+        sx={{
+          fontWeight: 900,
+          color: "#0f172a",
+          pb: 1,
+        }}
+      >
         Nuevo cliente
       </DialogTitle>
 
       <DialogContent dividers>
         <Stack spacing={2}>
-          <Typography variant="body2" sx={{ color: "#64748b" }}>
-            Registra un cliente nuevo dentro de tu empresa.
+          <Typography
+            variant="body2"
+            sx={{
+              color: "#64748b",
+            }}
+          >
+            Crea una cuenta nueva o agrega como cliente a una persona que ya
+            utiliza The Business Ticket.
           </Typography>
 
-          <Alert severity="info">
-            El cliente quedará activo y disponible inmediatamente para
-            asignarlo como destinatario de nuevos tickets.
-          </Alert>
+          <Paper
+            variant="outlined"
+            sx={{
+              p: 1.5,
+              borderRadius: 3,
+              borderColor: "#e5e7eb",
+              bgcolor: "#f8fafc",
+            }}
+          >
+            <Stack spacing={1.2}>
+              <Typography
+                fontWeight={900}
+                sx={{
+                  fontSize: 14,
+                }}
+              >
+                ¿Cómo deseas agregar al cliente?
+              </Typography>
 
-          {error && <Alert severity="error">{error}</Alert>}
+              <ToggleButtonGroup
+                exclusive
+                fullWidth
+                size="small"
+                value={modo}
+                onChange={cambiarModo}
+                disabled={cargando}
+                sx={{
+                  gap: 1,
+                  "& .MuiToggleButtonGroup-grouped": {
+                    border: "1px solid #cbd5e1 !important",
+                    borderRadius: "8px !important",
+                    textTransform: "none",
+                    fontWeight: 800,
+                  },
+                }}
+              >
+                <ToggleButton value="new">
+                  Cuenta nueva
+                </ToggleButton>
 
-          <Box component="form" id="crear-cliente-form" onSubmit={crearCliente}>
-            <Paper
-              variant="outlined"
-              sx={{ p: { xs: 1.5, md: 2 }, borderRadius: 3 }}
-            >
-              <Stack spacing={2}>
-                <Typography fontWeight={900}>Información personal</Typography>
+                <ToggleButton value="existing">
+                  Cuenta existente
+                </ToggleButton>
+              </ToggleButtonGroup>
+            </Stack>
+          </Paper>
 
-                <ClienteFormFields
-                  formulario={formulario}
-                  setFormulario={setFormulario}
-                  cargando={cargando}
-                />
-              </Stack>
-            </Paper>
+          {error && (
+            <Alert severity="error">
+              {error}
+            </Alert>
+          )}
+
+          <Box
+            component="form"
+            id="crear-cliente-form"
+            onSubmit={crearCliente}
+          >
+            {esCuentaExistente ? (
+              <Paper
+                variant="outlined"
+                sx={{
+                  p: {
+                    xs: 1.5,
+                    md: 2,
+                  },
+                  borderRadius: 3,
+                  borderColor: "#e5e7eb",
+                }}
+              >
+                <Stack spacing={2}>
+                  <Box>
+                    <Typography
+                      fontWeight={900}
+                      sx={{
+                        fontSize: 15,
+                      }}
+                    >
+                      Agregar cuenta existente
+                    </Typography>
+
+                    <Typography
+                      variant="caption"
+                      color="text.secondary"
+                    >
+                      Ingresa el correo con el que esta persona ya tiene una
+                      cuenta en The Business Ticket.
+                    </Typography>
+                  </Box>
+
+                  <Alert severity="info">
+                    No se modificarán su nombre, apellidos, teléfono, correo ni
+                    contraseña. Solo se agregará como cliente de esta empresa.
+                  </Alert>
+
+                  <TextField
+                    fullWidth
+                    size="small"
+                    type="email"
+                    label="Correo electrónico"
+                    name="email"
+                    value={formulario.email}
+                    onChange={cambiarEmail}
+                    required
+                    disabled={cargando}
+                    autoComplete="email"
+                    helperText="Debe ser el correo de una cuenta que ya existe."
+                  />
+                </Stack>
+              </Paper>
+            ) : (
+              <Paper
+                variant="outlined"
+                sx={{
+                  p: {
+                    xs: 1.5,
+                    md: 2,
+                  },
+                  borderRadius: 3,
+                }}
+              >
+                <Stack spacing={2}>
+                  <Box>
+                    <Typography fontWeight={900}>
+                      Información personal
+                    </Typography>
+
+                    <Typography
+                      variant="caption"
+                      color="text.secondary"
+                    >
+                      Captura los datos de la nueva cuenta de cliente.
+                    </Typography>
+                  </Box>
+
+                  <Alert severity="info">
+                    El cliente quedará activo y disponible inmediatamente para
+                    asignarlo como destinatario de nuevos tickets.
+                  </Alert>
+
+                  <ClienteFormFields
+                    formulario={formulario}
+                    setFormulario={setFormulario}
+                    cargando={cargando}
+                  />
+                </Stack>
+              </Paper>
+            )}
           </Box>
         </Stack>
       </DialogContent>
 
-      <DialogActions sx={{ p: 2 }}>
+      <DialogActions
+        sx={{
+          p: 2,
+        }}
+      >
         <Button
           variant="outlined"
           onClick={cerrar}
           disabled={cargando}
-          sx={{ textTransform: "none", fontWeight: 800 }}
+          sx={{
+            textTransform: "none",
+            fontWeight: 800,
+          }}
         >
           Cancelar
         </Button>
@@ -308,17 +506,33 @@ function CrearClienteDialog({ open, onClose, onCreated }) {
           variant="contained"
           startIcon={<AddIcon />}
           disabled={cargando}
-          sx={{ textTransform: "none", fontWeight: 800, boxShadow: "none" }}
+          sx={{
+            textTransform: "none",
+            fontWeight: 800,
+            boxShadow: "none",
+          }}
         >
-          {cargando ? "Registrando..." : "Registrar cliente"}
+          {cargando
+            ? esCuentaExistente
+              ? "Agregando..."
+              : "Registrando..."
+            : esCuentaExistente
+              ? "Agregar cliente"
+              : "Registrar cliente"}
         </Button>
       </DialogActions>
     </Dialog>
   );
 }
-
 function EditarClienteDialog({ open, client, onClose, onUpdated }) {
-  const [formulario, setFormulario] = useState(formularioInicial);
+  const formularioVacio = {
+    name: "",
+    apellido_paterno: "",
+    apellido_materno: "",
+    telefono: "",
+  };
+
+  const [formulario, setFormulario] = useState(formularioVacio);
   const [error, setError] = useState("");
   const [cargando, setCargando] = useState(false);
 
@@ -329,17 +543,38 @@ function EditarClienteDialog({ open, client, onClose, onUpdated }) {
         apellido_paterno: client.apellido_paterno || "",
         apellido_materno: client.apellido_materno || "",
         telefono: client.telefono || "",
-        email: client.email || "",
       });
+
       setError("");
     }
   }, [open, client]);
 
   const cerrar = () => {
     if (cargando) return;
-    setFormulario(formularioInicial);
+
+    setFormulario(formularioVacio);
     setError("");
     onClose();
+  };
+
+  const cambiarCampo = (event) => {
+    const { name, value } = event.target;
+
+    setFormulario((actual) => ({
+      ...actual,
+      [name]: value,
+    }));
+  };
+
+  const cambiarTelefono = (event) => {
+    const telefono = event.target.value
+      .replace(/\D/g, "")
+      .slice(0, 10);
+
+    setFormulario((actual) => ({
+      ...actual,
+      telefono,
+    }));
   };
 
   const actualizarCliente = async (event) => {
@@ -349,6 +584,21 @@ function EditarClienteDialog({ open, client, onClose, onUpdated }) {
 
     setError("");
 
+    if (!formulario.name.trim()) {
+      setError("Ingresa el nombre del cliente.");
+      return;
+    }
+
+    if (!formulario.apellido_paterno.trim()) {
+      setError("Ingresa el apellido paterno.");
+      return;
+    }
+
+    if (!formulario.apellido_materno.trim()) {
+      setError("Ingresa el apellido materno.");
+      return;
+    }
+
     if (formulario.telefono.length !== 10) {
       setError("El teléfono debe tener exactamente 10 dígitos.");
       return;
@@ -357,8 +607,23 @@ function EditarClienteDialog({ open, client, onClose, onUpdated }) {
     setCargando(true);
 
     try {
-      await axiosCliente.patch(`/clients/${client.id}`, formulario);
-      await onUpdated();
+      const payload = {
+        name: formulario.name.trim(),
+        apellido_paterno: formulario.apellido_paterno.trim(),
+        apellido_materno: formulario.apellido_materno.trim(),
+        telefono: formulario.telefono.trim(),
+      };
+
+      const response = await axiosCliente.patch(
+        `/clients/${client.id}`,
+        payload,
+      );
+
+      await onUpdated(
+        response.data?.message ||
+          "Cliente actualizado correctamente.",
+      );
+
       cerrar();
     } catch (requestError) {
       console.log(
@@ -385,16 +650,32 @@ function EditarClienteDialog({ open, client, onClose, onUpdated }) {
       onClose={cerrar}
       fullWidth
       maxWidth="md"
-      PaperProps={{ sx: { borderRadius: 3 } }}
+      PaperProps={{
+        sx: {
+          borderRadius: 3,
+        },
+      }}
     >
-      <DialogTitle sx={{ fontWeight: 900, color: "#0f172a", pb: 1 }}>
+      <DialogTitle
+        sx={{
+          fontWeight: 900,
+          color: "#0f172a",
+          pb: 1,
+        }}
+      >
         Editar cliente
       </DialogTitle>
 
       <DialogContent dividers>
         <Stack spacing={2}>
-          <Typography variant="body2" sx={{ color: "#64748b" }}>
-            Actualiza los datos de contacto del cliente.
+          <Typography
+            variant="body2"
+            sx={{
+              color: "#64748b",
+            }}
+          >
+            Estos datos corresponden únicamente al cliente dentro de la
+            empresa actual.
           </Typography>
 
           {client?.origin === "integration" && (
@@ -403,33 +684,151 @@ function EditarClienteDialog({ open, client, onClose, onUpdated }) {
             </Alert>
           )}
 
-          {error && <Alert severity="error">{error}</Alert>}
+          <Alert severity="info">
+            El correo electrónico pertenece a la cuenta global del usuario y
+            no se modifica desde esta empresa. Los cambios de nombre, apellidos
+            y teléfono solo se aplicarán dentro de la empresa actual.
+          </Alert>
 
-          <Box component="form" id="editar-cliente-form" onSubmit={actualizarCliente}>
+          {error && (
+            <Alert severity="error">
+              {error}
+            </Alert>
+          )}
+
+          <Box
+            component="form"
+            id="editar-cliente-form"
+            onSubmit={actualizarCliente}
+          >
             <Paper
               variant="outlined"
-              sx={{ p: { xs: 1.5, md: 2 }, borderRadius: 3 }}
+              sx={{
+                p: {
+                  xs: 1.5,
+                  md: 2,
+                },
+                borderRadius: 3,
+              }}
             >
               <Stack spacing={2}>
-                <Typography fontWeight={900}>Información personal</Typography>
+                <Box>
+                  <Typography
+                    fontWeight={900}
+                    sx={{
+                      fontSize: 15,
+                    }}
+                  >
+                    Información dentro de esta empresa
+                  </Typography>
 
-                <ClienteFormFields
-                  formulario={formulario}
-                  setFormulario={setFormulario}
-                  cargando={cargando}
-                />
+                  <Typography
+                    variant="caption"
+                    color="text.secondary"
+                  >
+                    Estos datos pueden ser diferentes a los que la misma
+                    persona tenga en otras empresas.
+                  </Typography>
+                </Box>
+
+                <Box
+                  sx={{
+                    display: "grid",
+                    gridTemplateColumns: {
+                      xs: "1fr",
+                      md: "repeat(3, 1fr)",
+                    },
+                    gap: 2,
+                  }}
+                >
+                  <TextField
+                    fullWidth
+                    size="small"
+                    label="Nombre(s)"
+                    name="name"
+                    value={formulario.name}
+                    onChange={cambiarCampo}
+                    required
+                    disabled={cargando}
+                  />
+
+                  <TextField
+                    fullWidth
+                    size="small"
+                    label="Apellido paterno"
+                    name="apellido_paterno"
+                    value={formulario.apellido_paterno}
+                    onChange={cambiarCampo}
+                    required
+                    disabled={cargando}
+                  />
+
+                  <TextField
+                    fullWidth
+                    size="small"
+                    label="Apellido materno"
+                    name="apellido_materno"
+                    value={formulario.apellido_materno}
+                    onChange={cambiarCampo}
+                    required
+                    disabled={cargando}
+                  />
+                </Box>
+
+                <Box
+                  sx={{
+                    display: "grid",
+                    gridTemplateColumns: {
+                      xs: "1fr",
+                      md: "1fr 1fr",
+                    },
+                    gap: 2,
+                  }}
+                >
+                  <TextField
+                    fullWidth
+                    size="small"
+                    label="Teléfono"
+                    name="telefono"
+                    value={formulario.telefono}
+                    onChange={cambiarTelefono}
+                    required
+                    disabled={cargando}
+                    inputProps={{
+                      maxLength: 10,
+                      inputMode: "numeric",
+                    }}
+                    helperText="Teléfono utilizado dentro de esta empresa"
+                  />
+
+                  <TextField
+                    fullWidth
+                    size="small"
+                    label="Correo de acceso"
+                    value={client?.email || ""}
+                    disabled
+                    helperText="Es global para todas las empresas"
+                  />
+                </Box>
               </Stack>
             </Paper>
           </Box>
         </Stack>
       </DialogContent>
 
-      <DialogActions sx={{ p: 2 }}>
+      <DialogActions
+        sx={{
+          p: 2,
+        }}
+      >
         <Button
           variant="outlined"
           onClick={cerrar}
           disabled={cargando}
-          sx={{ textTransform: "none", fontWeight: 800 }}
+          sx={{
+            textTransform: "none",
+            fontWeight: 800,
+          }}
         >
           Cancelar
         </Button>
@@ -439,9 +838,15 @@ function EditarClienteDialog({ open, client, onClose, onUpdated }) {
           form="editar-cliente-form"
           variant="contained"
           disabled={cargando}
-          sx={{ textTransform: "none", fontWeight: 800, boxShadow: "none" }}
+          sx={{
+            textTransform: "none",
+            fontWeight: 800,
+            boxShadow: "none",
+          }}
         >
-          {cargando ? "Guardando..." : "Guardar cambios"}
+          {cargando
+            ? "Guardando..."
+            : "Guardar cambios"}
         </Button>
       </DialogActions>
     </Dialog>

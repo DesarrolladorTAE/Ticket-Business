@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import {
+  Alert,
   Box,
   CircularProgress,
   IconButton,
@@ -23,12 +24,21 @@ export default function ChatInput({
   archivos,
   setArchivos,
   puedeGestionar,
+  defaultTipoMensaje,
   enviando,
   enviarMensaje,
 }) {
-  const [tipoMensaje, setTipoMensaje] = useState("private");
+  const [tipoMensaje, setTipoMensaje] = useState(defaultTipoMensaje || "");
 
-  const puedeEnviar = !enviando && (text.trim() || archivos.length > 0);
+  useEffect(() => {
+    setTipoMensaje(defaultTipoMensaje || "");
+  }, [defaultTipoMensaje]);
+
+  const tipoMensajeValido =
+    !puedeGestionar || ["private", "public"].includes(tipoMensaje);
+
+  const puedeEnviar =
+    !enviando && tipoMensajeValido && (text.trim() || archivos.length > 0);
 
   const enviar = () => {
     if (!puedeEnviar) return;
@@ -205,9 +215,29 @@ export default function ChatInput({
               },
             }}
           >
+            <MenuItem value="" disabled>
+              Selecciona un tipo de mensaje
+            </MenuItem>
+
             <MenuItem value="private">Nota interna</MenuItem>
+
             <MenuItem value="public">Responder al cliente</MenuItem>
           </TextField>
+        )}
+
+        {puedeGestionar && !tipoMensajeValido && (
+          <Alert
+            severity="warning"
+            sx={{
+              py: 0.25,
+              "& .MuiAlert-message": {
+                fontSize: 12,
+              },
+            }}
+          >
+            No tienes una preferencia de mensajes configurada. Selecciona Nota
+            interna o Responder al cliente antes de enviar.
+          </Alert>
         )}
 
         <Box

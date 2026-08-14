@@ -67,6 +67,12 @@ export default function TicketDetalle() {
   const puedeCambiarEstado = isAdmin || isSupervisor;
   const puedeMensajear = isAdmin || isAgent || isSupervisor || isClient;
   const puedeGestionar = isAdmin || isAgent || isSupervisor;
+  const tipoMensajePredeterminado =
+  user?.default_internal_note === true
+    ? "private"
+    : user?.default_internal_note === false
+      ? "public"
+      : "";
   const puedeResolver = isAdmin || isSupervisor;
   const puedeEliminar = isAdmin;
   const puedeAsignarResponsable = isAdmin || isSupervisor;
@@ -1595,6 +1601,7 @@ const enviarMensaje = async (visibility = "public") => {
             archivos={archivos}
             setArchivos={setArchivos}
             puedeGestionar={puedeGestionar}
+            defaultTipoMensaje={tipoMensajePredeterminado}
             enviando={enviando}
             enviarMensaje={enviarMensaje}
           />
