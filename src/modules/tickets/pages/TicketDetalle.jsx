@@ -68,11 +68,11 @@ export default function TicketDetalle() {
   const puedeMensajear = isAdmin || isAgent || isSupervisor || isClient;
   const puedeGestionar = isAdmin || isAgent || isSupervisor;
   const tipoMensajePredeterminado =
-  user?.default_internal_note === true
-    ? "private"
-    : user?.default_internal_note === false
-      ? "public"
-      : "";
+    user?.default_internal_note === true
+      ? "private"
+      : user?.default_internal_note === false
+        ? "public"
+        : "";
   const puedeResolver = isAdmin || isSupervisor;
   const puedeEliminar = isAdmin;
   const puedeAsignarResponsable = isAdmin || isSupervisor;
@@ -103,6 +103,15 @@ export default function TicketDetalle() {
 
   const ticketCerrado =
     Number(ticket?.status_id || ticket?.status?.id || 0) === 4;
+
+  const creadorTicketId = ticket?.user?.id ?? null;
+
+  const esCreadorDelTicket =
+    creadorTicketId !== null &&
+    user?.id != null &&
+    Number(creadorTicketId) === Number(user.id);
+
+  const puedeTomarTicket = puedeGestionar && !(isAgent && esCreadorDelTicket);
 
   const chatRef = useRef(null);
   const chatContainerRef = useRef(null);
@@ -656,125 +665,109 @@ export default function TicketDetalle() {
         };
     }
   };
-const enviarMensaje = async (visibility = "public") => {
-  if (ticketCerrado) {
-    await Swal.fire({
-      icon: "info",
-      title: "Ticket cerrado",
-      text: "Este ticket está cerrado. Para continuar, un administrador o supervisor debe cambiarlo a En proceso.",
-      confirmButtonText: "Entendido",
-    });
+  const enviarMensaje = async (visibility = "public") => {
+    if (ticketCerrado) {
+      await Swal.fire({
+        icon: "info",
+        title: "Ticket cerrado",
+        text: "Este ticket está cerrado. Para continuar, un administrador o supervisor debe cambiarlo a En proceso.",
+        confirmButtonText: "Entendido",
+      });
 
-    return;
-  }
+      return;
+    }
 
-  if (!text.trim() && archivos.length === 0) return;
+    if (!text.trim() && archivos.length === 0) return;
 
-  setEnviando(true);
-  setError("");
+    setEnviando(true);
+    setError("");
 
-  try {
-    /*
-     * Primero se crea un solo mensaje.
-     * Todos los archivos seleccionados quedarán
-     * asociados a este mismo message_id.
-     */
-    const res = await axiosCliente.post(
-      `/tickets/${id}/messages`,
-      {
+    try {
+      /*
+       * Primero se crea un solo mensaje.
+       * Todos los archivos seleccionados quedarán
+       * asociados a este mismo message_id.
+       */
+      const res = await axiosCliente.post(`/tickets/${id}/messages`, {
         message: text.trim(),
         visibility,
-      },
-    );
+      });
 
-    const messageId = res.data.data.id;
+      const messageId = res.data.data.id;
 
-    const archivosFallidos = [];
+      const archivosFallidos = [];
 
-    /*
-     * Cada archivo se sube mediante el endpoint
-     * existente. Si uno falla, continuamos con
-     * los demás para no perder los que sí pueden
-     * guardarse.
-     */
-    for (const archivo of archivos) {
-      try {
-        const formData = new FormData();
+      /*
+       * Cada archivo se sube mediante el endpoint
+       * existente. Si uno falla, continuamos con
+       * los demás para no perder los que sí pueden
+       * guardarse.
+       */
+      for (const archivo of archivos) {
+        try {
+          const formData = new FormData();
 
-        formData.append("ticket_id", id);
-        formData.append("message_id", messageId);
-        formData.append("archivo", archivo);
+          formData.append("ticket_id", id);
+          formData.append("message_id", messageId);
+          formData.append("archivo", archivo);
 
-        await axiosCliente.post(
-          "/ticket-attachments",
-          formData,
-          {
+          await axiosCliente.post("/ticket-attachments", formData, {
             headers: {
               "Content-Type": "multipart/form-data",
             },
-          },
-        );
-      } catch (errorArchivo) {
-        console.log(
-          `ERROR SUBIR ARCHIVO ${archivo.name}:`,
-          errorArchivo.response?.data || errorArchivo,
-        );
+          });
+        } catch (errorArchivo) {
+          console.log(
+            `ERROR SUBIR ARCHIVO ${archivo.name}:`,
+            errorArchivo.response?.data || errorArchivo,
+          );
 
-        archivosFallidos.push(archivo.name);
+          archivosFallidos.push(archivo.name);
+        }
       }
-    }
 
-    /*
-     * Limpiamos el formulario porque el mensaje
-     * ya fue creado correctamente.
-     */
-    setText("");
-    setArchivos([]);
+      /*
+       * Limpiamos el formulario porque el mensaje
+       * ya fue creado correctamente.
+       */
+      setText("");
+      setArchivos([]);
 
-    /*
-     * Solamente actualizamos la conversación.
-     * No se vuelve a cargar todo el ticket.
-     */
-    await cargarMensajes();
+      /*
+       * Solamente actualizamos la conversación.
+       * No se vuelve a cargar todo el ticket.
+       */
+      await cargarMensajes();
 
-    /*
-     * Si uno o más archivos fallaron, informamos
-     * claramente que el mensaje sí fue enviado.
-     */
-    if (archivosFallidos.length > 0) {
-      await Swal.fire({
-        icon: "warning",
-        title: "Mensaje enviado",
-        html: `
+      /*
+       * Si uno o más archivos fallaron, informamos
+       * claramente que el mensaje sí fue enviado.
+       */
+      if (archivosFallidos.length > 0) {
+        await Swal.fire({
+          icon: "warning",
+          title: "Mensaje enviado",
+          html: `
           <div style="text-align:left;">
             <p>El mensaje fue enviado, pero algunos archivos no pudieron adjuntarse:</p>
             <ul>
-              ${archivosFallidos
-                .map(
-                  (nombre) =>
-                    `<li>${nombre}</li>`,
-                )
-                .join("")}
+              ${archivosFallidos.map((nombre) => `<li>${nombre}</li>`).join("")}
             </ul>
           </div>
         `,
-        confirmButtonText: "Entendido",
-      });
-    }
-  } catch (error) {
-    console.log(
-      "ERROR ENVIAR MENSAJE:",
-      error.response?.data || error,
-    );
+          confirmButtonText: "Entendido",
+        });
+      }
+    } catch (error) {
+      console.log("ERROR ENVIAR MENSAJE:", error.response?.data || error);
 
-    setError(
-      error.response?.data?.message ||
-        "No se pudo enviar el mensaje.",
-    );
-  } finally {
-    setEnviando(false);
-  }
-};
+      setError(
+        error.response?.data?.message || "No se pudo enviar el mensaje.",
+      );
+    } finally {
+      setEnviando(false);
+    }
+  };
 
   const eliminarTicket = async () => {
     const confirmar = await Swal.fire({
@@ -1121,6 +1114,7 @@ const enviarMensaje = async (visibility = "public") => {
           puedeResolver={puedeResolver}
           puedeEliminar={puedeEliminar}
           puedeGestionar={puedeGestionar}
+          puedeTomarTicket={puedeTomarTicket}
           mostrarInfoTicket={mostrarInfoTicket}
           setMostrarInfoTicket={setMostrarInfoTicket}
           cambiarEstado={cambiarEstado}

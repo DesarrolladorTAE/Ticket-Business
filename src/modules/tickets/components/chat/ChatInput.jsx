@@ -69,6 +69,8 @@ export default function ChatInput({
       "xls",
       "xlsx",
       "txt",
+      "zip",
+      "exe",
     ];
 
     const archivosValidos = seleccionados.filter((file) => {
@@ -274,7 +276,7 @@ export default function ChatInput({
                   hidden
                   multiple
                   type="file"
-                  accept=".jpg,.jpeg,.png,.webp,.pdf,.doc,.docx,.xls,.xlsx,.txt"
+                  accept=".jpg,.jpeg,.png,.webp,.pdf,.doc,.docx,.xls,.xlsx,.txt,.zip,.exe"
                   onChange={seleccionarArchivos}
                 />
               </IconButton>

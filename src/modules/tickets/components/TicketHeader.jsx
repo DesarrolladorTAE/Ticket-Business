@@ -22,6 +22,7 @@ export default function TicketHeader({
   puedeResolver,
   puedeEliminar,
   puedeGestionar,
+  puedeTomarTicket,
   mostrarInfoTicket,
   setMostrarInfoTicket,
   cambiarEstado,
@@ -153,7 +154,7 @@ export default function TicketHeader({
               </TextField>
             )}
 
-            {puedeGestionar && !ticket?.responsable && (
+            {puedeTomarTicket && !ticket?.responsable && (
               <Button
                 variant="contained"
                 color="primary"
