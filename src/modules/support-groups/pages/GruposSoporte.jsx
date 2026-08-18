@@ -8,6 +8,10 @@ import {
   Button,
   Chip,
   CircularProgress,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
   Divider,
   Grid,
   IconButton,
@@ -21,38 +25,33 @@ import {
 } from "@mui/material";
 
 import DeleteIcon from "@mui/icons-material/Delete";
+import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
+import CloseIcon from "@mui/icons-material/Close";
 
 const normalizarRol = (rol) => {
-  return String(rol || "")
-    .trim()
-    .toLowerCase();
+  return String(rol || "").trim().toLowerCase();
 };
 
 const normalizarTexto = (valor) => {
-  return String(valor || "")
-    .trim()
-    .toLowerCase();
+  return String(valor || "").trim().toLowerCase();
 };
 
-
 function GruposSoporte() {
-const { user } = useAuth();
+  const { user } = useAuth();
 
-const rolesBase = Array.isArray(user?.roles) ? user.roles : [];
+  const rolesBase = Array.isArray(user?.roles) ? user.roles : [];
+  const rolEmpresa = user?.company_role || user?.role || null;
 
-const rolEmpresa = user?.company_role || user?.role || null;
+  const rolesNormalizados = rolEmpresa
+    ? [normalizarRol(rolEmpresa)]
+    : rolesBase.map((rol) => normalizarRol(rol));
 
-const rolesNormalizados = rolEmpresa
-  ? [normalizarRol(rolEmpresa)]
-  : rolesBase.map((rol) => normalizarRol(rol));
+  const isAdmin =
+    rolesNormalizados.includes("administrador") ||
+    rolesNormalizados.includes("admin");
 
-const isAdmin =
-  rolesNormalizados.includes("administrador") ||
-  rolesNormalizados.includes("admin");
-
-const isSupervisor = rolesNormalizados.includes("supervisor");
-
-const puedeGestionar = isAdmin || isSupervisor;
+  const isSupervisor = rolesNormalizados.includes("supervisor");
+  const puedeGestionar = isAdmin || isSupervisor;
 
   const [grupos, setGrupos] = useState([]);
   const [agentes, setAgentes] = useState([]);
@@ -66,6 +65,15 @@ const puedeGestionar = isAdmin || isSupervisor;
 
   const [agenteSeleccionado, setAgenteSeleccionado] = useState({});
   const [busqueda, setBusqueda] = useState("");
+
+  const [modalEditarAbierto, setModalEditarAbierto] = useState(false);
+  const [grupoEditando, setGrupoEditando] = useState(null);
+  const [formularioEdicion, setFormularioEdicion] = useState({
+    nombre: "",
+    descripcion: "",
+  });
+  const [guardandoEdicion, setGuardandoEdicion] = useState(false);
+  const [errorEdicion, setErrorEdicion] = useState("");
 
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(6);
@@ -101,7 +109,6 @@ const puedeGestionar = isAdmin || isSupervisor;
       setWarning("");
     } catch (error) {
       console.log("ERROR AGENTES:", error.response?.data || error);
-
       setAgentes([]);
 
       if (puedeGestionar) {
@@ -125,7 +132,6 @@ const puedeGestionar = isAdmin || isSupervisor;
       );
     } catch (error) {
       console.log("ERROR CATEGORIAS:", error.response?.data || error);
-
       setCategoriasDisponibles([]);
     }
   };
@@ -154,17 +160,31 @@ const puedeGestionar = isAdmin || isSupervisor;
   };
 
   const cambiarValor = (e) => {
-    setFormulario({
-      ...formulario,
-      [e.target.name]: e.target.value,
-    });
+    const { name, value } = e.target;
+
+    setFormulario((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
   };
 
   const cambiarCategorias = (e) => {
-    setFormulario({
-      ...formulario,
-      system_ids: e.target.value.map((id) => Number(id)),
-    });
+    const value = e.target.value;
+
+    const valores = Array.isArray(value)
+      ? value
+      : String(value || "").split(",");
+
+    const ids = valores
+      .map((id) => Number(id))
+      .filter((id) => Number.isInteger(id) && id > 0);
+
+    setFormulario((prev) => ({
+      ...prev,
+      system_ids: ids,
+    }));
+
+    setError("");
   };
 
   const crearGrupo = async (e) => {
@@ -212,11 +232,102 @@ const puedeGestionar = isAdmin || isSupervisor;
     }
   };
 
-  const cambiarAgenteGrupo = (grupoId, userId) => {
-    setAgenteSeleccionado({
-      ...agenteSeleccionado,
-      [grupoId]: userId,
+  const abrirEditarGrupo = (grupo) => {
+    if (!puedeGestionar) return;
+
+    setGrupoEditando(grupo);
+    setFormularioEdicion({
+      nombre: grupo.nombre || "",
+      descripcion: grupo.descripcion || "",
     });
+    setErrorEdicion("");
+    setModalEditarAbierto(true);
+  };
+
+  const cerrarEditarGrupo = () => {
+    if (guardandoEdicion) return;
+
+    setModalEditarAbierto(false);
+    setGrupoEditando(null);
+    setErrorEdicion("");
+    setFormularioEdicion({
+      nombre: "",
+      descripcion: "",
+    });
+  };
+
+  const cambiarValorEdicion = (e) => {
+    const { name, value } = e.target;
+
+    setFormularioEdicion((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
+  };
+
+  const guardarEdicionGrupo = async (e) => {
+    e.preventDefault();
+
+    if (!grupoEditando?.id || guardandoEdicion) return;
+
+    const nombre = formularioEdicion.nombre.trim();
+
+    if (!nombre) {
+      setErrorEdicion("El nombre del grupo es obligatorio.");
+      return;
+    }
+
+    setGuardandoEdicion(true);
+    setErrorEdicion("");
+    setError("");
+    setOk("");
+
+    try {
+      const respuesta = await axiosCliente.put(
+        `/support-groups/${grupoEditando.id}`,
+        {
+          nombre,
+          descripcion: formularioEdicion.descripcion.trim(),
+        },
+      );
+
+      setOk(
+        respuesta.data?.message ||
+          "Grupo actualizado correctamente.",
+      );
+
+      setModalEditarAbierto(false);
+      setGrupoEditando(null);
+      setErrorEdicion("");
+      setFormularioEdicion({
+        nombre: "",
+        descripcion: "",
+      });
+
+      await obtenerGrupos();
+    } catch (error) {
+      console.log("ERROR EDITAR GRUPO:", error.response?.data || error);
+
+      const errores = error.response?.data?.errors;
+
+      if (errores) {
+        setErrorEdicion(Object.values(errores).flat().join(" "));
+      } else {
+        setErrorEdicion(
+          error.response?.data?.message ||
+            "No fue posible actualizar el grupo.",
+        );
+      }
+    } finally {
+      setGuardandoEdicion(false);
+    }
+  };
+
+  const cambiarAgenteGrupo = (grupoId, userId) => {
+    setAgenteSeleccionado((prev) => ({
+      ...prev,
+      [grupoId]: userId,
+    }));
   };
 
   const agregarAgente = async (grupoId) => {
@@ -242,16 +353,19 @@ const puedeGestionar = isAdmin || isSupervisor;
         user_id: userId,
       });
 
-      setAgenteSeleccionado({
-        ...agenteSeleccionado,
+      setAgenteSeleccionado((prev) => ({
+        ...prev,
         [grupoId]: "",
-      });
+      }));
 
       setOk("Agente agregado correctamente.");
       await obtenerDatos();
     } catch (error) {
       console.log("ERROR AGREGAR AGENTE:", error.response?.data || error);
-      setError(error.response?.data?.message || "No se pudo agregar el agente");
+      setError(
+        error.response?.data?.message ||
+          "No se pudo agregar el agente",
+      );
     }
   };
 
@@ -272,13 +386,18 @@ const puedeGestionar = isAdmin || isSupervisor;
       setError("");
       setOk("");
 
-      await axiosCliente.delete(`/support-groups/${grupoId}/agents/${userId}`);
+      await axiosCliente.delete(
+        `/support-groups/${grupoId}/agents/${userId}`,
+      );
 
       setOk("Agente quitado correctamente.");
       await obtenerDatos();
     } catch (error) {
       console.log("ERROR QUITAR AGENTE:", error.response?.data || error);
-      setError(error.response?.data?.message || "No se pudo quitar el agente");
+      setError(
+        error.response?.data?.message ||
+          "No se pudo quitar el agente",
+      );
     }
   };
 
@@ -289,16 +408,13 @@ const puedeGestionar = isAdmin || isSupervisor;
 
   const inicialAgente = (agente) => {
     const nombre = nombreAgente(agente);
-
     return nombre ? nombre.charAt(0).toUpperCase() : "A";
   };
 
   const gruposFiltrados = useMemo(() => {
     const texto = normalizarTexto(busqueda);
 
-    if (!texto) {
-      return grupos;
-    }
+    if (!texto) return grupos;
 
     return grupos.filter((grupo) => {
       const agentesGrupo = (grupo.agents || [])
@@ -307,14 +423,14 @@ const puedeGestionar = isAdmin || isSupervisor;
 
       const categoriasGrupo = (grupo.systems || [])
         .map(
-          (categoria) => `${categoria.nombre || ""} ${categoria.prefijo || ""}`,
+          (categoria) =>
+            `${categoria.nombre || ""} ${categoria.prefijo || ""}`,
         )
         .join(" ");
 
       const baseBusqueda = [
         grupo.nombre,
         grupo.descripcion,
-        grupo.id,
         agentesGrupo,
         categoriasGrupo,
       ]
@@ -437,7 +553,10 @@ const puedeGestionar = isAdmin || isSupervisor;
           }}
         >
           <Box mb={2}>
-            <Typography fontWeight={900} sx={{ fontSize: { xs: 18, md: 20 } }}>
+            <Typography
+              fontWeight={900}
+              sx={{ fontSize: { xs: 18, md: 20 } }}
+            >
               Crear grupo
             </Typography>
 
@@ -449,7 +568,7 @@ const puedeGestionar = isAdmin || isSupervisor;
 
           <Box component="form" onSubmit={crearGrupo}>
             <Grid container spacing={2}>
-              <Grid item xs={12} md={5}>
+              <Grid size={{ xs: 12, md: 5 }}>
                 <TextField
                   fullWidth
                   label="Nombre del grupo"
@@ -462,7 +581,7 @@ const puedeGestionar = isAdmin || isSupervisor;
                 />
               </Grid>
 
-              <Grid item xs={12} md={7}>
+              <Grid size={{ xs: 12, md: 7 }}>
                 <TextField
                   fullWidth
                   label="Descripción del grupo"
@@ -473,33 +592,48 @@ const puedeGestionar = isAdmin || isSupervisor;
                   size="small"
                 />
               </Grid>
-              <Grid item xs={12}>
+
+              <Grid size={{ xs: 12 }}>
                 <TextField
                   select
                   fullWidth
                   size="small"
                   label="Categorías que atenderá este grupo"
-                  value={formulario.system_ids}
+                  value={
+                    Array.isArray(formulario.system_ids)
+                      ? formulario.system_ids
+                      : []
+                  }
                   onChange={cambiarCategorias}
                   disabled={cargando || categoriasDisponibles.length === 0}
                   SelectProps={{
                     multiple: true,
-                    renderValue: (seleccionadas) =>
-                      categoriasDisponibles
+                    renderValue: (seleccionadas) => {
+                      const ids = (
+                        Array.isArray(seleccionadas)
+                          ? seleccionadas
+                          : [seleccionadas]
+                      ).map((id) => Number(id));
+
+                      return categoriasDisponibles
                         .filter((categoria) =>
-                          seleccionadas.includes(Number(categoria.id)),
+                          ids.includes(Number(categoria.id)),
                         )
                         .map((categoria) => categoria.nombre)
-                        .join(", "),
+                        .join(", ");
+                    },
                   }}
                   helperText={
                     categoriasDisponibles.length
                       ? "Selecciona una o varias categorías que serán atendidas por este grupo."
-                     : "Todas las categorías activas ya tienen un grupo de soporte asignado."
+                      : "Todas las categorías activas ya tienen un grupo de soporte asignado."
                   }
                 >
                   {categoriasDisponibles.map((categoria) => (
-                    <MenuItem key={categoria.id} value={Number(categoria.id)}>
+                    <MenuItem
+                      key={categoria.id}
+                      value={Number(categoria.id)}
+                    >
                       {categoria.nombre}
                       {categoria.prefijo ? ` (${categoria.prefijo})` : ""}
                     </MenuItem>
@@ -596,7 +730,7 @@ const puedeGestionar = isAdmin || isSupervisor;
               label="Buscar grupo"
               value={busqueda}
               onChange={(event) => setBusqueda(event.target.value)}
-              placeholder="Nombre, descripción, ID, categoría, agente o correo"
+              placeholder="Nombre, descripción, categoría, agente o correo"
             />
 
             {gruposFiltrados.length === 0 ? (
@@ -620,9 +754,13 @@ const puedeGestionar = isAdmin || isSupervisor;
               </Box>
             ) : (
               <>
-                <Grid container spacing={{ xs: 2, md: 3 }} alignItems="stretch">
+                <Grid
+                  container
+                  spacing={{ xs: 2, md: 3 }}
+                  alignItems="stretch"
+                >
                   {gruposPaginados.map((grupo) => (
-                    <Grid item xs={12} lg={6} key={grupo.id}>
+                    <Grid size={{ xs: 12, lg: 6 }} key={grupo.id}>
                       <Paper
                         sx={{
                           height: "100%",
@@ -646,25 +784,48 @@ const puedeGestionar = isAdmin || isSupervisor;
                             mb={1}
                           >
                             <Box sx={{ minWidth: 0, flex: 1 }}>
-                              <Typography
-                                fontWeight={900}
-                                sx={{
-                                  fontSize: { xs: 17, md: 18 },
-                                  lineHeight: 1.25,
-                                  wordBreak: "break-word",
-                                }}
+                              <Stack
+                                direction="row"
+                                spacing={0.8}
+                                alignItems="center"
                               >
-                                {grupo.nombre}
-                              </Typography>
+                                <Typography
+                                  fontWeight={900}
+                                  sx={{
+                                    minWidth: 0,
+                                    fontSize: { xs: 17, md: 18 },
+                                    lineHeight: 1.25,
+                                    wordBreak: "break-word",
+                                  }}
+                                >
+                                  {grupo.nombre}
+                                </Typography>
 
-                              <Typography
-                                variant="caption"
-                                color="text.secondary"
-                                display="block"
-                                mt={0.4}
-                              >
-                                ID: {grupo.id}
-                              </Typography>
+                                {puedeGestionar && (
+                                  <Tooltip title="Editar grupo" arrow>
+                                    <IconButton
+                                      size="small"
+                                      onClick={() => abrirEditarGrupo(grupo)}
+                                      sx={{
+                                        width: 30,
+                                        height: 30,
+                                        flexShrink: 0,
+                                        border: "1px solid #dbe2ea",
+                                        borderRadius: 1.5,
+                                        color: "#2563eb",
+                                        bgcolor: "#ffffff",
+                                        "&:hover": {
+                                          bgcolor: "#eff6ff",
+                                        },
+                                      }}
+                                    >
+                                      <EditOutlinedIcon
+                                        sx={{ fontSize: 17 }}
+                                      />
+                                    </IconButton>
+                                  </Tooltip>
+                                )}
+                              </Stack>
                             </Box>
 
                             <Stack
@@ -682,18 +843,14 @@ const puedeGestionar = isAdmin || isSupervisor;
                                 label={`${grupo.systems?.length || 0} categoría(s)`}
                                 variant="outlined"
                                 color="secondary"
-                                sx={{
-                                  fontWeight: 800,
-                                }}
+                                sx={{ fontWeight: 800 }}
                               />
 
                               <Chip
                                 size="small"
                                 label={`${grupo.agents?.length || 0} agentes`}
                                 color="primary"
-                                sx={{
-                                  fontWeight: 800,
-                                }}
+                                sx={{ fontWeight: 800 }}
                               />
                             </Stack>
                           </Stack>
@@ -757,7 +914,7 @@ const puedeGestionar = isAdmin || isSupervisor;
                                   key={categoria.id}
                                   label={
                                     categoria.nombre ||
-                                    `Categoría #${categoria.id}`
+                                    "Categoría sin nombre"
                                   }
                                   size="small"
                                   variant="outlined"
@@ -795,20 +952,26 @@ const puedeGestionar = isAdmin || isSupervisor;
                             <Box>
                               <Typography
                                 fontWeight={900}
-                                mb={1}
+                                mb={1.2}
                                 sx={{ fontSize: 14 }}
                               >
                                 Agregar agente
                               </Typography>
 
-                              <Grid container spacing={1.5} alignItems="center">
-                                <Grid item xs={12} md={8}>
+                              <Grid
+                                container
+                                spacing={1.5}
+                                alignItems="center"
+                              >
+                                <Grid size={{ xs: 12, md: 8 }}>
                                   <TextField
                                     select
                                     fullWidth
                                     size="small"
                                     label="Selecciona un agente"
-                                    value={agenteSeleccionado[grupo.id] || ""}
+                                    value={
+                                      agenteSeleccionado[grupo.id] || ""
+                                    }
                                     onChange={(e) =>
                                       cambiarAgenteGrupo(
                                         grupo.id,
@@ -832,7 +995,7 @@ const puedeGestionar = isAdmin || isSupervisor;
                                   </TextField>
                                 </Grid>
 
-                                <Grid item xs={12} md={4}>
+                                <Grid size={{ xs: 12, md: 4 }}>
                                   <Button
                                     fullWidth
                                     variant="outlined"
@@ -941,7 +1104,10 @@ const puedeGestionar = isAdmin || isSupervisor;
                                         size="small"
                                         color="error"
                                         onClick={() =>
-                                          quitarAgente(grupo.id, agente.id)
+                                          quitarAgente(
+                                            grupo.id,
+                                            agente.id,
+                                          )
                                         }
                                         sx={{
                                           width: 36,
@@ -1000,6 +1166,143 @@ const puedeGestionar = isAdmin || isSupervisor;
           </Stack>
         </Paper>
       )}
+
+      <Dialog
+        open={modalEditarAbierto}
+        onClose={cerrarEditarGrupo}
+        fullWidth
+        maxWidth="sm"
+        PaperProps={{
+          sx: {
+            borderRadius: 3,
+          },
+        }}
+      >
+        <Box component="form" onSubmit={guardarEdicionGrupo}>
+          <DialogTitle
+            sx={{
+              px: { xs: 2, sm: 3 },
+              py: 2,
+              borderBottom: "1px solid #e5e7eb",
+            }}
+          >
+            <Stack
+              direction="row"
+              justifyContent="space-between"
+              alignItems="center"
+              spacing={2}
+            >
+              <Box>
+                <Typography
+                  component="div"
+                  sx={{
+                    color: "#0f172a",
+                    fontSize: 20,
+                    fontWeight: 900,
+                  }}
+                >
+                  Editar grupo de soporte
+                </Typography>
+
+                <Typography
+                  variant="body2"
+                  color="text.secondary"
+                  sx={{ mt: 0.25 }}
+                >
+                  Modifica el nombre o descripción del grupo.
+                </Typography>
+              </Box>
+
+              <IconButton
+                onClick={cerrarEditarGrupo}
+                disabled={guardandoEdicion}
+                size="small"
+              >
+                <CloseIcon />
+              </IconButton>
+            </Stack>
+          </DialogTitle>
+
+          <DialogContent
+            sx={{
+              px: { xs: 2, sm: 3 },
+              py: "24px !important",
+            }}
+          >
+            {errorEdicion && (
+              <Alert severity="error" sx={{ mb: 2 }}>
+                {errorEdicion}
+              </Alert>
+            )}
+
+            <Stack spacing={2}>
+              <TextField
+                fullWidth
+                required
+                size="small"
+                label="Nombre del grupo"
+                name="nombre"
+                value={formularioEdicion.nombre}
+                onChange={cambiarValorEdicion}
+                disabled={guardandoEdicion}
+              />
+
+              <TextField
+                fullWidth
+                multiline
+                minRows={3}
+                size="small"
+                label="Descripción"
+                name="descripcion"
+                value={formularioEdicion.descripcion}
+                onChange={cambiarValorEdicion}
+                disabled={guardandoEdicion}
+              />
+            </Stack>
+          </DialogContent>
+
+          <Divider />
+
+          <DialogActions
+            sx={{
+              px: { xs: 2, sm: 3 },
+              py: 2,
+              gap: 1,
+            }}
+          >
+            <Button
+              type="button"
+              color="inherit"
+              onClick={cerrarEditarGrupo}
+              disabled={guardandoEdicion}
+              sx={{
+                borderRadius: 2,
+                textTransform: "none",
+                fontWeight: 800,
+              }}
+            >
+              Cancelar
+            </Button>
+
+            <Button
+              type="submit"
+              variant="contained"
+              disabled={guardandoEdicion}
+              sx={{
+                minWidth: 150,
+                borderRadius: 2,
+                textTransform: "none",
+                fontWeight: 900,
+                boxShadow: "none",
+              }}
+            >
+              {guardandoEdicion
+                ? "Guardando..."
+                : "Guardar cambios"}
+            </Button>
+          </DialogActions>
+        </Box>
+      </Dialog>
     </Box>
   );
 }

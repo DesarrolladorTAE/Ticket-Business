@@ -35,6 +35,7 @@ import LogoutIcon from "@mui/icons-material/Logout";
 import NotificationsIcon from "@mui/icons-material/Notifications";
 import AccountCircleIcon from "@mui/icons-material/AccountCircle";
 import LocalOfferIcon from "@mui/icons-material/LocalOffer";
+import BusinessIcon from "@mui/icons-material/Business";
 
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
 
@@ -82,7 +83,7 @@ function AdminLayout() {
   const navigate = useNavigate();
   const theme = useTheme();
 
-  const { user, logout } = useAuth();
+  const { user, company, logout } = useAuth();
 
   const isMobile = useMediaQuery(theme.breakpoints.down("md"));
 
@@ -120,6 +121,11 @@ function AdminLayout() {
   const cerrarSesion = async () => {
     await logout();
     navigate("/login", { replace: true });
+  };
+
+  const cambiarEmpresa = () => {
+    setMobileOpen(false);
+    navigate("/seleccionar-empresa");
   };
 
   const toggleSidebar = () => {
@@ -595,7 +601,152 @@ function AdminLayout() {
 
       <Divider sx={{ borderColor: "rgba(255,255,255,0.1)" }} />
 
-      <Box sx={{ p: drawerCollapsed ? 1.2 : 2 }}>
+      {drawerCollapsed ? (
+        <Tooltip
+          title={
+            company?.nombre
+              ? `Cambiar empresa · ${company.nombre}`
+              : "Cambiar empresa"
+          }
+          placement="right"
+          arrow
+        >
+          <IconButton
+            onClick={cambiarEmpresa}
+            sx={{
+              width: 42,
+              height: 42,
+              mx: "auto",
+              my: 1,
+              color: "#cbd5e1",
+              borderRadius: 2,
+              bgcolor: "rgba(255,255,255,0.06)",
+              border: "1px solid rgba(255,255,255,0.10)",
+              "&:hover": {
+                color: "#ffffff",
+                bgcolor: "rgba(37,99,235,0.30)",
+                borderColor: "rgba(96,165,250,0.45)",
+              },
+            }}
+          >
+            <BusinessIcon fontSize="small" />
+          </IconButton>
+        </Tooltip>
+      ) : (
+        <Box
+          sx={{
+            px: {
+              xs: 1.2,
+              sm: 1.4,
+            },
+            pt: 1.1,
+            pb: 0.8,
+          }}
+        >
+          <Typography
+            sx={{
+              display: "block",
+              px: 0.3,
+              mb: 0.55,
+              color: "rgba(255,255,255,0.55)",
+              fontWeight: 700,
+              fontSize: 10.5,
+              lineHeight: 1.2,
+            }}
+          >
+            Empresa actual
+          </Typography>
+
+          <Box
+            component="button"
+            type="button"
+            onClick={cambiarEmpresa}
+            title="Cambiar empresa"
+            sx={{
+              width: "100%",
+              minHeight: 42,
+              px: 1.15,
+              py: 0.8,
+
+              display: "flex",
+              alignItems: "center",
+              gap: 1,
+
+              bgcolor: "rgba(255,255,255,0.045)",
+              border: "1px solid rgba(255,255,255,0.16)",
+              borderRadius: 2,
+
+              color: "#ffffff",
+              fontFamily: "inherit",
+              textAlign: "left",
+
+              cursor: "pointer",
+              outline: "none",
+
+              transition: "background-color .18s ease, border-color .18s ease",
+
+              "&:hover": {
+                bgcolor: "rgba(37,99,235,0.16)",
+                borderColor: "rgba(96,165,250,0.45)",
+              },
+
+              "&:focus-visible": {
+                borderColor: "#60a5fa",
+                boxShadow: "0 0 0 2px rgba(96,165,250,0.20)",
+              },
+            }}
+          >
+            <BusinessIcon
+              sx={{
+                fontSize: 18,
+                color: "#cbd5e1",
+                flexShrink: 0,
+              }}
+            />
+
+            <Typography
+              component="span"
+              noWrap
+              title={company?.nombre || "Empresa"}
+              sx={{
+                flex: 1,
+                minWidth: 0,
+                color: "#f8fafc",
+                fontSize: 12.5,
+                lineHeight: 1.3,
+                fontWeight: 800,
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+              }}
+            >
+              {company?.nombre || "Empresa"}
+            </Typography>
+
+            <Typography
+              component="span"
+              aria-hidden="true"
+              sx={{
+                flexShrink: 0,
+                color: "#94a3b8",
+                fontSize: 22,
+                lineHeight: 1,
+                fontWeight: 400,
+                transform: "translateY(-1px)",
+              }}
+            >
+              ›
+            </Typography>
+          </Box>
+        </Box>
+      )}
+
+      <Box
+        sx={{
+          px: drawerCollapsed ? 1.2 : 1.4,
+          pt: 0.7,
+          pb: 1.2,
+        }}
+      >
         {drawerCollapsed ? (
           <Tooltip title="Cerrar sesión" placement="right" arrow>
             <IconButton
@@ -621,9 +772,11 @@ function AdminLayout() {
             onClick={cerrarSesion}
             startIcon={<LogoutIcon />}
             sx={{
+              minHeight: 38,
               borderRadius: 2,
               textTransform: "none",
               fontWeight: 800,
+              fontSize: 12.5,
             }}
           >
             Cerrar sesión

@@ -92,40 +92,73 @@ export function AuthProvider({ children }) {
     }
   }, []);
 
-  const value = useMemo(
-    () => ({
-      user,
-      company,
-      loading,
-      authError,
-      isAuthenticated: Boolean(user),
-      refreshUser,
-      logout,
-    }),
-    [
-      user,
-      company,
-      loading,
-      authError,
-      refreshUser,
-      logout,
-    ],
+  const switchCompany = useCallback(
+    async (companyUserId) => {
+      if (!companyUserId) {
+        throw new Error("La empresa seleccionada no es válida.");
+      }
+
+      const response = await axiosCliente.post("/auth/switch-company", {
+        company_user_id: Number(companyUserId),
+      });
+
+      const data = response.data;
+
+      if (!data?.token) {
+        throw new Error(data?.message || "No fue posible cambiar de empresa.");
+      }
+
+      /*
+       * Sustituimos el token actual por el token
+       * ligado a la nueva relación company_user.
+       */
+      localStorage.setItem("TOKEN", data.token);
+
+      try {
+        await refreshUser();
+      } catch (error) {
+        localStorage.removeItem("TOKEN");
+        throw error;
+      }
+
+      return data;
+    },
+    [refreshUser],
   );
 
-  return (
-    <AuthContext.Provider value={value}>
-      {children}
-    </AuthContext.Provider>
+const value = useMemo(
+  () => ({
+    user,
+    company,
+    loading,
+    authError,
+    isAuthenticated: Boolean(user),
+    refreshUser,
+    switchCompany,
+    logout,
+  }),
+  [
+    user,
+    company,
+    loading,
+    authError,
+    refreshUser,
+    switchCompany,
+    logout,
+  ],
+
   );
+
+  return <AuthContext.Provider value={value}>
+    {children}
+  </AuthContext.Provider>;
 }
 
 export function useAuth() {
   const context = useContext(AuthContext);
 
   if (!context) {
-    throw new Error(
-      "useAuth debe utilizarse dentro de AuthProvider.",
-    );
+    throw new Error("useAuth debe utilizarse dentro de AuthProvider.");
   }
 
   return context;

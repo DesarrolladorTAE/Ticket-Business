@@ -6,7 +6,7 @@ import Registro from "../auth/pages/Registro";
 import OlvideContrasena from "../auth/pages/OlvideContrasena";
 import RestablecerContrasena from "../auth/pages/RestablecerContrasena";
 import VerificarCorreo from "../auth/pages/VerificarCorreo";
-
+import SeleccionarEmpresa from "../auth/pages/SeleccionarEmpresa";
 
 import Dashboard from "../modules/tickets/pages/Dashboard";
 
@@ -60,24 +60,18 @@ function RutaPorRol({ roles, children }) {
    * Esto es importante porque un usuario puede tener roles generales,
    * pero dentro de la empresa actual debe respetarse company_role.
    */
-  const companyRole = normalizarRol(
-    user?.company_role || user?.role,
-  );
+  const companyRole = normalizarRol(user?.company_role || user?.role);
 
   const rolesGlobales = Array.isArray(user?.roles)
     ? user.roles.map((rol) => normalizarRol(rol))
     : [];
 
-  const userRoles = companyRole
-    ? [companyRole]
-    : rolesGlobales;
+  const userRoles = companyRole ? [companyRole] : rolesGlobales;
 
-  const rolesPermitidos = roles.map((rol) =>
-    normalizarRol(rol),
-  );
+  const rolesPermitidos = roles.map((rol) => normalizarRol(rol));
 
-  const permitido = rolesPermitidos.some(
-    (rolPermitido) => userRoles.includes(rolPermitido),
+  const permitido = rolesPermitidos.some((rolPermitido) =>
+    userRoles.includes(rolPermitido),
   );
 
   if (!permitido) {
@@ -119,6 +113,16 @@ function AppRouter() {
       <Route
         path="/public/shared-tickets/:trackingCode"
         element={<TicketCompartido />}
+      />
+
+      {/* SELECCIÓN DE EMPRESA AUTENTICADA */}
+      <Route
+        path="/seleccionar-empresa"
+        element={
+          <RutaProtegida>
+            <SeleccionarEmpresa />
+          </RutaProtegida>
+        }
       />
 
       {/* PROTEGIDO */}

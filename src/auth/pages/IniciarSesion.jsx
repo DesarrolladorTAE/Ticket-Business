@@ -3,6 +3,7 @@ import { Link as RouterLink, useNavigate } from "react-router-dom";
 
 import axiosCliente from "../../services/axiosCliente";
 import { useAuth } from "../context/AuthContext";
+import SeleccionEmpresaView from "../components/SeleccionEmpresaView";
 
 import {
   Alert,
@@ -75,19 +76,11 @@ function IniciarSesion() {
 
   const dirigirSegunRol = (user, company) => {
     const rol = normalizarRol(
-      user?.company_role ||
-        user?.role ||
-        company?.role,
+      user?.company_role || user?.role || company?.role,
     );
 
     if (
-      [
-        "admin",
-        "administrador",
-        "agent",
-        "agente",
-        "supervisor",
-      ].includes(rol)
+      ["admin", "administrador", "agent", "agente", "supervisor"].includes(rol)
     ) {
       navigate("/paneladministrador");
       return;
@@ -98,16 +91,12 @@ function IniciarSesion() {
       return;
     }
 
-    setError(
-      "Tu cuenta no tiene un rol válido para ingresar al sistema.",
-    );
+    setError("Tu cuenta no tiene un rol válido para ingresar al sistema.");
   };
 
   const completarInicioSesion = async (data) => {
     if (!data?.token) {
-      setError(
-        "No fue posible completar el inicio de sesión.",
-      );
+      setError("No fue posible completar el inicio de sesión.");
 
       return;
     }
@@ -126,14 +115,10 @@ function IniciarSesion() {
 
   const procesarRespuestaLogin = async (data) => {
     if (data?.requires_company_selection) {
-      const cuentas = Array.isArray(data.accounts)
-        ? data.accounts
-        : [];
+      const cuentas = Array.isArray(data.accounts) ? data.accounts : [];
 
       if (cuentas.length === 0) {
-        setError(
-          "No se encontraron cuentas disponibles para este usuario.",
-        );
+        setError("No se encontraron cuentas disponibles para este usuario.");
 
         return;
       }
@@ -154,19 +139,13 @@ function IniciarSesion() {
     setCargando(true);
 
     try {
-      const respuesta = await axiosCliente.post(
-        "/login",
-        formulario,
-      );
+      const respuesta = await axiosCliente.post("/login", formulario);
 
       await procesarRespuestaLogin(respuesta.data);
     } catch (error) {
       const data = error.response?.data;
 
-      if (
-        data?.requires_email_verification &&
-        data?.verification_email
-      ) {
+      if (data?.requires_email_verification && data?.verification_email) {
         navigate(
           `/verificar-correo?email=${encodeURIComponent(
             data.verification_email,
@@ -179,10 +158,7 @@ function IniciarSesion() {
         return;
       }
 
-      setError(
-        data?.message ||
-          "Correo o contraseña incorrectos",
-      );
+      setError(data?.message || "Correo o contraseña incorrectos");
     } finally {
       setCargando(false);
     }
@@ -199,22 +175,16 @@ function IniciarSesion() {
     setCuentaSeleccionando(cuenta.company_user_id);
 
     try {
-      const respuesta = await axiosCliente.post(
-        "/login",
-        {
-          ...formulario,
-          company_user_id: cuenta.company_user_id,
-        },
-      );
+      const respuesta = await axiosCliente.post("/login", {
+        ...formulario,
+        company_user_id: cuenta.company_user_id,
+      });
 
       await completarInicioSesion(respuesta.data);
     } catch (error) {
       const data = error.response?.data;
 
-      if (
-        data?.requires_email_verification &&
-        data?.verification_email
-      ) {
+      if (data?.requires_email_verification && data?.verification_email) {
         navigate(
           `/verificar-correo?email=${encodeURIComponent(
             data.verification_email,
@@ -228,8 +198,7 @@ function IniciarSesion() {
       }
 
       setError(
-        data?.message ||
-          "No se pudo ingresar con la cuenta seleccionada.",
+        data?.message || "No se pudo ingresar con la cuenta seleccionada.",
       );
     } finally {
       setCuentaSeleccionando(null);
@@ -242,8 +211,21 @@ function IniciarSesion() {
     setError("");
   };
 
-  const mostrandoSeleccionEmpresa =
-    cuentasDisponibles.length > 0;
+  const mostrandoSeleccionEmpresa = 
+  cuentasDisponibles.length > 0;
+
+  if (mostrandoSeleccionEmpresa) {
+    return (
+      <SeleccionEmpresaView
+        cuentas={cuentasDisponibles}
+        seleccionando={cuentaSeleccionando}
+        error={error}
+        onSeleccionar={seleccionarCuenta}
+        onVolver={volverAlLogin}
+        textoVolver="Usar otra cuenta"
+      />
+    );
+  }
 
   return (
     <Box
@@ -271,8 +253,7 @@ function IniciarSesion() {
           borderRadius: 4,
           overflow: "hidden",
           border: "1px solid #e2e8f0",
-          boxShadow:
-            "0 18px 45px rgba(15, 23, 42, 0.10)",
+          boxShadow: "0 18px 45px rgba(15, 23, 42, 0.10)",
           bgcolor: "#ffffff",
         }}
       >
@@ -289,11 +270,7 @@ function IniciarSesion() {
             pb: 2,
           }}
         >
-          <Stack
-            spacing={2}
-            alignItems="center"
-            textAlign="center"
-          >
+          <Stack spacing={2} alignItems="center" textAlign="center">
             <Box
               sx={{
                 width: 58,
@@ -390,8 +367,7 @@ function IniciarSesion() {
                     mt: 0.5,
                   }}
                 >
-                  Ingresa tu correo y contraseña para acceder
-                  al sistema.
+                  Ingresa tu correo y contraseña para acceder al sistema.
                 </Typography>
               </Box>
 
@@ -408,10 +384,7 @@ function IniciarSesion() {
                 </Alert>
               )}
 
-              <Box
-                component="form"
-                onSubmit={iniciarSesion}
-              >
+              <Box component="form" onSubmit={iniciarSesion}>
                 <Stack spacing={2}>
                   <TextField
                     fullWidth
@@ -437,11 +410,7 @@ function IniciarSesion() {
 
                   <TextField
                     fullWidth
-                    type={
-                      mostrarPassword
-                        ? "text"
-                        : "password"
-                    }
+                    type={mostrarPassword ? "text" : "password"}
                     name="password"
                     label="Contraseña"
                     value={formulario.password}
@@ -465,8 +434,7 @@ function IniciarSesion() {
                               disabled={cargando}
                               onClick={() =>
                                 setMostrarPassword(
-                                  (valorActual) =>
-                                    !valorActual,
+                                  (valorActual) => !valorActual,
                                 )
                               }
                               onMouseDown={(event) => {
@@ -547,18 +515,14 @@ function IniciarSesion() {
                       textTransform: "none",
                       fontWeight: 900,
                       bgcolor: "#2563eb",
-                      boxShadow:
-                        "0 10px 20px rgba(37, 99, 235, 0.25)",
+                      boxShadow: "0 10px 20px rgba(37, 99, 235, 0.25)",
                       "&:hover": {
                         bgcolor: "#1d4ed8",
-                        boxShadow:
-                          "0 12px 24px rgba(37, 99, 235, 0.32)",
+                        boxShadow: "0 12px 24px rgba(37, 99, 235, 0.32)",
                       },
                     }}
                   >
-                    {cargando
-                      ? "Entrando..."
-                      : "Entrar"}
+                    {cargando ? "Entrando..." : "Entrar"}
                   </Button>
                 </Stack>
               </Box>
@@ -586,9 +550,8 @@ function IniciarSesion() {
                     mt: 0.6,
                   }}
                 >
-                  Tu cuenta está relacionada con más de una
-                  empresa. Selecciona la empresa y el rol con
-                  el que deseas continuar.
+                  Tu cuenta está relacionada con más de una empresa. Selecciona
+                  la empresa y el rol con el que deseas continuar.
                 </Typography>
               </Box>
 
@@ -608,8 +571,7 @@ function IniciarSesion() {
               <Stack spacing={1.5}>
                 {cuentasDisponibles.map((cuenta) => {
                   const seleccionando =
-                    cuentaSeleccionando ===
-                    cuenta.company_user_id;
+                    cuentaSeleccionando === cuenta.company_user_id;
 
                   return (
                     <Paper
@@ -659,35 +621,25 @@ function IniciarSesion() {
                                   mt: 0.3,
                                 }}
                               >
-                                {
-                                  cuenta.company_business_name
-                                }
+                                {cuenta.company_business_name}
                               </Typography>
                             )}
 
                           <Chip
-                            label={obtenerNombreRol(
-                              cuenta.role,
-                            )}
+                            label={obtenerNombreRol(cuenta.role)}
                             size="small"
                             sx={{
                               mt: 1,
                               bgcolor:
-                                normalizarRol(
-                                  cuenta.role,
-                                ) === "client"
+                                normalizarRol(cuenta.role) === "client"
                                   ? "#ecfdf5"
                                   : "#eff6ff",
                               color:
-                                normalizarRol(
-                                  cuenta.role,
-                                ) === "client"
+                                normalizarRol(cuenta.role) === "client"
                                   ? "#047857"
                                   : "#1d4ed8",
                               border:
-                                normalizarRol(
-                                  cuenta.role,
-                                ) === "client"
+                                normalizarRol(cuenta.role) === "client"
                                   ? "1px solid #bbf7d0"
                                   : "1px solid #bfdbfe",
                               fontWeight: 900,
@@ -698,12 +650,8 @@ function IniciarSesion() {
 
                         <Button
                           variant="contained"
-                          disabled={
-                            cuentaSeleccionando !== null
-                          }
-                          onClick={() =>
-                            seleccionarCuenta(cuenta)
-                          }
+                          disabled={cuentaSeleccionando !== null}
+                          onClick={() => seleccionarCuenta(cuenta)}
                           startIcon={
                             seleccionando ? (
                               <CircularProgress
@@ -731,9 +679,7 @@ function IniciarSesion() {
                             },
                           }}
                         >
-                          {seleccionando
-                            ? "Entrando..."
-                            : "Entrar"}
+                          {seleccionando ? "Entrando..." : "Entrar"}
                         </Button>
                       </Stack>
                     </Paper>

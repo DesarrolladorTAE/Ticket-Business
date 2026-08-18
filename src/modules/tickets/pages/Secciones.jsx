@@ -271,46 +271,52 @@ function Secciones() {
   const AccionesSeccion = ({ seccion, mobile = false }) => (
     <Stack
       direction="row"
-      spacing={1}
-      justifyContent={mobile ? "flex-start" : "center"}
+      spacing={0.5}
+      justifyContent={mobile ? "flex-end" : "center"}
       alignItems="center"
     >
       <Tooltip title="Editar sección" arrow>
-        <IconButton
-          size="small"
-          color="primary"
-          onClick={() => prepararEdicion(seccion)}
-          sx={{
-            width: 36,
-            height: 36,
-            border: "1px solid #bfdbfe",
-            bgcolor: "#eff6ff",
-            "&:hover": {
-              bgcolor: "#dbeafe",
-            },
-          }}
-        >
-          <EditIcon fontSize="small" />
-        </IconButton>
+        <span>
+          <IconButton
+            size="small"
+            onClick={() => prepararEdicion(seccion)}
+            sx={{
+              width: 34,
+              height: 34,
+              border: "1px solid #dbe2ea",
+              borderRadius: 1.5,
+              color: "#2563eb",
+              bgcolor: "#ffffff",
+              "&:hover": {
+                bgcolor: "#eff6ff",
+              },
+            }}
+          >
+            <EditIcon fontSize="small" />
+          </IconButton>
+        </span>
       </Tooltip>
 
       <Tooltip title="Eliminar sección" arrow>
-        <IconButton
-          size="small"
-          color="error"
-          onClick={() => eliminarSeccion(seccion.id)}
-          sx={{
-            width: 36,
-            height: 36,
-            border: "1px solid #fecaca",
-            bgcolor: "#fef2f2",
-            "&:hover": {
-              bgcolor: "#fee2e2",
-            },
-          }}
-        >
-          <DeleteIcon fontSize="small" />
-        </IconButton>
+        <span>
+          <IconButton
+            size="small"
+            onClick={() => eliminarSeccion(seccion.id)}
+            sx={{
+              width: 34,
+              height: 34,
+              border: "1px solid #fecaca",
+              borderRadius: 1.5,
+              color: "#dc2626",
+              bgcolor: "#ffffff",
+              "&:hover": {
+                bgcolor: "#fef2f2",
+              },
+            }}
+          >
+            <DeleteIcon fontSize="small" />
+          </IconButton>
+        </span>
       </Tooltip>
     </Stack>
   );
@@ -416,7 +422,7 @@ function Secciones() {
 
         <Box component="form" onSubmit={guardarSeccion}>
           <Grid container spacing={2}>
-            <Grid item xs={12} md={5}>
+            <Grid size={{ xs: 12, md: 5 }}>
               <TextField
                 select
                 fullWidth
@@ -436,7 +442,7 @@ function Secciones() {
               </TextField>
             </Grid>
 
-            <Grid item xs={12} md={7}>
+            <Grid size={{ xs: 12, md: 7 }}>
               <TextField
                 fullWidth
                 label="Nombre de la sección"
