@@ -325,6 +325,12 @@ function AdminLayout() {
       icon: <GroupsIcon fontSize="small" />,
     },
     {
+      label: "Mi empresa",
+      path: "/mi-empresa",
+      roles: ["administrador", "admin"],
+      icon: <BusinessIcon fontSize="small" />,
+    },
+    {
       label: "Mi perfil",
       path: "/mi-perfil",
       roles: ["administrador", "admin", "agente", "agent", "supervisor"],

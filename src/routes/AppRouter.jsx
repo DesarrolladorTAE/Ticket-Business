@@ -28,6 +28,7 @@ import ExternalApiTokens from "../modules/tickets/pages/ExternalApiTokens";
 import ExternalApiDashboard from "../modules/tickets/pages/ExternalApiDashboard";
 import GeneralMetricsDashboard from "../modules/metrics/pages/GeneralMetricsDashboard";
 import MiPerfil from "../modules/profile/pages/MiPerfil";
+import MiEmpresa from "../modules/company/pages/MiEmpresa";
 
 import GruposSoporte from "../modules/support-groups/pages/GruposSoporte";
 
@@ -230,6 +231,16 @@ function AppRouter() {
               roles={["Administrador", "admin", "Supervisor", "supervisor"]}
             >
               <Etiquetas />
+            </RutaPorRol>
+          }
+        />
+
+        {/* MI EMPRESA - SOLO ADMINISTRADOR */}
+        <Route
+          path="/mi-empresa"
+          element={
+            <RutaPorRol roles={["Administrador", "admin"]}>
+              <MiEmpresa />
             </RutaPorRol>
           }
         />
