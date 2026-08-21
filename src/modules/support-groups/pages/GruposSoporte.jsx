@@ -6,6 +6,7 @@ import {
   Alert,
   Box,
   Button,
+  Checkbox,
   Chip,
   CircularProgress,
   Dialog,
@@ -29,11 +30,15 @@ import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
 import CloseIcon from "@mui/icons-material/Close";
 
 const normalizarRol = (rol) => {
-  return String(rol || "").trim().toLowerCase();
+  return String(rol || "")
+    .trim()
+    .toLowerCase();
 };
 
 const normalizarTexto = (valor) => {
-  return String(valor || "").trim().toLowerCase();
+  return String(valor || "")
+    .trim()
+    .toLowerCase();
 };
 
 function GruposSoporte() {
@@ -56,6 +61,7 @@ function GruposSoporte() {
   const [grupos, setGrupos] = useState([]);
   const [agentes, setAgentes] = useState([]);
   const [categoriasDisponibles, setCategoriasDisponibles] = useState([]);
+  const [categoriasActivas, setCategoriasActivas] = useState([]);
 
   const [formulario, setFormulario] = useState({
     nombre: "",
@@ -68,13 +74,15 @@ function GruposSoporte() {
 
   const [modalEditarAbierto, setModalEditarAbierto] = useState(false);
   const [grupoEditando, setGrupoEditando] = useState(null);
+
   const [formularioEdicion, setFormularioEdicion] = useState({
     nombre: "",
     descripcion: "",
+    system_ids: [],
   });
+
   const [guardandoEdicion, setGuardandoEdicion] = useState(false);
   const [errorEdicion, setErrorEdicion] = useState("");
-
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(6);
 
@@ -83,6 +91,20 @@ function GruposSoporte() {
   const [error, setError] = useState("");
   const [ok, setOk] = useState("");
   const [warning, setWarning] = useState("");
+
+  /*
+   * En la edición se muestran todas las categorías activas
+   * de la empresa. Las que ya pertenecen al grupo actual
+   * aparecen seleccionadas y las demás pueden reasignarse
+   * al guardar los cambios.
+   */
+  const categoriasParaEdicion = useMemo(() => {
+    if (!grupoEditando) {
+      return [];
+    }
+
+    return categoriasActivas;
+  }, [grupoEditando, categoriasActivas]);
 
   useEffect(() => {
     obtenerDatos();
@@ -124,14 +146,18 @@ function GruposSoporte() {
       const res = await axiosCliente.get("/systems");
       const categorias = normalizarRespuesta(res);
 
+      const activas = categorias.filter(
+        (categoria) => Number(categoria.estado) === 1,
+      );
+
+      setCategoriasActivas(activas);
+
       setCategoriasDisponibles(
-        categorias.filter(
-          (categoria) =>
-            Number(categoria.estado) === 1 && !categoria.support_group_id,
-        ),
+        activas.filter((categoria) => !categoria.support_group_id),
       );
     } catch (error) {
       console.log("ERROR CATEGORIAS:", error.response?.data || error);
+      setCategoriasActivas([]);
       setCategoriasDisponibles([]);
     }
   };
@@ -232,14 +258,27 @@ function GruposSoporte() {
     }
   };
 
+  /*
+   * Abre el modal de edición y carga las categorías que
+   * actualmente pertenecen al grupo.
+   */
   const abrirEditarGrupo = (grupo) => {
     if (!puedeGestionar) return;
 
+    const systemIds = Array.isArray(grupo.systems)
+      ? grupo.systems
+          .map((categoria) => Number(categoria.id))
+          .filter((id) => Number.isInteger(id) && id > 0)
+      : [];
+
     setGrupoEditando(grupo);
+
     setFormularioEdicion({
       nombre: grupo.nombre || "",
       descripcion: grupo.descripcion || "",
+      system_ids: systemIds,
     });
+
     setErrorEdicion("");
     setModalEditarAbierto(true);
   };
@@ -250,9 +289,11 @@ function GruposSoporte() {
     setModalEditarAbierto(false);
     setGrupoEditando(null);
     setErrorEdicion("");
+
     setFormularioEdicion({
       nombre: "",
       descripcion: "",
+      system_ids: [],
     });
   };
 
@@ -263,6 +304,33 @@ function GruposSoporte() {
       ...prev,
       [name]: value,
     }));
+  };
+
+  /*
+   * Agrega o quita una categoría sin reemplazar las demás
+   * que ya estaban seleccionadas en el grupo.
+   */
+  const alternarCategoriaEdicion = (categoriaId) => {
+    const id = Number(categoriaId);
+
+    if (!Number.isInteger(id) || id <= 0) return;
+
+    setFormularioEdicion((prev) => {
+      const actuales = Array.isArray(prev.system_ids)
+        ? prev.system_ids.map((valor) => Number(valor))
+        : [];
+
+      const seleccionada = actuales.includes(id);
+
+      return {
+        ...prev,
+        system_ids: seleccionada
+          ? actuales.filter((valor) => valor !== id)
+          : [...actuales, id],
+      };
+    });
+
+    setErrorEdicion("");
   };
 
   const guardarEdicionGrupo = async (e) => {
@@ -277,6 +345,11 @@ function GruposSoporte() {
       return;
     }
 
+    if (!formularioEdicion.system_ids.length) {
+      setErrorEdicion("Selecciona al menos una categoría.");
+      return;
+    }
+
     setGuardandoEdicion(true);
     setErrorEdicion("");
     setError("");
@@ -288,23 +361,30 @@ function GruposSoporte() {
         {
           nombre,
           descripcion: formularioEdicion.descripcion.trim(),
+          system_ids: formularioEdicion.system_ids,
         },
       );
 
       setOk(
         respuesta.data?.message ||
-          "Grupo actualizado correctamente.",
+          "Grupo y categorías actualizados correctamente.",
       );
 
       setModalEditarAbierto(false);
       setGrupoEditando(null);
       setErrorEdicion("");
+
       setFormularioEdicion({
         nombre: "",
         descripcion: "",
+        system_ids: [],
       });
 
-      await obtenerGrupos();
+      /*
+       * Se vuelven a cargar todos los datos porque las categorías
+       * disponibles pudieron cambiar después de la edición.
+       */
+      await obtenerDatos();
     } catch (error) {
       console.log("ERROR EDITAR GRUPO:", error.response?.data || error);
 
@@ -362,10 +442,7 @@ function GruposSoporte() {
       await obtenerDatos();
     } catch (error) {
       console.log("ERROR AGREGAR AGENTE:", error.response?.data || error);
-      setError(
-        error.response?.data?.message ||
-          "No se pudo agregar el agente",
-      );
+      setError(error.response?.data?.message || "No se pudo agregar el agente");
     }
   };
 
@@ -386,18 +463,13 @@ function GruposSoporte() {
       setError("");
       setOk("");
 
-      await axiosCliente.delete(
-        `/support-groups/${grupoId}/agents/${userId}`,
-      );
+      await axiosCliente.delete(`/support-groups/${grupoId}/agents/${userId}`);
 
       setOk("Agente quitado correctamente.");
       await obtenerDatos();
     } catch (error) {
       console.log("ERROR QUITAR AGENTE:", error.response?.data || error);
-      setError(
-        error.response?.data?.message ||
-          "No se pudo quitar el agente",
-      );
+      setError(error.response?.data?.message || "No se pudo quitar el agente");
     }
   };
 
@@ -423,8 +495,7 @@ function GruposSoporte() {
 
       const categoriasGrupo = (grupo.systems || [])
         .map(
-          (categoria) =>
-            `${categoria.nombre || ""} ${categoria.prefijo || ""}`,
+          (categoria) => `${categoria.nombre || ""} ${categoria.prefijo || ""}`,
         )
         .join(" ");
 
@@ -553,10 +624,7 @@ function GruposSoporte() {
           }}
         >
           <Box mb={2}>
-            <Typography
-              fontWeight={900}
-              sx={{ fontSize: { xs: 18, md: 20 } }}
-            >
+            <Typography fontWeight={900} sx={{ fontSize: { xs: 18, md: 20 } }}>
               Crear grupo
             </Typography>
 
@@ -630,10 +698,7 @@ function GruposSoporte() {
                   }
                 >
                   {categoriasDisponibles.map((categoria) => (
-                    <MenuItem
-                      key={categoria.id}
-                      value={Number(categoria.id)}
-                    >
+                    <MenuItem key={categoria.id} value={Number(categoria.id)}>
                       {categoria.nombre}
                       {categoria.prefijo ? ` (${categoria.prefijo})` : ""}
                     </MenuItem>
@@ -754,11 +819,7 @@ function GruposSoporte() {
               </Box>
             ) : (
               <>
-                <Grid
-                  container
-                  spacing={{ xs: 2, md: 3 }}
-                  alignItems="stretch"
-                >
+                <Grid container spacing={{ xs: 2, md: 3 }} alignItems="stretch">
                   {gruposPaginados.map((grupo) => (
                     <Grid size={{ xs: 12, lg: 6 }} key={grupo.id}>
                       <Paper
@@ -819,9 +880,7 @@ function GruposSoporte() {
                                         },
                                       }}
                                     >
-                                      <EditOutlinedIcon
-                                        sx={{ fontSize: 17 }}
-                                      />
+                                      <EditOutlinedIcon sx={{ fontSize: 17 }} />
                                     </IconButton>
                                   </Tooltip>
                                 )}
@@ -913,8 +972,7 @@ function GruposSoporte() {
                                 <Chip
                                   key={categoria.id}
                                   label={
-                                    categoria.nombre ||
-                                    "Categoría sin nombre"
+                                    categoria.nombre || "Categoría sin nombre"
                                   }
                                   size="small"
                                   variant="outlined"
@@ -958,20 +1016,14 @@ function GruposSoporte() {
                                 Agregar agente
                               </Typography>
 
-                              <Grid
-                                container
-                                spacing={1.5}
-                                alignItems="center"
-                              >
+                              <Grid container spacing={1.5} alignItems="center">
                                 <Grid size={{ xs: 12, md: 8 }}>
                                   <TextField
                                     select
                                     fullWidth
                                     size="small"
                                     label="Selecciona un agente"
-                                    value={
-                                      agenteSeleccionado[grupo.id] || ""
-                                    }
+                                    value={agenteSeleccionado[grupo.id] || ""}
                                     onChange={(e) =>
                                       cambiarAgenteGrupo(
                                         grupo.id,
@@ -1104,10 +1156,7 @@ function GruposSoporte() {
                                         size="small"
                                         color="error"
                                         onClick={() =>
-                                          quitarAgente(
-                                            grupo.id,
-                                            agente.id,
-                                          )
+                                          quitarAgente(grupo.id, agente.id)
                                         }
                                         sx={{
                                           width: 36,
@@ -1209,7 +1258,8 @@ function GruposSoporte() {
                   color="text.secondary"
                   sx={{ mt: 0.25 }}
                 >
-                  Modifica el nombre o descripción del grupo.
+                  Modifica el nombre, descripción o categorías asignadas al
+                  grupo.
                 </Typography>
               </Box>
 
@@ -1258,6 +1308,67 @@ function GruposSoporte() {
                 onChange={cambiarValorEdicion}
                 disabled={guardandoEdicion}
               />
+
+              <TextField
+                select
+                fullWidth
+                size="small"
+                label="Categorías asignadas"
+                value={
+                  Array.isArray(formularioEdicion.system_ids)
+                    ? formularioEdicion.system_ids
+                    : []
+                }
+                onChange={() => {}}
+                disabled={
+                  guardandoEdicion || categoriasParaEdicion.length === 0
+                }
+                SelectProps={{
+                  multiple: true,
+                  renderValue: (seleccionadas) => {
+                    const ids = (
+                      Array.isArray(seleccionadas)
+                        ? seleccionadas
+                        : [seleccionadas]
+                    ).map((id) => Number(id));
+
+                    return categoriasParaEdicion
+                      .filter((categoria) => ids.includes(Number(categoria.id)))
+                      .map((categoria) => categoria.nombre)
+                      .join(", ");
+                  },
+                }}
+                helperText="Puedes conservar, agregar o quitar categorías asignadas a este grupo."
+              >
+                {categoriasParaEdicion.map((categoria) => {
+                  const categoriaId = Number(categoria.id);
+                  const seleccionada = formularioEdicion.system_ids
+                    .map((id) => Number(id))
+                    .includes(categoriaId);
+
+                  return (
+                    <MenuItem
+                      key={categoria.id}
+                      value={categoriaId}
+                      onClick={(event) => {
+                        event.preventDefault();
+                        alternarCategoriaEdicion(categoriaId);
+                      }}
+                    >
+                      <Checkbox
+                        size="small"
+                        checked={seleccionada}
+                        tabIndex={-1}
+                        disableRipple
+                        sx={{ mr: 1 }}
+                      />
+
+                      {categoria.nombre}
+                      {categoria.prefijo ? ` (${categoria.prefijo})` : ""}
+                    </MenuItem>
+                  );
+                })}
+              </TextField>
             </Stack>
           </DialogContent>
 
@@ -1296,9 +1407,7 @@ function GruposSoporte() {
                 boxShadow: "none",
               }}
             >
-              {guardandoEdicion
-                ? "Guardando..."
-                : "Guardar cambios"}
+              {guardandoEdicion ? "Guardando..." : "Guardar cambios"}
             </Button>
           </DialogActions>
         </Box>

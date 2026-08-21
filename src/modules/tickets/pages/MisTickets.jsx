@@ -173,18 +173,30 @@ function MisTickets() {
     };
   };
 
-  const nombreCliente = (ticket) => {
-    if (!ticket.user) return "Sin cliente";
+  const obtenerCliente = (ticket) =>
+    ticket.client || ticket.cliente || ticket.user || null;
 
-    return `${ticket.user.name || ""} ${
-      ticket.user.apellido_paterno || ""
-    } ${ticket.user.apellido_materno || ""}`
+  const nombreCliente = (ticket) => {
+    if (ticket.cliente_nombre) {
+      return String(ticket.cliente_nombre).trim() || "Sin cliente";
+    }
+
+    const cliente = obtenerCliente(ticket);
+
+    if (!cliente) return "Sin cliente";
+
+    return `${cliente.name || ""} ${cliente.apellido_paterno || ""} ${
+      cliente.apellido_materno || ""
+    }`
       .trim()
       .replace(/\s+/g, " ");
   };
 
-  const clienteValor = (ticket) =>
-    String(ticket.user?.id ?? nombreCliente(ticket));
+  const clienteValor = (ticket) => {
+    const cliente = obtenerCliente(ticket);
+
+    return String(cliente?.id ?? nombreCliente(ticket));
+  };
 
   const fechaCreacionISO = (ticket) => {
     if (!ticket.created_at) return "";
@@ -208,21 +220,14 @@ function MisTickets() {
     const fecha = new Date(ticket.created_at);
 
     if (Number.isNaN(fecha.getTime())) {
-      return String(ticket.created_at);
+      return String(ticket.created_at).slice(0, 10);
     }
 
-    const fechaTexto = fecha.toLocaleDateString("es-MX", {
+    return fecha.toLocaleDateString("es-MX", {
       day: "2-digit",
       month: "2-digit",
       year: "numeric",
     });
-
-    const horaTexto = fecha.toLocaleTimeString("es-MX", {
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-
-    return `${fechaTexto} · ${horaTexto}`;
   };
 
   const esTicketPendiente = (ticket) => {
@@ -921,7 +926,7 @@ function MisTickets() {
                   stickyHeader
                   sx={{
                     tableLayout: "fixed",
-                    minWidth: 1080,
+                    minWidth: 1120,
                     width: "100%",
                   }}
                 >
@@ -935,8 +940,8 @@ function MisTickets() {
                         Problema
                       </TableCell>
 
-                      <TableCell sx={{ ...headCell, width: 155 }}>
-                        Sección
+                      <TableCell sx={{ ...headCell, width: 190 }}>
+                        Sección / Categoría
                       </TableCell>
 
                       <TableCell sx={{ ...headCell, width: 165 }}>
@@ -1034,26 +1039,46 @@ function MisTickets() {
                             {ticket.titulo}
                           </Typography>
 
-                          <Chip
-                            size="small"
-                            label={nombreSistema(ticket)}
+                          <Typography
+                            variant="body2"
+                            color="text.secondary"
                             sx={{
                               mt: 0.7,
                               fontWeight: 700,
-                              borderRadius: 2,
-                              maxWidth: "100%",
-                              "& .MuiChip-label": {
-                                overflow: "hidden",
-                                textOverflow: "ellipsis",
-                              },
+                              lineHeight: 1.35,
+                              wordBreak: "break-word",
                             }}
-                          />
-
-                          <EtiquetasTicket ticket={ticket} />
+                          >
+                            Cliente: {nombreCliente(ticket)}
+                          </Typography>
                         </TableCell>
 
                         <TableCell sx={bodyCell}>
-                          {ticket.seccion_nombre || nombreProblema(ticket)}
+                          <Stack spacing={0.45}>
+                            <Typography
+                              variant="body2"
+                              fontWeight={700}
+                              sx={{
+                                lineHeight: 1.35,
+                                wordBreak: "break-word",
+                              }}
+                            >
+                              {ticket.seccion_nombre || nombreProblema(ticket)}
+                            </Typography>
+
+                            <Typography
+                              variant="caption"
+                              color="text.secondary"
+                              sx={{
+                                lineHeight: 1.3,
+                                wordBreak: "break-word",
+                              }}
+                            >
+                              {nombreSistema(ticket)}
+                            </Typography>
+
+                            <EtiquetasTicket ticket={ticket} />
+                          </Stack>
                         </TableCell>
 
                         <TableCell sx={bodyCell}>
@@ -1183,7 +1208,7 @@ function MisTickets() {
                           noWrap
                           display="block"
                         >
-                          {nombreSistema(ticket)}
+                          Cliente: {nombreCliente(ticket)}
                         </Typography>
 
                         <Typography
@@ -1222,30 +1247,46 @@ function MisTickets() {
                       {ticket.titulo}
                     </Typography>
 
-                    <Box>
-                      <Typography
-                        variant="caption"
-                        color="text.secondary"
-                        fontWeight={800}
-                        display="block"
-                        sx={{ mb: 0.4 }}
-                      >
-                        Etiquetas
-                      </Typography>
-
-                      <EtiquetasTicket ticket={ticket} />
-                    </Box>
-
                     <Divider />
 
                     <Grid container spacing={1.2}>
                       <Grid item xs={12} sm={6}>
-                        <InfoItem
-                          label="Sección"
-                          value={
-                            ticket.seccion_nombre || nombreProblema(ticket)
-                          }
-                        />
+                        <Box>
+                          <Typography
+                            variant="caption"
+                            color="text.secondary"
+                            fontWeight={800}
+                            display="block"
+                          >
+                            Sección / Categoría
+                          </Typography>
+
+                          <Typography
+                            variant="body2"
+                            fontWeight={700}
+                            sx={{
+                              wordBreak: "break-word",
+                              lineHeight: 1.35,
+                            }}
+                          >
+                            {ticket.seccion_nombre || nombreProblema(ticket)}
+                          </Typography>
+
+                          <Typography
+                            variant="caption"
+                            color="text.secondary"
+                            display="block"
+                            sx={{
+                              mt: 0.2,
+                              lineHeight: 1.3,
+                              wordBreak: "break-word",
+                            }}
+                          >
+                            {nombreSistema(ticket)}
+                          </Typography>
+
+                          <EtiquetasTicket ticket={ticket} />
+                        </Box>
                       </Grid>
 
                       <Grid item xs={12} sm={6}>
