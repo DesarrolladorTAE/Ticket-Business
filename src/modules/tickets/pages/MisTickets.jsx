@@ -4,6 +4,11 @@ import { useNavigate } from "react-router-dom";
 import axiosCliente from "../../../services/axiosCliente";
 import NuevoTicketModal from "../components/NuevoTicketModal";
 import UserAvatar from "../../../components/UserAvatar";
+import AddIcon from "@mui/icons-material/Add";
+import TuneIcon from "@mui/icons-material/Tune";
+import RestartAltIcon from "@mui/icons-material/RestartAlt";
+import ConfirmationNumberOutlinedIcon from "@mui/icons-material/ConfirmationNumberOutlined";
+import LocalOfferOutlinedIcon from "@mui/icons-material/LocalOfferOutlined";
 
 import {
   Alert,
@@ -24,6 +29,7 @@ import {
   TablePagination,
   TableRow,
   TextField,
+  Tooltip,
   Typography,
 } from "@mui/material";
 
@@ -33,13 +39,12 @@ function MisTickets() {
   const navigate = useNavigate();
 
   const [tickets, setTickets] = useState([]);
+  const [catalogoPrioridades, setCatalogoPrioridades] = useState([]);
   const [busqueda, setBusqueda] = useState("");
   const [clienteFiltro, setClienteFiltro] = useState("todos");
   const [fechaFiltro, setFechaFiltro] = useState("");
   const [prioridadFiltro, setPrioridadFiltro] = useState("todos");
   const [estadoFiltro, setEstadoFiltro] = useState("todos");
-  const [vigenciaFiltro, setVigenciaFiltro] = useState("todos");
-  const [situacionFiltro, setSituacionFiltro] = useState("todos");
   const [etiquetaFiltro, setEtiquetaFiltro] = useState("todos");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -60,8 +65,6 @@ function MisTickets() {
     fechaFiltro,
     prioridadFiltro,
     estadoFiltro,
-    vigenciaFiltro,
-    situacionFiltro,
     etiquetaFiltro,
   ]);
 
@@ -71,9 +74,46 @@ function MisTickets() {
     try {
       setError("");
 
-      const res = await axiosCliente.get("/tickets");
+      const [res, clientesRes, prioridadesRes] = await Promise.all([
+        axiosCliente.get("/tickets"),
+        axiosCliente.get("/clients/summary").catch(() => null),
+        axiosCliente.get("/ticket-priorities").catch(() => null),
+      ]);
 
-      setTickets(res.data.data || res.data || []);
+      const ticketsRecibidos = res.data.data || res.data || [];
+      const clientesActuales = clientesRes?.data?.data || [];
+      setCatalogoPrioridades(
+        prioridadesRes?.data?.data || prioridadesRes?.data || [],
+      );
+      const clientesPorId = new Map(
+        clientesActuales.map((cliente) => [String(cliente.id), cliente]),
+      );
+
+      const ticketsConClienteActual = ticketsRecibidos.map((ticket) => {
+        const clienteId =
+          ticket.client?.id ??
+          ticket.cliente?.id ??
+          ticket.client_id ??
+          ticket.cliente_id;
+        const clienteActual = clientesPorId.get(String(clienteId));
+
+        if (!clienteActual) return ticket;
+
+        const nombreActual = `${clienteActual.name || ""} ${
+          clienteActual.apellido_paterno || ""
+        } ${clienteActual.apellido_materno || ""}`
+          .trim()
+          .replace(/\s+/g, " ");
+
+        return {
+          ...ticket,
+          client: clienteActual,
+          cliente: clienteActual,
+          cliente_nombre: nombreActual || ticket.cliente_nombre,
+        };
+      });
+
+      setTickets(ticketsConClienteActual);
     } catch (error) {
       console.log("ERROR CARGAR TICKETS:", error.response?.data || error);
 
@@ -230,6 +270,45 @@ function MisTickets() {
     });
   };
 
+  const fechaVencimientoTimestamp = (ticket) => {
+    const valor = ticket.due_date || ticket.due_at;
+
+    if (!valor) return Number.POSITIVE_INFINITY;
+
+    const texto = String(valor).trim();
+    const formatoISO = texto.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+
+    if (formatoISO) {
+      return new Date(
+        Number(formatoISO[1]),
+        Number(formatoISO[2]) - 1,
+        Number(formatoISO[3]),
+      ).getTime();
+    }
+
+    const partes = texto.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+
+    if (partes) {
+      return new Date(
+        Number(partes[3]),
+        Number(partes[2]) - 1,
+        Number(partes[1]),
+      ).getTime();
+    }
+
+    const fecha = new Date(texto.replace(" ", "T"));
+
+    if (!Number.isNaN(fecha.getTime())) {
+      return new Date(
+        fecha.getFullYear(),
+        fecha.getMonth(),
+        fecha.getDate(),
+      ).getTime();
+    }
+
+    return Number.POSITIVE_INFINITY;
+  };
+
   const esTicketPendiente = (ticket) => {
     const statusId = Number(ticket.status?.id ?? ticket.status_id ?? 0);
 
@@ -246,9 +325,6 @@ function MisTickets() {
       !estado.includes("finalizado")
     );
   };
-
-  const esTicketVigente = (ticket) =>
-    ["normal", "warning", "due_today"].includes(ticket.due_status);
 
   const colorEstado = (ticket) => {
     const estado = String(nombreEstado(ticket)).toLowerCase();
@@ -272,29 +348,36 @@ function MisTickets() {
     return "default";
   };
 
-  const etiquetaVigencia = (ticket) =>
-    ticket.due_label || ticket.due_date || "Sin vigencia";
+  const diasParaVencer = (ticket) => {
+    const vencimiento = fechaVencimientoTimestamp(ticket);
+
+    if (!Number.isFinite(vencimiento)) return null;
+
+    const hoy = new Date();
+    hoy.setHours(0, 0, 0, 0);
+
+    return Math.ceil((vencimiento - hoy.getTime()) / 86400000);
+  };
+
+  const etiquetaVigencia = (ticket) => {
+    if (!esTicketPendiente(ticket)) return "Finalizado";
+
+    const dias = diasParaVencer(ticket);
+
+    if (dias === null) return "Sin fecha";
+    if (dias === 0) return "Hoy";
+
+    return `${dias} ${Math.abs(dias) === 1 ? "día" : "días"}`;
+  };
 
   const colorVigencia = (ticket) => {
-    switch (ticket.due_status) {
-      case "overdue":
-        return "error";
+    if (!esTicketPendiente(ticket)) return "default";
 
-      case "due_today":
-        return "error";
+    const dias = diasParaVencer(ticket);
 
-      case "warning":
-        return "warning";
-
-      case "normal":
-        return "success";
-
-      case "finalized":
-        return "default";
-
-      default:
-        return "default";
-    }
+    if (dias === null) return "success";
+    if (dias <= 3) return "warning";
+    return "success";
   };
 
   const clientesDisponibles = useMemo(() => {
@@ -312,35 +395,6 @@ function MisTickets() {
     return Array.from(mapa.entries())
       .map(([value, label]) => ({ value, label }))
       .sort((a, b) => a.label.localeCompare(b.label, "es"));
-  }, [tickets]);
-
-  const prioridadesDisponibles = useMemo(() => {
-    const mapa = new Map();
-
-    tickets.forEach((ticket) => {
-      const nombre = nombrePrioridad(ticket);
-      const valor = String(ticket.priority?.id ?? nombre);
-
-      if (!mapa.has(valor)) {
-        mapa.set(valor, nombre);
-      }
-    });
-
-    return Array.from(mapa.entries())
-      .map(([value, label]) => ({ value, label }))
-      .sort((a, b) => a.label.localeCompare(b.label, "es"));
-  }, [tickets]);
-
-  const estadosDisponibles = useMemo(() => {
-    const estados = new Set();
-
-    tickets.forEach((ticket) => {
-      estados.add(nombreEstado(ticket));
-    });
-
-    return Array.from(estados)
-      .filter(Boolean)
-      .sort((a, b) => a.localeCompare(b, "es"));
   }, [tickets]);
 
   const etiquetasDisponibles = useMemo(() => {
@@ -365,14 +419,44 @@ function MisTickets() {
       .sort((a, b) => a.label.localeCompare(b.label, "es"));
   }, [tickets]);
 
+  const prioridadesDisponibles = useMemo(() => {
+    const mapa = new Map();
+
+    catalogoPrioridades.forEach((prioridad) => {
+      if (prioridad?.id == null) return;
+
+      mapa.set(
+        String(prioridad.id),
+        prioridad.nombre || prioridad.name || `Prioridad ${prioridad.id}`,
+      );
+    });
+
+    tickets.forEach((ticket) => {
+      const nombre = nombrePrioridad(ticket);
+      const valor = String(ticket.priority?.id ?? nombre);
+
+      if (!mapa.has(valor)) mapa.set(valor, nombre);
+    });
+
+    return Array.from(mapa.entries())
+      .map(([value, label]) => ({ value, label }))
+      .sort((a, b) => {
+        const orden = { baja: 1, media: 2, alta: 3 };
+        const nombreA = String(a.label).trim().toLowerCase();
+        const nombreB = String(b.label).trim().toLowerCase();
+        const posicionA = orden[nombreA] ?? 99;
+        const posicionB = orden[nombreB] ?? 99;
+
+        return posicionA - posicionB || a.label.localeCompare(b.label, "es");
+      });
+  }, [catalogoPrioridades, tickets]);
+
   const hayFiltrosActivos =
     busqueda.trim() ||
     clienteFiltro !== "todos" ||
     fechaFiltro ||
     prioridadFiltro !== "todos" ||
     estadoFiltro !== "todos" ||
-    vigenciaFiltro !== "todos" ||
-    situacionFiltro !== "todos" ||
     etiquetaFiltro !== "todos";
 
   const limpiarFiltros = () => {
@@ -381,8 +465,6 @@ function MisTickets() {
     setFechaFiltro("");
     setPrioridadFiltro("todos");
     setEstadoFiltro("todos");
-    setVigenciaFiltro("todos");
-    setSituacionFiltro("todos");
     setEtiquetaFiltro("todos");
   };
 
@@ -390,11 +472,6 @@ function MisTickets() {
     const texto = busqueda.trim().toLowerCase();
 
     return tickets.filter((ticket) => {
-      const estado = String(nombreEstado(ticket)).toLowerCase();
-      const prioridadValor = String(
-        ticket.priority?.id ?? nombrePrioridad(ticket),
-      );
-
       const coincideTexto =
         !texto ||
         [ticket.folio, ticket.folio_prefijo, ticket.folio_numero, ticket.titulo]
@@ -408,25 +485,21 @@ function MisTickets() {
       const coincideFecha =
         !fechaFiltro || fechaCreacionISO(ticket) === fechaFiltro;
 
+      const prioridadValor = String(
+        ticket.priority?.id ?? nombrePrioridad(ticket),
+      );
       const coincidePrioridad =
         prioridadFiltro === "todos" || prioridadValor === prioridadFiltro;
 
-      const coincideEstado =
-        estadoFiltro === "todos" || estado === estadoFiltro;
-
-      const coincideVigencia =
-        vigenciaFiltro === "todos" ||
-        (vigenciaFiltro === "vigentes" && esTicketVigente(ticket)) ||
-        (vigenciaFiltro === "vencidos" && ticket.due_status === "overdue") ||
-        (vigenciaFiltro === "sin_vigencia" &&
-          (!ticket.due_at || ticket.due_status === "unknown"));
-
       const pendiente = esTicketPendiente(ticket);
-
-      const coincideSituacion =
-        situacionFiltro === "todos" ||
-        (situacionFiltro === "pendientes" && pendiente) ||
-        (situacionFiltro === "finalizados" && !pendiente);
+      const dias = diasParaVencer(ticket);
+      const estadoVisual = !pendiente
+        ? "finalizado"
+        : dias !== null && dias <= 3
+          ? "proximo"
+          : "disponible";
+      const coincideEstado =
+        estadoFiltro === "todos" || estadoFiltro === estadoVisual;
 
       const tags = Array.isArray(ticket?.tags) ? ticket.tags : [];
 
@@ -440,10 +513,32 @@ function MisTickets() {
         coincideFecha &&
         coincidePrioridad &&
         coincideEstado &&
-        coincideVigencia &&
-        coincideSituacion &&
         coincideEtiqueta
       );
+    }).sort((ticketA, ticketB) => {
+      const pendienteA = esTicketPendiente(ticketA);
+      const pendienteB = esTicketPendiente(ticketB);
+      const diasA = diasParaVencer(ticketA);
+      const diasB = diasParaVencer(ticketB);
+      const ordenA = !pendienteA ? 2 : diasA !== null && diasA <= 3 ? 0 : 1;
+      const ordenB = !pendienteB ? 2 : diasB !== null && diasB <= 3 ? 0 : 1;
+
+      if (ordenA !== ordenB) return ordenA - ordenB;
+
+      if (pendienteA !== pendienteB) return pendienteA ? -1 : 1;
+
+      if (pendienteA && pendienteB) {
+        const diferenciaVencimiento =
+          fechaVencimientoTimestamp(ticketA) -
+          fechaVencimientoTimestamp(ticketB);
+
+        if (diferenciaVencimiento !== 0) return diferenciaVencimiento;
+      }
+
+      const creadoA = new Date(ticketA.created_at || 0).getTime();
+      const creadoB = new Date(ticketB.created_at || 0).getTime();
+
+      return creadoA - creadoB;
     });
   }, [
     tickets,
@@ -452,8 +547,6 @@ function MisTickets() {
     fechaFiltro,
     prioridadFiltro,
     estadoFiltro,
-    vigenciaFiltro,
-    situacionFiltro,
     etiquetaFiltro,
   ]);
 
@@ -572,26 +665,51 @@ function MisTickets() {
         spacing={0.6}
         useFlexGap
         flexWrap="wrap"
-        sx={{ mt: 0.8 }}
+        sx={{
+          mt: 0.8,
+          width: "100%",
+          maxWidth: "100%",
+          minWidth: 0,
+          overflow: "hidden",
+        }}
       >
-        {tags.map((tag) => (
-          <Chip
-            key={tag.id}
-            size="small"
-            label={tag.nombre}
-            variant="outlined"
-            color={tag.estado ? "primary" : "default"}
-            sx={{
-              height: 24,
-              fontWeight: 800,
-              maxWidth: "100%",
-              "& .MuiChip-label": {
-                overflow: "hidden",
-                textOverflow: "ellipsis",
-              },
-            }}
-          />
+        {tags.slice(0, 4).map((tag) => (
+          <Tooltip key={tag.id} title={tag.nombre} arrow enterTouchDelay={0}>
+            <Box
+              component="span"
+              role="img"
+              aria-label={`Etiqueta: ${tag.nombre}`}
+              tabIndex={0}
+              sx={{
+                width: 30,
+                height: 30,
+                borderRadius: 2,
+                display: "inline-grid",
+                placeItems: "center",
+                flexShrink: 0,
+                color: tag.estado ? "#2563eb" : "#64748b",
+                bgcolor: tag.estado ? "#eff6ff" : "#f1f5f9",
+                border: "1px solid",
+                borderColor: tag.estado ? "#bfdbfe" : "#cbd5e1",
+                cursor: "help",
+                "&:focus-visible": {
+                  outline: "2px solid #2563eb",
+                  outlineOffset: 2,
+                },
+              }}
+            >
+              <LocalOfferOutlinedIcon sx={{ fontSize: 17 }} />
+            </Box>
+          </Tooltip>
         ))}
+
+        {tags.length > 4 && (
+          <Chip
+            size="small"
+            label={`+${tags.length - 4}`}
+            sx={{ height: 30, fontWeight: 900, bgcolor: "#e2e8f0" }}
+          />
+        )}
       </Stack>
     );
   };
@@ -629,41 +747,32 @@ function MisTickets() {
 
   return (
     <Box>
-      <Box
-        mb={3}
-        display="flex"
-        flexDirection={{ xs: "column", sm: "row" }}
-        justifyContent="space-between"
-        alignItems={{ xs: "stretch", sm: "center" }}
-        gap={2}
+      <Paper
+        variant="outlined"
+        sx={{
+          mb: 2.5,
+          p: { xs: 1.75, sm: 2.25 },
+          borderRadius: 3,
+          borderColor: "#dbeafe",
+          bgcolor: "#f8fbff",
+          backgroundImage: "linear-gradient(120deg, #eff6ff 0%, #ffffff 72%)",
+          boxShadow: "none",
+        }}
       >
-        <Box>
-          <Typography
-            variant="h5"
-            fontWeight={900}
-            sx={{ fontSize: { xs: 22, md: 26 } }}
-          >
-            Tickets
-          </Typography>
-
-          <Typography variant="body2" color="text.secondary">
-            Consulta tickets, estado, prioridad, vigencia y agente asignado.
-          </Typography>
-        </Box>
-
-        <Button
-          variant="contained"
-          onClick={() => setOpenNuevoTicket(true)}
-          sx={{
-            borderRadius: 2,
-            textTransform: "none",
-            fontWeight: 800,
-            width: { xs: "100%", sm: "auto" },
-          }}
-        >
-          Nuevo ticket
-        </Button>
-      </Box>
+        <Stack direction="row" spacing={1.5} alignItems="center">
+          <Box sx={{ width: 48, height: 48, borderRadius: 2.5, bgcolor: "#2563eb", color: "#fff", display: "grid", placeItems: "center", flexShrink: 0 }}>
+            <ConfirmationNumberOutlinedIcon />
+          </Box>
+          <Box sx={{ minWidth: 0 }}>
+            <Typography variant="h5" fontWeight={900} sx={{ fontSize: { xs: 21, md: 25 }, color: "#0f172a", lineHeight: 1.2 }}>
+              Gestión de tickets
+            </Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ mt: 0.35 }}>
+              Prioriza pendientes y consulta su seguimiento en un solo lugar.
+            </Typography>
+          </Box>
+        </Stack>
+      </Paper>
 
       {error && (
         <Alert severity="error" sx={{ mb: 3 }}>
@@ -682,45 +791,63 @@ function MisTickets() {
         <Box
           sx={{
             mb: 3,
-            p: { xs: 1.25, sm: 1.5 },
-            border: "1px solid #e5e7eb",
-            borderRadius: 2.5,
-            bgcolor: "#f8fafc",
+            p: { xs: 1.5, md: 2 },
+            border: "1px solid #dbeafe",
+            borderRadius: 3,
+            bgcolor: "#f8fbff",
+            backgroundImage: "linear-gradient(135deg, #f8fbff 0%, #f8fafc 100%)",
+            "& .MuiOutlinedInput-root": {
+              bgcolor: "#ffffff",
+              borderRadius: 2,
+            },
           }}
         >
-          <Stack
-            direction={{ xs: "column", sm: "row" }}
-            justifyContent="space-between"
-            alignItems={{ xs: "stretch", sm: "center" }}
-            spacing={1}
-            sx={{ mb: 1.5 }}
+          <Box
+            sx={{
+              mb: 1.5,
+              width: "100%",
+              display: "grid",
+              gridTemplateColumns: { xs: "1fr", sm: "minmax(0, 1fr) auto" },
+              alignItems: "start",
+              gap: 1.25,
+            }}
           >
-            <Box>
-              <Typography fontWeight={900} sx={{ fontSize: 14 }}>
-                Filtros
-              </Typography>
+            <Stack direction="row" spacing={1.25} alignItems="center">
+              <Box sx={{ width: 38, height: 38, borderRadius: 2, bgcolor: "#dbeafe", color: "#2563eb", display: "grid", placeItems: "center" }}>
+                <TuneIcon fontSize="small" />
+              </Box>
+              <Box>
+                <Typography fontWeight={900} sx={{ fontSize: 15 }}>
+                  Buscar y filtrar
+                </Typography>
 
-              <Typography variant="caption" color="text.secondary">
-                Combina uno o varios filtros para localizar tickets.
-              </Typography>
-            </Box>
+                <Typography variant="caption" color="text.secondary">
+                  Encuentra tickets por datos, estado o clasificación.
+                </Typography>
+              </Box>
+            </Stack>
 
             <Button
               size="small"
-              color="inherit"
+              variant="outlined"
+              startIcon={<RestartAltIcon />}
               onClick={limpiarFiltros}
+              disabled={!hayFiltrosActivos}
               sx={{
                 textTransform: "none",
                 fontWeight: 800,
-                alignSelf: { xs: "flex-start", sm: "center" },
+                justifySelf: { xs: "stretch", sm: "end" },
+                alignSelf: "start",
+                width: { xs: "100%", sm: "auto" },
+                flexShrink: 0,
               }}
             >
               Limpiar filtros
             </Button>
-          </Stack>
+          </Box>
 
           <Grid container spacing={1.5}>
-            <Grid item xs={12} sm={6} lg={4}>
+            <Grid item xs={12} md={6}>
               <TextField
                 fullWidth
                 size="small"
@@ -731,7 +858,7 @@ function MisTickets() {
               />
             </Grid>
 
-            <Grid item xs={12} sm={6} lg={4}>
+            <Grid item xs={12} sm={6} md={3}>
               <TextField
                 select
                 fullWidth
@@ -750,7 +877,7 @@ function MisTickets() {
               </TextField>
             </Grid>
 
-            <Grid item xs={12} sm={6} lg={4}>
+            <Grid item xs={12} sm={6} md={3}>
               <Box
                 sx={{
                   position: "relative",
@@ -765,7 +892,7 @@ function MisTickets() {
                     left: 10,
                     zIndex: 1,
                     px: 0.5,
-                    bgcolor: "#f8fafc",
+                    bgcolor: "#ffffff",
                     color: "text.secondary",
                     fontSize: 11,
                     lineHeight: 1,
@@ -784,26 +911,7 @@ function MisTickets() {
               </Box>
             </Grid>
 
-            <Grid item xs={12} sm={6} lg={3}>
-              <TextField
-                select
-                fullWidth
-                size="small"
-                label="Prioridad"
-                value={prioridadFiltro}
-                onChange={(event) => setPrioridadFiltro(event.target.value)}
-              >
-                <MenuItem value="todos">Todas</MenuItem>
-
-                {prioridadesDisponibles.map((prioridad) => (
-                  <MenuItem key={prioridad.value} value={prioridad.value}>
-                    {prioridad.label}
-                  </MenuItem>
-                ))}
-              </TextField>
-            </Grid>
-
-            <Grid item xs={12} sm={6} lg={3}>
+            <Grid item xs={12} sm={6} md={4}>
               <TextField
                 select
                 fullWidth
@@ -813,47 +921,31 @@ function MisTickets() {
                 onChange={(event) => setEstadoFiltro(event.target.value)}
               >
                 <MenuItem value="todos">Todos</MenuItem>
+                <MenuItem value="proximo">Próximo</MenuItem>
+                <MenuItem value="disponible">Disponible</MenuItem>
+                <MenuItem value="finalizado">Finalizado</MenuItem>
+              </TextField>
+            </Grid>
 
-                {estadosDisponibles.map((estado) => (
-                  <MenuItem key={estado} value={String(estado).toLowerCase()}>
-                    {estado}
+            <Grid item xs={12} sm={6} md={4}>
+              <TextField
+                select
+                fullWidth
+                size="small"
+                label="Prioridad"
+                value={prioridadFiltro}
+                onChange={(event) => setPrioridadFiltro(event.target.value)}
+              >
+                <MenuItem value="todos">Todas las prioridades</MenuItem>
+                {prioridadesDisponibles.map((prioridad) => (
+                  <MenuItem key={prioridad.value} value={prioridad.value}>
+                    {prioridad.label}
                   </MenuItem>
                 ))}
               </TextField>
             </Grid>
 
-            <Grid item xs={12} sm={6} lg={3}>
-              <TextField
-                select
-                fullWidth
-                size="small"
-                label="Vigencia"
-                value={vigenciaFiltro}
-                onChange={(event) => setVigenciaFiltro(event.target.value)}
-              >
-                <MenuItem value="todos">Todas</MenuItem>
-                <MenuItem value="vigentes">Vigentes</MenuItem>
-                <MenuItem value="vencidos">Vencidos</MenuItem>
-                <MenuItem value="sin_vigencia">Sin vigencia</MenuItem>
-              </TextField>
-            </Grid>
-
-            <Grid item xs={12} sm={6} lg={3}>
-              <TextField
-                select
-                fullWidth
-                size="small"
-                label="Situación"
-                value={situacionFiltro}
-                onChange={(event) => setSituacionFiltro(event.target.value)}
-              >
-                <MenuItem value="todos">Todos</MenuItem>
-                <MenuItem value="pendientes">Pendientes</MenuItem>
-                <MenuItem value="finalizados">Finalizados</MenuItem>
-              </TextField>
-            </Grid>
-
-            <Grid item xs={12} sm={6} lg={3}>
+            <Grid item xs={12} sm={6} md={4}>
               <TextField
                 select
                 fullWidth
@@ -874,12 +966,15 @@ function MisTickets() {
           </Grid>
         </Box>
 
-        <Stack
-          direction={{ xs: "column", sm: "row" }}
-          justifyContent="space-between"
-          alignItems={{ xs: "stretch", sm: "center" }}
-          spacing={1}
-          sx={{ mb: 2 }}
+        <Box
+          sx={{
+            mb: 2,
+            width: "100%",
+            display: "grid",
+            gridTemplateColumns: { xs: "1fr", sm: "minmax(0, 1fr) auto" },
+            alignItems: "start",
+            gap: 1.25,
+          }}
         >
           <Box>
             <Typography fontWeight={900} color="#0f172a">
@@ -887,27 +982,45 @@ function MisTickets() {
             </Typography>
 
             <Typography variant="body2" color="text.secondary">
-              Selecciona cualquier fila para abrir el detalle.
+              Pendientes por vencimiento; después, los tickets más antiguos.
             </Typography>
           </Box>
 
-          <Chip
-            label={`${ticketsFiltrados.length} ticket(s)`}
-            color="primary"
-            variant="outlined"
-            sx={{
-              fontWeight: 800,
-              alignSelf: { xs: "flex-start", sm: "center" },
-            }}
-          />
-        </Stack>
+          <Stack
+            direction={{ xs: "column", sm: "row" }}
+            spacing={1}
+            alignItems={{ xs: "stretch", sm: "center" }}
+            sx={{ justifySelf: { xs: "stretch", sm: "end" }, flexShrink: 0 }}
+          >
+            <Chip
+              label={`${ticketsFiltrados.length} ticket(s)`}
+              color="primary"
+              variant="outlined"
+              sx={{ fontWeight: 800, alignSelf: { xs: "flex-start", sm: "center" } }}
+            />
+            <Button
+              variant="contained"
+              startIcon={<AddIcon />}
+              onClick={() => setOpenNuevoTicket(true)}
+              sx={{
+                borderRadius: 2,
+                textTransform: "none",
+                fontWeight: 800,
+                boxShadow: "none",
+                width: { xs: "100%", sm: "auto" },
+              }}
+            >
+              Nuevo ticket
+            </Button>
+          </Stack>
+        </Box>
 
         {ticketsFiltrados.length > 0 ? (
           <>
             {/* Escritorio */}
             <Paper
               sx={{
-                display: { xs: "none", md: "block" },
+                display: { xs: "none", lg: "block" },
                 border: "1px solid #e5e7eb",
                 borderRadius: 2,
                 overflow: "hidden",
@@ -916,7 +1029,8 @@ function MisTickets() {
             >
               <TableContainer
                 sx={{
-                  maxHeight: 460,
+                  maxHeight: "calc(100vh - 330px)",
+                  minHeight: 320,
                   overflowX: "auto",
                   overflowY: "auto",
                 }}
@@ -926,29 +1040,25 @@ function MisTickets() {
                   stickyHeader
                   sx={{
                     tableLayout: "fixed",
-                    minWidth: 1120,
+                    minWidth: 1040,
                     width: "100%",
                   }}
                 >
                   <TableHead>
                     <TableRow>
-                      <TableCell sx={{ ...headCell, width: 190 }}>
-                        Folio
+                      <TableCell sx={{ ...headCell, width: 330 }}>
+                        Ticket
                       </TableCell>
 
-                      <TableCell sx={{ ...headCell, width: 255 }}>
-                        Problema
+                      <TableCell sx={{ ...headCell, width: 240 }}>
+                        Clasificación
                       </TableCell>
 
-                      <TableCell sx={{ ...headCell, width: 190 }}>
-                        Sección / Categoría
-                      </TableCell>
-
-                      <TableCell sx={{ ...headCell, width: 165 }}>
+                      <TableCell sx={{ ...headCell, width: 150 }}>
                         Prioridad / Estado
                       </TableCell>
 
-                      <TableCell sx={{ ...headCell, width: 175 }}>
+                      <TableCell sx={{ ...headCell, width: 155 }}>
                         Vigencia
                       </TableCell>
 
@@ -971,7 +1081,12 @@ function MisTickets() {
                         }
                         sx={{
                           cursor: "pointer",
-                          transition: "background-color 0.15s ease",
+                          transition: "background-color 0.15s ease, box-shadow 0.15s ease",
+                          "&:nth-of-type(even)": { bgcolor: "#fbfdff" },
+                          "&:hover": {
+                            bgcolor: "#eff6ff",
+                            boxShadow: "inset 3px 0 0 #2563eb",
+                          },
                           "&:focus-visible": {
                             outline: "2px solid",
                             outlineColor: "primary.main",
@@ -982,75 +1097,47 @@ function MisTickets() {
                         <TableCell sx={bodyCell}>
                           <Stack
                             direction="row"
-                            spacing={1.2}
-                            alignItems="center"
+                            spacing={1.4}
+                            alignItems="flex-start"
                             sx={{ minWidth: 0 }}
                           >
                             <LogoSistema ticket={ticket} size={36} />
 
                             <Box sx={{ minWidth: 0 }}>
+                              <Stack direction="row" spacing={0.75} alignItems="center" useFlexGap flexWrap="wrap">
+                                <Typography fontWeight={900} color="primary" sx={{ lineHeight: 1.2 }}>
+                                  {obtenerFolio(ticket)}
+                                </Typography>
+                                <Typography variant="caption" color="text.secondary">
+                                  {formatoFechaCreacion(ticket)}
+                                </Typography>
+                              </Stack>
+
                               <Typography
-                                fontWeight={900}
-                                color="primary"
+                                fontWeight={800}
                                 sx={{
-                                  lineHeight: 1.2,
+                                  mt: 0.65,
+                                  lineHeight: 1.35,
                                   wordBreak: "break-word",
                                 }}
                               >
-                                {ticket.folio_prefijo || "TCK"}
+                                {ticket.titulo}
                               </Typography>
 
                               <Typography
-                                variant="caption"
+                                variant="body2"
+                                color="text.secondary"
                                 sx={{
                                   display: "block",
+                                  mt: 0.5,
                                   wordBreak: "break-word",
                                   fontWeight: 700,
                                 }}
                               >
-                                {ticket.folio_numero || ticket.id}
-                              </Typography>
-
-                              <Typography
-                                variant="caption"
-                                color="text.secondary"
-                                sx={{
-                                  display: "block",
-                                  mt: 0.35,
-                                  fontSize: 10.5,
-                                  lineHeight: 1.3,
-                                  whiteSpace: "nowrap",
-                                }}
-                              >
-                                Creado: {formatoFechaCreacion(ticket)}
+                                Cliente: {nombreCliente(ticket)}
                               </Typography>
                             </Box>
                           </Stack>
-                        </TableCell>
-
-                        <TableCell sx={bodyCell}>
-                          <Typography
-                            fontWeight={700}
-                            sx={{
-                              lineHeight: 1.35,
-                              wordBreak: "break-word",
-                            }}
-                          >
-                            {ticket.titulo}
-                          </Typography>
-
-                          <Typography
-                            variant="body2"
-                            color="text.secondary"
-                            sx={{
-                              mt: 0.7,
-                              fontWeight: 700,
-                              lineHeight: 1.35,
-                              wordBreak: "break-word",
-                            }}
-                          >
-                            Cliente: {nombreCliente(ticket)}
-                          </Typography>
                         </TableCell>
 
                         <TableCell sx={bodyCell}>
@@ -1163,7 +1250,7 @@ function MisTickets() {
             <Stack
               spacing={1.5}
               sx={{
-                display: { xs: "flex", md: "none" },
+                display: { xs: "flex", lg: "none" },
               }}
             >
               {ticketsPaginados.map((ticket) => (
@@ -1232,6 +1319,11 @@ function MisTickets() {
                         sx={{
                           fontWeight: 800,
                           flexShrink: 0,
+                          maxWidth: "38%",
+                          "& .MuiChip-label": {
+                            overflow: "hidden",
+                            textOverflow: "ellipsis",
+                          },
                         }}
                       />
                     </Stack>

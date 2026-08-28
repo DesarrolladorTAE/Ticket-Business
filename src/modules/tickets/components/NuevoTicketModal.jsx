@@ -19,11 +19,18 @@ import {
   Stack,
   TextField,
   Typography,
+  useMediaQuery,
 } from "@mui/material";
+import { useTheme } from "@mui/material/styles";
 
 import AttachFileIcon from "@mui/icons-material/AttachFile";
 import CloseIcon from "@mui/icons-material/Close";
 import InsertDriveFileIcon from "@mui/icons-material/InsertDriveFile";
+import ConfirmationNumberOutlinedIcon from "@mui/icons-material/ConfirmationNumberOutlined";
+import PersonOutlineIcon from "@mui/icons-material/Person2Outlined";
+import CategoryOutlinedIcon from "@mui/icons-material/CategoryOutlined";
+import DescriptionOutlinedIcon from "@mui/icons-material/DescriptionOutlined";
+import CloudUploadOutlinedIcon from "@mui/icons-material/CloudUploadOutlined";
 
 const formatearFechaInput = (fecha) => {
   const year = fecha.getFullYear();
@@ -81,6 +88,8 @@ const etiquetaCliente = (cliente) => {
 
 function NuevoTicketModal({ open, onClose, onCreated }) {
   const { user } = useAuth();
+  const theme = useTheme();
+  const esMovil = useMediaQuery(theme.breakpoints.down("sm"));
 
   const rolesBase = Array.isArray(user?.roles) ? user.roles : [];
 
@@ -110,7 +119,7 @@ function NuevoTicketModal({ open, onClose, onCreated }) {
     due_date: obtenerFechaVigenciaDefault(),
   });
 
-  const [archivo, setArchivo] = useState(null);
+  const [archivos, setArchivos] = useState([]);
   const [sistemas, setSistemas] = useState([]);
   const [categorias, setCategorias] = useState([]);
   const [prioridades, setPrioridades] = useState([]);
@@ -229,21 +238,36 @@ function NuevoTicketModal({ open, onClose, onCreated }) {
       due_date: obtenerFechaVigenciaDefault(),
     });
 
-    setArchivo(null);
+    setArchivos([]);
     setError("");
     onClose();
   };
 
   const seleccionarArchivo = (e) => {
-    const file = e.target.files?.[0] || null;
+    const nuevosArchivos = Array.from(e.target.files || []);
 
-    setArchivo(file);
+    setArchivos((actuales) => {
+      const combinados = [...actuales, ...nuevosArchivos];
+
+      return combinados.filter(
+        (file, index, lista) =>
+          index ===
+          lista.findIndex(
+            (otro) =>
+              otro.name === file.name &&
+              otro.size === file.size &&
+              otro.lastModified === file.lastModified,
+          ),
+      );
+    });
 
     e.target.value = "";
   };
 
-  const quitarArchivo = () => {
-    setArchivo(null);
+  const quitarArchivo = (index) => {
+    setArchivos((actuales) =>
+      actuales.filter((_, posicion) => posicion !== index),
+    );
   };
 
   const formatoPeso = (bytes) => {
@@ -268,6 +292,21 @@ function NuevoTicketModal({ open, onClose, onCreated }) {
       return;
     }
 
+    if (!formulario.system_id) {
+      setError("Selecciona la categoría del ticket.");
+      return;
+    }
+
+    if (!formulario.category_id) {
+      setError("Selecciona la sección del ticket.");
+      return;
+    }
+
+    if (!formulario.priority_id) {
+      setError("Selecciona la prioridad del ticket.");
+      return;
+    }
+
     if (!formulario.due_date) {
       setError("Selecciona la fecha de vigencia del ticket.");
       return;
@@ -275,6 +314,16 @@ function NuevoTicketModal({ open, onClose, onCreated }) {
 
     if (formulario.due_date < obtenerFechaHoy()) {
       setError("La fecha de vigencia no puede ser anterior a hoy.");
+      return;
+    }
+
+    if (!formulario.titulo.trim()) {
+      setError("Escribe un asunto claro para el ticket.");
+      return;
+    }
+
+    if (!formulario.descripcion.trim()) {
+      setError("Describe el problema o solicitud antes de crear el ticket.");
       return;
     }
 
@@ -300,9 +349,7 @@ function NuevoTicketModal({ open, onClose, onCreated }) {
         });
       }
 
-      if (archivo) {
-        formData.append("archivos[]", archivo);
-      }
+      archivos.forEach((archivo) => formData.append("archivos[]", archivo));
 
       await axiosCliente.post("/tickets", formData, {
         headers: {
@@ -336,16 +383,18 @@ function NuevoTicketModal({ open, onClose, onCreated }) {
     <Dialog
       open={open}
       onClose={cargando ? undefined : cerrar}
-      maxWidth="sm"
+      maxWidth="md"
       fullWidth
-      fullScreen={false}
+      fullScreen={esMovil}
       PaperProps={{
         sx: {
           width: "100%",
-          maxWidth: { xs: "calc(100% - 24px)", sm: 620 },
-          m: { xs: 1.5, sm: 3 },
-          borderRadius: { xs: 3, sm: 4 },
+          maxWidth: { xs: "100%", sm: 760 },
+          m: { xs: 0, sm: 3 },
+          borderRadius: { xs: 0, sm: 4 },
           overflow: "hidden",
+          boxShadow: "0 24px 70px rgba(15, 23, 42, 0.22)",
+          maxHeight: { xs: "100dvh", sm: "calc(100dvh - 48px)" },
         },
       }}
     >
@@ -353,11 +402,17 @@ function NuevoTicketModal({ open, onClose, onCreated }) {
         sx={{
           px: { xs: 2, sm: 3 },
           py: { xs: 1.6, sm: 2.2 },
-          borderBottom: "1px solid #e5e7eb",
+          borderBottom: "1px solid #dbeafe",
+          bgcolor: "#f8fbff",
+          backgroundImage: "linear-gradient(120deg, #eff6ff 0%, #ffffff 75%)",
         }}
       >
         <Stack direction="row" justifyContent="space-between" spacing={1.5}>
-          <Box sx={{ minWidth: 0 }}>
+          <Stack direction="row" spacing={1.4} alignItems="center" sx={{ minWidth: 0 }}>
+            <Box sx={{ width: 44, height: 44, borderRadius: 2.5, bgcolor: "#2563eb", color: "#fff", display: "grid", placeItems: "center", flexShrink: 0 }}>
+              <ConfirmationNumberOutlinedIcon />
+            </Box>
+            <Box sx={{ minWidth: 0 }}>
             <Typography
               fontWeight={900}
               sx={{
@@ -379,7 +434,8 @@ function NuevoTicketModal({ open, onClose, onCreated }) {
             >
               Completa la información para registrar un nuevo ticket de soporte.
             </Typography>
-          </Box>
+            </Box>
+          </Stack>
 
           <IconButton
             onClick={cerrar}
@@ -397,34 +453,68 @@ function NuevoTicketModal({ open, onClose, onCreated }) {
         </Stack>
       </DialogTitle>
 
-      <Box component="form" onSubmit={crearTicket}>
+      {error && (
+        <Alert
+          severity="error"
+          role="alert"
+          sx={{
+            mx: { xs: 2, sm: 3 },
+            mt: 2,
+            borderRadius: 2.5,
+            alignItems: "flex-start",
+            "& .MuiAlert-message": { fontWeight: 700, lineHeight: 1.45 },
+          }}
+        >
+          {error}
+        </Alert>
+      )}
+
+      <Box
+        component="form"
+        noValidate
+        onSubmit={crearTicket}
+        onChange={() => error && setError("")}
+        sx={{
+          display: "flex",
+          flexDirection: "column",
+          flex: 1,
+          minHeight: 0,
+          overflow: "hidden",
+        }}
+      >
         <DialogContent
           dividers={false}
           sx={{
             px: { xs: 2, sm: 3 },
             py: { xs: 2, sm: 2.5 },
-            maxHeight: { xs: "calc(100dvh - 190px)", sm: "70vh" },
+            flex: 1,
+            minHeight: 0,
+            maxHeight: "none",
             overflowY: "auto",
+            overflowX: "hidden",
+            bgcolor: "#f8fafc",
           }}
         >
           <Stack spacing={2}>
-            {error && <Alert severity="error">{error}</Alert>}
-
             {puedeAsignar && (
               <Paper
                 variant="outlined"
                 sx={{
                   p: { xs: 1.5, sm: 2 },
                   borderRadius: 3,
-                  borderColor: "#e5e7eb",
+                  borderColor: "#dbeafe",
                   bgcolor: "#ffffff",
+                  boxShadow: "0 1px 2px rgba(15, 23, 42, 0.04)",
                 }}
               >
                 <Stack spacing={2}>
                   <Box>
+                    <Stack direction="row" spacing={1} alignItems="center">
+                      <PersonOutlineIcon sx={{ color: "#2563eb" }} />
                     <Typography fontWeight={900} sx={{ fontSize: 15 }}>
                       Asignación
                     </Typography>
+                    </Stack>
 
                     <Typography variant="caption" color="text.secondary">
                       Indica a qué cliente va dirigido el ticket y agrega las
@@ -470,6 +560,7 @@ function NuevoTicketModal({ open, onClose, onCreated }) {
 
                   <Autocomplete
                     multiple
+                    limitTags={2}
                     fullWidth
                     options={etiquetas}
                     value={etiquetas.filter((etiqueta) =>
@@ -499,7 +590,14 @@ function NuevoTicketModal({ open, onClose, onCreated }) {
                             {...tagProps}
                             size="small"
                             label={etiqueta.nombre}
-                            sx={{ fontWeight: 700 }}
+                            sx={{
+                              fontWeight: 700,
+                              maxWidth: 180,
+                              "& .MuiChip-label": {
+                                overflow: "hidden",
+                                textOverflow: "ellipsis",
+                              },
+                            }}
                           />
                         );
                       })
@@ -527,15 +625,19 @@ function NuevoTicketModal({ open, onClose, onCreated }) {
               sx={{
                 p: { xs: 1.5, sm: 2 },
                 borderRadius: 3,
-                borderColor: "#e5e7eb",
+                borderColor: "#dbeafe",
                 bgcolor: "#ffffff",
+                boxShadow: "0 1px 2px rgba(15, 23, 42, 0.04)",
               }}
             >
               <Stack spacing={2}>
                 <Box>
+                  <Stack direction="row" spacing={1} alignItems="center">
+                    <CategoryOutlinedIcon sx={{ color: "#2563eb" }} />
                   <Typography fontWeight={900} sx={{ fontSize: 15 }}>
                     Clasificación
                   </Typography>
+                  </Stack>
 
                   <Typography variant="caption" color="text.secondary">
                     Selecciona la categoría, sección, prioridad y vigencia del
@@ -543,6 +645,7 @@ function NuevoTicketModal({ open, onClose, onCreated }) {
                   </Typography>
                 </Box>
 
+                <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "repeat(2, minmax(0, 1fr))" }, gap: 2 }}>
                 <TextField
                   select
                   fullWidth
@@ -644,6 +747,7 @@ function NuevoTicketModal({ open, onClose, onCreated }) {
                     }}
                   />
                 </Box>
+                </Box>
               </Stack>
             </Paper>
 
@@ -652,15 +756,19 @@ function NuevoTicketModal({ open, onClose, onCreated }) {
               sx={{
                 p: { xs: 1.5, sm: 2 },
                 borderRadius: 3,
-                borderColor: "#e5e7eb",
+                borderColor: "#dbeafe",
                 bgcolor: "#ffffff",
+                boxShadow: "0 1px 2px rgba(15, 23, 42, 0.04)",
               }}
             >
               <Stack spacing={2}>
                 <Box>
+                  <Stack direction="row" spacing={1} alignItems="center">
+                    <DescriptionOutlinedIcon sx={{ color: "#2563eb" }} />
                   <Typography fontWeight={900} sx={{ fontSize: 15 }}>
                     Detalle del problema
                   </Typography>
+                  </Stack>
 
                   <Typography variant="caption" color="text.secondary">
                     Describe el asunto y agrega información suficiente para
@@ -683,7 +791,6 @@ function NuevoTicketModal({ open, onClose, onCreated }) {
                   fullWidth
                   multiline
                   minRows={4}
-                  maxRows={7}
                   size="small"
                   label="Descripción"
                   name="descripcion"
@@ -700,19 +807,22 @@ function NuevoTicketModal({ open, onClose, onCreated }) {
               sx={{
                 p: { xs: 1.5, sm: 2 },
                 borderRadius: 3,
-                borderColor: "#e5e7eb",
+                borderColor: "#dbeafe",
                 bgcolor: "#ffffff",
+                boxShadow: "0 1px 2px rgba(15, 23, 42, 0.04)",
               }}
             >
               <Stack spacing={1.4}>
                 <Box>
+                  <Stack direction="row" spacing={1} alignItems="center">
+                    <CloudUploadOutlinedIcon sx={{ color: "#2563eb" }} />
                   <Typography fontWeight={900} sx={{ fontSize: 15 }}>
                     Archivo adjunto
                   </Typography>
+                  </Stack>
 
                   <Typography variant="caption" color="text.secondary">
-                    Puedes adjuntar una captura, documento o archivo
-                    relacionado.
+                    Puedes seleccionar uno o varios archivos relacionados.
                   </Typography>
                 </Box>
 
@@ -730,17 +840,24 @@ function NuevoTicketModal({ open, onClose, onCreated }) {
                     minHeight: 40,
                   }}
                 >
-                  Adjuntar archivo
+                  {archivos.length > 0 ? "Agregar más archivos" : "Adjuntar archivos"}
                   <input
                     hidden
                     type="file"
+                    multiple
                     accept="image/*,video/*,.jfif,.pdf,.doc,.docx,.xls,.xlsx,.txt,.zip"
                     onChange={seleccionarArchivo}
                   />
                 </Button>
 
-                {archivo && (
+                {archivos.length > 0 && (
+                  <Stack spacing={0.8}>
+                    <Typography variant="caption" color="text.secondary" fontWeight={800}>
+                      {archivos.length} {archivos.length === 1 ? "archivo seleccionado" : "archivos seleccionados"}
+                    </Typography>
+                  {archivos.map((archivo, index) => (
                   <Box
+                    key={`${archivo.name}-${archivo.size}-${archivo.lastModified}`}
                     sx={{
                       display: "flex",
                       alignItems: "center",
@@ -780,13 +897,16 @@ function NuevoTicketModal({ open, onClose, onCreated }) {
 
                     <IconButton
                       size="small"
-                      onClick={quitarArchivo}
+                      onClick={() => quitarArchivo(index)}
+                      aria-label={`Quitar ${archivo.name}`}
                       disabled={cargando || cargandoCatalogos}
                       sx={{ flexShrink: 0 }}
                     >
                       <CloseIcon fontSize="small" />
                     </IconButton>
                   </Box>
+                  ))}
+                  </Stack>
                 )}
               </Stack>
             </Paper>

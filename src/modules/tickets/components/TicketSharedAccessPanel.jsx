@@ -379,6 +379,9 @@ export default function TicketSharedAccessPanel({ ticketId }) {
       sx={{
         p: { xs: 1.5, sm: 2 },
         mb: 2,
+        width: "100%",
+        minWidth: 0,
+        overflow: "hidden",
         borderRadius: 3,
         border: "1px solid #cbd5e1",
         bgcolor: "#ffffff",
@@ -461,11 +464,7 @@ export default function TicketSharedAccessPanel({ ticketId }) {
               </Typography>
             </Box>
 
-            <Stack
-              direction={{ xs: "column", md: "row" }}
-              spacing={1.5}
-              alignItems={{ xs: "stretch", md: "center" }}
-            >
+            <Stack direction="column" spacing={1.25} alignItems="stretch">
               <TextField
                 fullWidth
                 size="small"
@@ -489,7 +488,7 @@ export default function TicketSharedAccessPanel({ ticketId }) {
                 onClick={enviarAcceso}
                 disabled={enviandoCorreo || !email.trim()}
                 sx={{
-                  minWidth: { xs: "100%", md: 190 },
+                  width: "100%",
                   borderRadius: 2,
                   textTransform: "none",
                   fontWeight: 800,
@@ -576,11 +575,7 @@ export default function TicketSharedAccessPanel({ ticketId }) {
             </Box>
 
             {directUrl && (
-              <Stack
-                direction={{ xs: "column", md: "row" }}
-                spacing={1}
-                alignItems={{ xs: "stretch", md: "center" }}
-              >
+              <Stack direction="column" spacing={1} alignItems="stretch">
                 <TextField
                   fullWidth
                   size="small"
@@ -590,8 +585,10 @@ export default function TicketSharedAccessPanel({ ticketId }) {
                     readOnly: true,
                   }}
                   sx={{
+                    minWidth: 0,
                     "& .MuiInputBase-input": {
                       fontSize: 13,
+                      textOverflow: "ellipsis",
                     },
                   }}
                 />
@@ -601,7 +598,7 @@ export default function TicketSharedAccessPanel({ ticketId }) {
                   startIcon={<ContentCopyOutlinedIcon />}
                   onClick={copiarLink}
                   sx={{
-                    minWidth: { xs: "100%", md: 150 },
+                    width: "100%",
                     borderRadius: 2,
                     textTransform: "none",
                     fontWeight: 800,
@@ -622,12 +619,7 @@ export default function TicketSharedAccessPanel({ ticketId }) {
               </Alert>
             )}
 
-            <Stack
-              direction={{ xs: "column", sm: "row" }}
-              spacing={1}
-              useFlexGap
-              flexWrap="wrap"
-            >
+            <Stack direction="column" spacing={1}>
               <Button
                 variant={accesoLink?.status ? "outlined" : "contained"}
                 startIcon={
@@ -640,7 +632,7 @@ export default function TicketSharedAccessPanel({ ticketId }) {
                 onClick={generarEnlaceDirecto}
                 disabled={generandoLink}
                 sx={{
-                  minWidth: { xs: "100%", sm: 190 },
+                  width: "100%",
                   borderRadius: 2,
                   textTransform: "none",
                   fontWeight: 800,
@@ -654,22 +646,6 @@ export default function TicketSharedAccessPanel({ ticketId }) {
                     : "Generar enlace"}
               </Button>
 
-              {directUrl && (
-                <Button
-                  variant="outlined"
-                  startIcon={<ContentCopyOutlinedIcon />}
-                  onClick={copiarLink}
-                  sx={{
-                    minWidth: { xs: "100%", sm: 150 },
-                    borderRadius: 2,
-                    textTransform: "none",
-                    fontWeight: 800,
-                  }}
-                >
-                  Copiar link
-                </Button>
-              )}
-
               {accesoLink?.status && (
                 <Button
                   variant="outlined"
@@ -678,7 +654,7 @@ export default function TicketSharedAccessPanel({ ticketId }) {
                   onClick={() => revocarAcceso(accesoLink)}
                   disabled={revocandoId === accesoLink.id}
                   sx={{
-                    minWidth: { xs: "100%", sm: 150 },
+                    width: "100%",
                     borderRadius: 2,
                     textTransform: "none",
                     fontWeight: 800,
@@ -708,12 +684,7 @@ export default function TicketSharedAccessPanel({ ticketId }) {
         <Divider />
 
         {/* LISTADO DE ACCESOS */}
-        <Box
-          display="flex"
-          justifyContent="space-between"
-          alignItems="center"
-          gap={1}
-        >
+        <Stack spacing={0.75} alignItems="flex-start">
           <Box>
             <Typography
               variant="subtitle2"
@@ -748,7 +719,7 @@ export default function TicketSharedAccessPanel({ ticketId }) {
           >
             Actualizar
           </Button>
-        </Box>
+        </Stack>
 
         {loading ? (
           <Box
@@ -775,17 +746,14 @@ export default function TicketSharedAccessPanel({ ticketId }) {
                   variant="outlined"
                   sx={{
                     p: 1.5,
+                    minWidth: 0,
+                    overflow: "hidden",
                     borderRadius: 2,
                     borderColor: "#e2e8f0",
                     bgcolor: "#f8fafc",
                   }}
                 >
-                  <Stack
-                    direction={{ xs: "column", md: "row" }}
-                    justifyContent="space-between"
-                    alignItems={{ xs: "stretch", md: "center" }}
-                    spacing={1.5}
-                  >
+                  <Stack direction="column" alignItems="stretch" spacing={1.5}>
                     <Box sx={{ minWidth: 0 }}>
                       <Typography
                         variant="body2"
@@ -827,7 +795,7 @@ export default function TicketSharedAccessPanel({ ticketId }) {
                             size="small"
                             variant="outlined"
                             label="Sin correo ni contraseña"
-                            sx={{ fontWeight: 800 }}
+                            sx={{ fontWeight: 800, maxWidth: "100%" }}
                           />
                         ) : (
                           <Chip
@@ -843,16 +811,13 @@ export default function TicketSharedAccessPanel({ ticketId }) {
                                 ? "primary"
                                 : "warning"
                             }
-                            sx={{ fontWeight: 800 }}
+                            sx={{ fontWeight: 800, maxWidth: "100%" }}
                           />
                         )}
                       </Stack>
                     </Box>
 
-                    <Stack
-                      direction={{ xs: "column", sm: "row" }}
-                      spacing={1}
-                    >
+                    <Stack direction="column" spacing={1}>
                       {!esLink && (
                         <Button
                           size="small"

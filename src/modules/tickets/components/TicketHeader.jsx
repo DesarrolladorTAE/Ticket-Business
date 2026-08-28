@@ -1,11 +1,7 @@
-import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
-import KeyboardArrowUpIcon from "@mui/icons-material/KeyboardArrowUp";
-
 import {
   Box,
   Button,
   Chip,
-  Collapse,
   Divider,
   MenuItem,
   Paper,
@@ -21,10 +17,7 @@ export default function TicketHeader({
   puedeCambiarEstado,
   puedeResolver,
   puedeEliminar,
-  puedeGestionar,
   puedeTomarTicket,
-  mostrarInfoTicket,
-  setMostrarInfoTicket,
   cambiarEstado,
   tomarTicket,
   resolverTicket,
@@ -45,10 +38,10 @@ export default function TicketHeader({
     >
       <Stack spacing={2}>
         <Stack
-          direction={{ xs: "column", md: "row" }}
+          direction="column"
           justifyContent="space-between"
-          alignItems={{ xs: "stretch", md: "flex-start" }}
-          spacing={2.5}
+          alignItems="stretch"
+          spacing={2}
         >
           <Box sx={{ minWidth: 0, flex: 1 }}>
             <Stack
@@ -118,7 +111,7 @@ export default function TicketHeader({
 
           <Box
             sx={{
-              width: { xs: "100%", md: 380 },
+              width: "100%",
               flexShrink: 0,
               display: "grid",
               gridTemplateColumns: {
@@ -187,34 +180,18 @@ export default function TicketHeader({
               </Button>
             )}
 
-            <Button
-              variant="outlined"
-              onClick={() => setMostrarInfoTicket((prev) => !prev)}
-              endIcon={
-                mostrarInfoTicket ? (
-                  <KeyboardArrowUpIcon />
-                ) : (
-                  <KeyboardArrowDownIcon />
-                )
-              }
-              sx={buttonStyle}
-            >
-              {mostrarInfoTicket ? "Ocultar info" : "Ver info"}
-            </Button>
           </Box>
         </Stack>
 
         <Divider />
 
-        <Collapse in={mostrarInfoTicket} timeout="auto" unmountOnExit>
-          <Stack spacing={2}>
+        <Stack spacing={2}>
             <Box
               sx={{
                 display: "grid",
                 gridTemplateColumns: {
                   xs: "1fr",
                   sm: "repeat(2, minmax(0, 1fr))",
-                  md: "repeat(3, minmax(0, 1fr))",
                 },
                 gap: 1.5,
               }}
@@ -237,9 +214,14 @@ export default function TicketHeader({
                       sx={{
                         fontWeight: 800,
                         maxWidth: "100%",
+                        height: "auto",
+                        alignItems: "flex-start",
                         "& .MuiChip-label": {
-                          overflow: "hidden",
-                          textOverflow: "ellipsis",
+                          display: "block",
+                          py: 0.6,
+                          whiteSpace: "normal",
+                          wordBreak: "break-word",
+                          lineHeight: 1.25,
                         },
                       }}
                     />
@@ -304,8 +286,7 @@ export default function TicketHeader({
                 </Typography>
               </Box>
             </Box>
-          </Stack>
-        </Collapse>
+        </Stack>
       </Stack>
     </Paper>
   );

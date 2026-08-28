@@ -24,6 +24,8 @@ import {
   Paper,
   Select,
   Stack,
+  Tab,
+  Tabs,
   Typography,
 } from "@mui/material";
 
@@ -31,6 +33,11 @@ import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 import OpenInNewIcon from "@mui/icons-material/OpenInNew";
 import AccessTimeIcon from "@mui/icons-material/AccessTime";
 import LocalOfferIcon from "@mui/icons-material/LocalOffer";
+import ArrowBackIcon from "@mui/icons-material/ArrowBack";
+import RefreshIcon from "@mui/icons-material/Refresh";
+import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
+import ShareOutlinedIcon from "@mui/icons-material/ShareOutlined";
+import ForumOutlinedIcon from "@mui/icons-material/ForumOutlined";
 
 const STORAGE_URL = "https://api.thebusinessticket.com/storage";
 const PUBLIC_TICKET_BASE_PATH = "/public/tickets";
@@ -87,7 +94,7 @@ export default function TicketDetalle() {
   const [error, setError] = useState("");
   const [previewOpen, setPreviewOpen] = useState(false);
   const [previewFile, setPreviewFile] = useState(null);
-  const [mostrarInfoTicket, setMostrarInfoTicket] = useState(false);
+  const [tabActivo, setTabActivo] = useState(0);
 
   const [agentesDisponibles, setAgentesDisponibles] = useState([]);
   const [responsableSeleccionadoId, setResponsableSeleccionadoId] =
@@ -793,6 +800,27 @@ export default function TicketDetalle() {
   };
 
   const eliminarMensaje = async (mensaje) => {
+    if (!mensaje?.id) return;
+
+    const messageId = String(mensaje.id);
+
+    if (
+      messageId.startsWith("initial-attachments-") ||
+      mensaje?.isVirtual === true ||
+      mensaje?.type === "initial_attachments" ||
+      mensaje?.tipo === "initial_attachments"
+    ) {
+      return;
+    }
+
+    if (
+      mensaje?.source === "public_access" ||
+      mensaje?.author_type === "external" ||
+      esMensajeSistema(mensaje)
+    ) {
+      return;
+    }
+
     const confirmar = await Swal.fire({
       title: "Eliminar mensaje",
       text: "¿Seguro que deseas eliminar este mensaje?",
@@ -806,10 +834,17 @@ export default function TicketDetalle() {
     if (!confirmar.isConfirmed) return;
 
     try {
-      await axiosCliente.delete(`/ticket-messages/${mensaje.id}`);
+      await axiosCliente.delete(
+        `/ticket-messages/${encodeURIComponent(messageId)}`,
+      );
+
       await cargarMensajes();
     } catch (error) {
-      setError(error.response?.data?.message || "No se pudo eliminar mensaje.");
+      console.log("ERROR ELIMINAR MENSAJE:", error.response?.data || error);
+
+      setError(
+        error.response?.data?.message || "No se pudo eliminar el mensaje.",
+      );
     }
   };
 
@@ -860,16 +895,19 @@ export default function TicketDetalle() {
   };
 
   const scrollBottom = () => {
-    setTimeout(() => {
+    const moverAlFinal = () => {
       const contenedor = chatContainerRef.current;
 
       if (!contenedor) return;
 
       contenedor.scrollTo({
         top: contenedor.scrollHeight,
-        behavior: "smooth",
+        behavior: "auto",
       });
-    }, 100);
+    };
+
+    requestAnimationFrame(moverAlFinal);
+    [100, 500, 1200].forEach((delay) => setTimeout(moverAlFinal, delay));
   };
 
   const esMio = (msg) => Number(msg.user_id) === Number(user?.id);
@@ -890,14 +928,24 @@ export default function TicketDetalle() {
   };
 
   const puedeEliminarMensaje = (msg) => {
-    /*
-     * Los mensajes del acceso compartido viven en
-     * ticket_public_messages, no en ticket_messages.
-     *
-     * Todavía no tenemos endpoint de eliminación
-     * para ellos.
-     */
+    if (!msg?.id) return false;
+
+    const messageId = String(msg.id);
+
+    if (
+      messageId.startsWith("initial-attachments-") ||
+      msg?.isVirtual === true ||
+      msg?.type === "initial_attachments" ||
+      msg?.tipo === "initial_attachments"
+    ) {
+      return false;
+    }
+
     if (msg?.source === "public_access" || msg?.author_type === "external") {
+      return false;
+    }
+
+    if (esMensajeSistema(msg)) {
       return false;
     }
 
@@ -959,648 +1007,746 @@ export default function TicketDetalle() {
     ? String(responsableSeleccionadoId)
     : "";
 
+  const linkPublicoDisponible = obtenerLinkPublicoTicket();
+  const origenTicket = String(
+    ticket?.origin ||
+      ticket?.origen ||
+      ticket?.source ||
+      ticket?.created_via ||
+      ticket?.client?.origin ||
+      "",
+  ).toLowerCase();
+  const sistemaPublicoHabilitado = [true, 1, "1"].includes(
+    ticket?.system?.public_enabled ??
+      ticket?.sistema?.public_enabled ??
+      ticket?.public_enabled,
+  );
+  const ticketEsExterno =
+    sistemaPublicoHabilitado ||
+    ["external", "externo", "public", "publico", "integration", "api"].some(
+      (origen) => origenTicket.includes(origen),
+    ) ||
+    Boolean(
+      ticket?.external_customer_id ||
+      ticket?.client?.external_customer_id ||
+      ticket?.external_reference ||
+      ticket?.is_external === true,
+    );
+
   return (
     <Box
       sx={{
         width: "100%",
-        maxWidth: "1300px",
+        maxWidth: "1600px",
         mx: "auto",
+        px: { xs: 0, md: 1 },
       }}
     >
-      <Box
-        mb={3}
-        display="flex"
-        flexDirection={{ xs: "column", sm: "row" }}
-        justifyContent="space-between"
-        alignItems={{ xs: "stretch", sm: "center" }}
-        gap={1.5}
-      >
-        <Box sx={{ minWidth: 0 }}>
-          <Typography
-            variant="h5"
-            fontWeight={900}
-            sx={{
-              fontSize: { xs: 22, md: 26 },
-              lineHeight: 1.2,
-            }}
-          >
-            Detalle del ticket
-          </Typography>
-
-          <Typography variant="body2" color="text.secondary">
-            Información, seguimiento y conversación.
-          </Typography>
-        </Box>
-
-        <Stack
-          direction="row"
-          spacing={1}
-          useFlexGap
-          flexWrap="wrap"
-          justifyContent={{ xs: "flex-start", sm: "flex-end" }}
-          alignItems="center"
-          sx={{
-            "& .MuiButton-root": {
-              minHeight: 40,
-              borderRadius: 2,
-              textTransform: "none",
-              fontWeight: 800,
-              whiteSpace: "nowrap",
-            },
-            "& .MuiButton-startIcon": {
-              mr: { xs: 0, sm: 1 },
-            },
-          }}
-        >
-          <Button
-            variant="outlined"
-            onClick={() => navigate("/mis-tickets")}
-            sx={{
-              minWidth: { xs: 44, sm: "auto" },
-              px: { xs: 1.3, sm: 2 },
-            }}
-          >
-            <Box
-              component="span"
-              sx={{ display: { xs: "none", sm: "inline" } }}
-            >
-              Volver
-            </Box>
-
-            <Box
-              component="span"
-              sx={{ display: { xs: "inline", sm: "none" } }}
-            >
-              ←
-            </Box>
-          </Button>
-
-          <Button
-            variant="contained"
-            onClick={cargarTodo}
-            sx={{
-              minWidth: { xs: 44, sm: "auto" },
-              px: { xs: 1.3, sm: 2 },
-            }}
-          >
-            <Box
-              component="span"
-              sx={{ display: { xs: "none", sm: "inline" } }}
-            >
-              Actualizar
-            </Box>
-
-            <Box
-              component="span"
-              sx={{ display: { xs: "inline", sm: "none" } }}
-            >
-              ↻
-            </Box>
-          </Button>
-
-          {puedeGestionar && (
-            <>
-              <Button
-                variant="outlined"
-                startIcon={<OpenInNewIcon />}
-                onClick={abrirVistaPublica}
-                sx={{
-                  minWidth: { xs: 44, sm: "auto" },
-                  px: { xs: 1.3, sm: 2 },
-                }}
-              >
-                <Box
-                  component="span"
-                  sx={{ display: { xs: "none", sm: "inline" } }}
-                >
-                  Vista pública
-                </Box>
-              </Button>
-
-              <Button
-                variant="outlined"
-                startIcon={<ContentCopyIcon />}
-                onClick={copiarLinkPublico}
-                sx={{
-                  minWidth: { xs: 44, sm: "auto" },
-                  px: { xs: 1.3, sm: 2 },
-                }}
-              >
-                <Box
-                  component="span"
-                  sx={{ display: { xs: "none", sm: "inline" } }}
-                >
-                  Copiar link
-                </Box>
-              </Button>
-            </>
-          )}
-        </Stack>
-      </Box>
-
       {error && (
         <Alert severity="error" sx={{ mb: 3 }}>
           {error}
         </Alert>
       )}
 
-      <Box mb={2}>
-        <TicketHeader
-          ticket={ticket}
-          estados={estados}
-          estadoNombre={estadoNombre}
-          agenteAsignado={agenteAsignado}
-          puedeCambiarEstado={puedeCambiarEstado}
-          puedeResolver={puedeResolver}
-          puedeEliminar={puedeEliminar}
-          puedeGestionar={puedeGestionar}
-          puedeTomarTicket={puedeTomarTicket}
-          mostrarInfoTicket={mostrarInfoTicket}
-          setMostrarInfoTicket={setMostrarInfoTicket}
-          cambiarEstado={cambiarEstado}
-          tomarTicket={tomarTicket}
-          resolverTicket={resolverTicket}
-          eliminarTicket={eliminarTicket}
-          calcularTiempoResolucion={calcularTiempoResolucion}
-          Info={TicketInfoItem}
-        />
-      </Box>
-
-      {puedeGestionar && <TicketSharedAccessPanel ticketId={id} />}
-
-      <Paper
+      <Box
         sx={{
-          p: { xs: 1.5, sm: 2 },
-          mb: 2,
-          borderRadius: 3,
-          border: "1px solid",
-          borderColor: estiloVigencia().borderColor,
-          bgcolor: estiloVigencia().bgcolor,
-          boxShadow: "none",
+          display: "grid",
+          gridTemplateColumns: {
+            xs: "minmax(0, 1fr)",
+            lg: "minmax(0, 3fr) minmax(360px, 2fr)",
+          },
+          gridTemplateAreas: {
+            xs: '"chat" "details"',
+            lg: '"chat details"',
+          },
+          gap: { xs: 2, lg: 2.5 },
+          alignItems: "start",
         }}
       >
-        <Stack
-          direction={{ xs: "column", sm: "row" }}
-          justifyContent="space-between"
-          alignItems={{ xs: "stretch", sm: "center" }}
-          spacing={1.5}
-        >
-          <Stack direction="row" spacing={1.25} alignItems="center">
-            <Box
-              sx={{
-                width: 40,
-                height: 40,
-                borderRadius: 2,
-                bgcolor: estiloVigencia().iconBg,
-                color: estiloVigencia().iconColor,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                flexShrink: 0,
-              }}
-            >
-              <AccessTimeIcon />
-            </Box>
-
-            <Box sx={{ minWidth: 0 }}>
-              <Typography
-                variant="subtitle1"
-                sx={{
-                  fontWeight: 900,
-                  color: "#0f172a",
-                  lineHeight: 1.25,
-                }}
-              >
-                Vigencia del ticket
-              </Typography>
-
-              <Typography
-                variant="body2"
-                sx={{
-                  color: "#64748b",
-                  mt: 0.25,
-                }}
-              >
-                {ticket?.due_status === "finalized"
-                  ? `Fecha límite original: ${ticket?.due_date || "Sin fecha"}`
-                  : `Fecha límite: ${ticket?.due_date || "Sin fecha"}`}
-              </Typography>
-            </Box>
-          </Stack>
-
-          <Chip
-            label={ticket?.due_label || "Sin vigencia"}
-            color={colorVigencia()}
-            sx={{
-              alignSelf: { xs: "flex-start", sm: "center" },
-              fontWeight: 900,
-              borderRadius: 2,
-              maxWidth: "100%",
-            }}
-          />
-        </Stack>
-      </Paper>
-
-      {puedeAsignarResponsable && (
         <Paper
-          sx={{
-            p: { xs: 1.5, sm: 2 },
-            mb: 2,
-            borderRadius: 3,
-            border: "1px solid #dbeafe",
-            bgcolor: "#f8fbff",
-            boxShadow: "none",
-          }}
-        >
-          <Stack spacing={1.5}>
-            <Box>
-              <Typography
-                variant="subtitle1"
-                sx={{
-                  fontWeight: 900,
-                  color: "#0f172a",
-                }}
-              >
-                Asignación de responsable
-              </Typography>
-
-              <Typography
-                variant="body2"
-                sx={{
-                  color: "#64748b",
-                }}
-              >
-                Responsable actual: <strong>{agenteAsignado}</strong>
-              </Typography>
-            </Box>
-
-            {!ticket?.supportGroup && !ticket?.support_group_id && (
-              <Alert severity="warning">
-                Este ticket no tiene grupo de soporte asignado.
-              </Alert>
-            )}
-
-            {!cargandoAgentes &&
-              agentesDisponibles.length === 0 &&
-              (ticket?.supportGroup || ticket?.support_group_id) && (
-                <Alert severity="warning">
-                  No hay agentes activos disponibles para el grupo de soporte de
-                  este ticket.
-                </Alert>
-              )}
-
-            <Stack
-              direction={{ xs: "column", md: "row" }}
-              spacing={1.5}
-              alignItems={{ xs: "stretch", md: "center" }}
-            >
-              <FormControl
-                size="small"
-                fullWidth
-                disabled={
-                  cargandoAgentes ||
-                  asignandoResponsable ||
-                  agentesDisponibles.length === 0
-                }
-              >
-                <InputLabel id="responsable-select-label">
-                  Agente responsable
-                </InputLabel>
-
-                <Select
-                  labelId="responsable-select-label"
-                  label="Agente responsable"
-                  value={responsableSelectValue}
-                  onChange={(event) =>
-                    setResponsableSeleccionadoId(event.target.value)
-                  }
-                >
-                  <MenuItem value="">
-                    <em>Selecciona un agente</em>
-                  </MenuItem>
-
-                  {agentesDisponibles.map((agente) => (
-                    <MenuItem key={agente.id} value={String(agente.id)}>
-                      {agente.name} · {agente.email}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-
-              <Button
-                variant="contained"
-                onClick={asignarResponsable}
-                disabled={
-                  cargandoAgentes ||
-                  asignandoResponsable ||
-                  !responsableSelectValue
-                }
-                sx={{
-                  minWidth: { xs: "100%", md: 190 },
-                  borderRadius: 2,
-                  textTransform: "none",
-                  fontWeight: 800,
-                  boxShadow: "none",
-                  bgcolor: "#2563eb",
-                  "&:hover": {
-                    bgcolor: "#1d4ed8",
-                    boxShadow: "none",
-                  },
-                }}
-              >
-                {asignandoResponsable ? "Guardando..." : "Guardar asignación"}
-              </Button>
-
-              <Button
-                variant="outlined"
-                onClick={cargarAgentesDisponibles}
-                disabled={cargandoAgentes || asignandoResponsable}
-                sx={{
-                  minWidth: { xs: "100%", md: 150 },
-                  borderRadius: 2,
-                  textTransform: "none",
-                  fontWeight: 800,
-                }}
-              >
-                {cargandoAgentes ? "Cargando..." : "Recargar agentes"}
-              </Button>
-            </Stack>
-          </Stack>
-        </Paper>
-      )}
-
-      {puedeGestionar && (
-        <Paper
-          sx={{
-            p: { xs: 1.5, sm: 2 },
-            mb: 2,
-            borderRadius: 3,
-            border: "1px solid #e0e7ff",
-            bgcolor: "#fafbff",
-            boxShadow: "none",
-          }}
-        >
-          <Stack spacing={1.5}>
-            <Stack
-              direction={{ xs: "column", sm: "row" }}
-              justifyContent="space-between"
-              alignItems={{ xs: "flex-start", sm: "center" }}
-              spacing={1}
-            >
-              <Box>
-                <Stack direction="row" spacing={1} alignItems="center">
-                  <LocalOfferIcon fontSize="small" sx={{ color: "#2563eb" }} />
-
-                  <Typography
-                    variant="subtitle1"
-                    sx={{
-                      fontWeight: 900,
-                      color: "#0f172a",
-                    }}
-                  >
-                    Etiquetas del ticket
-                  </Typography>
-                </Stack>
-
-                <Typography
-                  variant="body2"
-                  sx={{
-                    color: "#64748b",
-                    mt: 0.35,
-                  }}
-                >
-                  Clasifica el ticket usando las etiquetas disponibles.
-                </Typography>
-              </Box>
-
-              <Button
-                size="small"
-                variant="text"
-                onClick={cargarEtiquetasTicket}
-                disabled={cargandoEtiquetas || asignandoEtiqueta}
-                sx={{
-                  textTransform: "none",
-                  fontWeight: 800,
-                }}
-              >
-                {cargandoEtiquetas ? "Cargando..." : "Actualizar etiquetas"}
-              </Button>
-            </Stack>
-
-            <Box>
-              <Typography
-                variant="caption"
-                color="text.secondary"
-                fontWeight={800}
-                display="block"
-                sx={{ mb: 0.75 }}
-              >
-                Asignadas
-              </Typography>
-
-              {cargandoEtiquetas ? (
-                <Stack direction="row" spacing={1} alignItems="center">
-                  <CircularProgress size={18} />
-                  <Typography variant="body2" color="text.secondary">
-                    Cargando etiquetas...
-                  </Typography>
-                </Stack>
-              ) : etiquetasAsignadas.length > 0 ? (
-                <Stack direction="row" spacing={0.8} useFlexGap flexWrap="wrap">
-                  {etiquetasAsignadas.map((etiqueta) => (
-                    <Chip
-                      key={etiqueta.id}
-                      label={etiqueta.nombre}
-                      onDelete={() => quitarEtiqueta(etiqueta)}
-                      color={etiqueta.estado ? "primary" : "default"}
-                      variant={etiqueta.estado ? "filled" : "outlined"}
-                      sx={{
-                        fontWeight: 800,
-                        maxWidth: "100%",
-                        "& .MuiChip-label": {
-                          overflow: "hidden",
-                          textOverflow: "ellipsis",
-                        },
-                      }}
-                    />
-                  ))}
-                </Stack>
-              ) : (
-                <Typography variant="body2" color="text.secondary">
-                  Este ticket todavía no tiene etiquetas asignadas.
-                </Typography>
-              )}
-            </Box>
-
-            <Stack
-              direction={{ xs: "column", md: "row" }}
-              spacing={1.5}
-              alignItems={{ xs: "stretch", md: "center" }}
-            >
-              <FormControl
-                size="small"
-                fullWidth
-                disabled={
-                  cargandoEtiquetas ||
-                  asignandoEtiqueta ||
-                  etiquetasParaAsignar.length === 0
-                }
-              >
-                <InputLabel id="etiqueta-select-label">Etiqueta</InputLabel>
-
-                <Select
-                  labelId="etiqueta-select-label"
-                  label="Etiqueta"
-                  value={etiquetaSeleccionadaId}
-                  onChange={(event) =>
-                    setEtiquetaSeleccionadaId(event.target.value)
-                  }
-                >
-                  <MenuItem value="">
-                    <em>Selecciona una etiqueta</em>
-                  </MenuItem>
-
-                  {etiquetasParaAsignar.map((etiqueta) => (
-                    <MenuItem key={etiqueta.id} value={String(etiqueta.id)}>
-                      {etiqueta.nombre}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-
-              <Button
-                variant="contained"
-                onClick={asignarEtiqueta}
-                disabled={
-                  cargandoEtiquetas ||
-                  asignandoEtiqueta ||
-                  !etiquetaSeleccionadaId
-                }
-                sx={{
-                  minWidth: { xs: "100%", md: 170 },
-                  borderRadius: 2,
-                  textTransform: "none",
-                  fontWeight: 800,
-                  boxShadow: "none",
-                  bgcolor: "#2563eb",
-                  "&:hover": {
-                    bgcolor: "#1d4ed8",
-                    boxShadow: "none",
-                  },
-                }}
-              >
-                {asignandoEtiqueta ? "Asignando..." : "Asignar etiqueta"}
-              </Button>
-            </Stack>
-
-            {!cargandoEtiquetas && etiquetasDisponibles.length === 0 && (
-              <Alert severity="info">
-                No hay etiquetas activas disponibles. Un administrador o
-                supervisor debe crearlas desde el apartado Etiquetas.
-              </Alert>
-            )}
-
-            {!cargandoEtiquetas &&
-              etiquetasDisponibles.length > 0 &&
-              etiquetasParaAsignar.length === 0 &&
-              etiquetasAsignadas.length > 0 && (
-                <Typography variant="caption" color="text.secondary">
-                  Todas las etiquetas activas disponibles ya están asignadas a
-                  este ticket.
-                </Typography>
-              )}
-          </Stack>
-        </Paper>
-      )}
-
-      <Paper
-        ref={chatContainerRef}
-        sx={{
-          height: {
-            xs: "58dvh",
-            sm: 460,
-            md: 560,
-          },
-          minHeight: {
-            xs: 360,
-            md: 480,
-          },
-          overflowY: "auto",
-          p: { xs: 1, sm: 1.5, md: 2 },
-          mb: 2,
-          borderRadius: 3,
-          border: "1px solid #e5e7eb",
-          boxShadow: 1,
-          bgcolor: "#efeae2",
-          backgroundImage:
-            "radial-gradient(rgba(17, 24, 39, 0.06) 1px, transparent 1px)",
-          backgroundSize: "18px 18px",
-        }}
-      >
-        <ChatMessages
-          messages={messages}
-          chatRef={chatRef}
-          esMensajeSistema={esMensajeSistema}
-          esMio={esMio}
-          inicial={inicial}
-          abrirArchivo={abrirArchivo}
-          getArchivoUrl={getArchivoUrl}
-          puedeEliminarMensaje={puedeEliminarMensaje}
-          eliminarMensaje={eliminarMensaje}
-        />
-      </Paper>
-
-      {ticketCerrado ? (
-        <Alert
-          severity="info"
           variant="outlined"
           sx={{
-            mb: 2,
-            borderRadius: 2,
+            gridArea: "details",
+            minWidth: 0,
+            borderRadius: 3,
+            borderColor: "#e2e8f0",
+            overflow: "hidden",
             bgcolor: "#f8fafc",
-            borderColor: "#94a3b8",
-            color: "#334155",
-            alignItems: "center",
-            "& .MuiAlert-icon": {
-              color: "#475569",
-            },
+            height: { lg: "calc(100vh - 110px)" },
+            display: "flex",
+            flexDirection: "column",
           }}
         >
-          <Typography
-            component="div"
+          <Stack
+            direction="row"
+            spacing={1}
             sx={{
-              fontSize: 14,
-              lineHeight: 1.6,
+              p: 1.25,
+              bgcolor: "#fff",
+              borderBottom: "1px solid #e2e8f0",
+              "& .MuiButton-root": {
+                flex: 1,
+                minWidth: 0,
+                minHeight: 40,
+                borderRadius: 2,
+                textTransform: "none",
+                fontWeight: 800,
+                whiteSpace: "nowrap",
+              },
             }}
           >
-            <strong>Este ticket está cerrado.</strong> Para continuar, un
-            administrador o supervisor debe cambiarlo a{" "}
-            <strong>En proceso</strong>.
-          </Typography>
-        </Alert>
-      ) : puedeMensajear ? (
+            <Button
+              variant="outlined"
+              startIcon={<ArrowBackIcon />}
+              onClick={() => navigate("/mis-tickets")}
+            >
+              Volver
+            </Button>
+            <Button
+              variant="contained"
+              startIcon={<RefreshIcon />}
+              onClick={cargarTodo}
+              sx={{ boxShadow: "none" }}
+            >
+              Actualizar
+            </Button>
+          </Stack>
+
+          <Tabs
+            value={tabActivo}
+            onChange={(_, value) => setTabActivo(value)}
+            variant="fullWidth"
+            sx={{
+              px: 1,
+              bgcolor: "#fff",
+              borderBottom: "1px solid #e2e8f0",
+              "& .MuiTab-root": {
+                minHeight: 58,
+                textTransform: "none",
+                fontWeight: 800,
+              },
+            }}
+          >
+            <Tab
+              icon={<InfoOutlinedIcon />}
+              iconPosition="start"
+              label="Resumen"
+            />
+            {puedeGestionar && (
+              <Tab
+                icon={<ShareOutlinedIcon />}
+                iconPosition="start"
+                label="Compartir"
+              />
+            )}
+          </Tabs>
+
+          <Box
+            sx={{
+              p: { xs: 1.5, sm: 2 },
+              flex: 1,
+              minHeight: 0,
+              overflowY: { lg: "auto" },
+              overflowX: "hidden",
+            }}
+          >
+            {tabActivo === 0 && (
+              <Box>
+                <Box mb={2}>
+                  <TicketHeader
+                    ticket={ticket}
+                    estados={estados}
+                    estadoNombre={estadoNombre}
+                    agenteAsignado={agenteAsignado}
+                    puedeCambiarEstado={puedeCambiarEstado}
+                    puedeResolver={puedeResolver}
+                    puedeEliminar={puedeEliminar}
+                    puedeTomarTicket={puedeTomarTicket}
+                    cambiarEstado={cambiarEstado}
+                    tomarTicket={tomarTicket}
+                    resolverTicket={resolverTicket}
+                    eliminarTicket={eliminarTicket}
+                    calcularTiempoResolucion={calcularTiempoResolucion}
+                    Info={TicketInfoItem}
+                  />
+                </Box>
+
+                <Paper
+                  sx={{
+                    p: { xs: 1.5, sm: 2 },
+                    mb: 2,
+                    borderRadius: 3,
+                    border: "1px solid",
+                    borderColor: estiloVigencia().borderColor,
+                    bgcolor: estiloVigencia().bgcolor,
+                    boxShadow: "none",
+                  }}
+                >
+                  <Stack
+                    direction={{ xs: "column", sm: "row" }}
+                    justifyContent="space-between"
+                    alignItems={{ xs: "stretch", sm: "center" }}
+                    spacing={1.5}
+                  >
+                    <Stack direction="row" spacing={1.25} alignItems="center">
+                      <Box
+                        sx={{
+                          width: 40,
+                          height: 40,
+                          borderRadius: 2,
+                          bgcolor: estiloVigencia().iconBg,
+                          color: estiloVigencia().iconColor,
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          flexShrink: 0,
+                        }}
+                      >
+                        <AccessTimeIcon />
+                      </Box>
+
+                      <Box sx={{ minWidth: 0 }}>
+                        <Typography
+                          variant="subtitle1"
+                          sx={{
+                            fontWeight: 900,
+                            color: "#0f172a",
+                            lineHeight: 1.25,
+                          }}
+                        >
+                          Vigencia del ticket
+                        </Typography>
+
+                        <Typography
+                          variant="body2"
+                          sx={{
+                            color: "#64748b",
+                            mt: 0.25,
+                          }}
+                        >
+                          {ticket?.due_status === "finalized"
+                            ? `Fecha límite original: ${ticket?.due_date || "Sin fecha"}`
+                            : `Fecha límite: ${ticket?.due_date || "Sin fecha"}`}
+                        </Typography>
+                      </Box>
+                    </Stack>
+
+                    <Chip
+                      label={ticket?.due_label || "Sin vigencia"}
+                      color={colorVigencia()}
+                      sx={{
+                        alignSelf: { xs: "flex-start", sm: "center" },
+                        fontWeight: 900,
+                        borderRadius: 2,
+                        maxWidth: "100%",
+                      }}
+                    />
+                  </Stack>
+                </Paper>
+
+                {puedeAsignarResponsable && (
+                  <Paper
+                    sx={{
+                      p: { xs: 1.5, sm: 2 },
+                      mb: 2,
+                      borderRadius: 3,
+                      border: "1px solid #dbeafe",
+                      bgcolor: "#f8fbff",
+                      boxShadow: "none",
+                    }}
+                  >
+                    <Stack spacing={1.5}>
+                      <Box>
+                        <Typography
+                          variant="subtitle1"
+                          sx={{
+                            fontWeight: 900,
+                            color: "#0f172a",
+                          }}
+                        >
+                          Asignación de responsable
+                        </Typography>
+
+                        <Typography
+                          variant="body2"
+                          sx={{
+                            color: "#64748b",
+                          }}
+                        >
+                          Responsable actual: <strong>{agenteAsignado}</strong>
+                        </Typography>
+                      </Box>
+
+                      {!ticket?.supportGroup && !ticket?.support_group_id && (
+                        <Alert severity="warning">
+                          Este ticket no tiene grupo de soporte asignado.
+                        </Alert>
+                      )}
+
+                      {!cargandoAgentes &&
+                        agentesDisponibles.length === 0 &&
+                        (ticket?.supportGroup || ticket?.support_group_id) && (
+                          <Alert severity="warning">
+                            No hay agentes activos disponibles para el grupo de
+                            soporte de este ticket.
+                          </Alert>
+                        )}
+
+                      <Stack
+                        direction="column"
+                        spacing={1.25}
+                        alignItems="stretch"
+                        sx={{ width: "100%", minWidth: 0 }}
+                      >
+                        <FormControl
+                          size="small"
+                          fullWidth
+                          sx={{ minWidth: 0 }}
+                          disabled={
+                            cargandoAgentes ||
+                            asignandoResponsable ||
+                            agentesDisponibles.length === 0
+                          }
+                        >
+                          <InputLabel id="responsable-select-label">
+                            Agente responsable
+                          </InputLabel>
+
+                          <Select
+                            labelId="responsable-select-label"
+                            label="Agente responsable"
+                            value={responsableSelectValue}
+                            onChange={(event) =>
+                              setResponsableSeleccionadoId(event.target.value)
+                            }
+                          >
+                            <MenuItem value="">
+                              <em>Selecciona un agente</em>
+                            </MenuItem>
+
+                            {agentesDisponibles.map((agente) => (
+                              <MenuItem
+                                key={agente.id}
+                                value={String(agente.id)}
+                              >
+                                {agente.name} · {agente.email}
+                              </MenuItem>
+                            ))}
+                          </Select>
+                        </FormControl>
+
+                        <Button
+                          variant="contained"
+                          onClick={asignarResponsable}
+                          disabled={
+                            cargandoAgentes ||
+                            asignandoResponsable ||
+                            !responsableSelectValue
+                          }
+                          sx={{
+                            width: "100%",
+                            borderRadius: 2,
+                            textTransform: "none",
+                            fontWeight: 800,
+                            boxShadow: "none",
+                            bgcolor: "#2563eb",
+                            "&:hover": {
+                              bgcolor: "#1d4ed8",
+                              boxShadow: "none",
+                            },
+                          }}
+                        >
+                          {asignandoResponsable
+                            ? "Guardando..."
+                            : "Guardar asignación"}
+                        </Button>
+
+                        <Button
+                          variant="outlined"
+                          onClick={cargarAgentesDisponibles}
+                          disabled={cargandoAgentes || asignandoResponsable}
+                          sx={{
+                            width: "100%",
+                            borderRadius: 2,
+                            textTransform: "none",
+                            fontWeight: 800,
+                          }}
+                        >
+                          {cargandoAgentes ? "Cargando..." : "Recargar agentes"}
+                        </Button>
+                      </Stack>
+                    </Stack>
+                  </Paper>
+                )}
+
+                {puedeGestionar && (
+                  <Paper
+                    sx={{
+                      p: { xs: 1.5, sm: 2 },
+                      mb: 2,
+                      borderRadius: 3,
+                      border: "1px solid #e0e7ff",
+                      bgcolor: "#fafbff",
+                      boxShadow: "none",
+                    }}
+                  >
+                    <Stack spacing={1.5}>
+                      <Stack
+                        direction={{ xs: "column", sm: "row" }}
+                        justifyContent="space-between"
+                        alignItems={{ xs: "flex-start", sm: "center" }}
+                        spacing={1}
+                      >
+                        <Box>
+                          <Stack
+                            direction="row"
+                            spacing={1}
+                            alignItems="center"
+                          >
+                            <LocalOfferIcon
+                              fontSize="small"
+                              sx={{ color: "#2563eb" }}
+                            />
+
+                            <Typography
+                              variant="subtitle1"
+                              sx={{
+                                fontWeight: 900,
+                                color: "#0f172a",
+                              }}
+                            >
+                              Etiquetas del ticket
+                            </Typography>
+                          </Stack>
+
+                          <Typography
+                            variant="body2"
+                            sx={{
+                              color: "#64748b",
+                              mt: 0.35,
+                            }}
+                          >
+                            Clasifica el ticket usando las etiquetas
+                            disponibles.
+                          </Typography>
+                        </Box>
+
+                        <Button
+                          size="small"
+                          variant="text"
+                          onClick={cargarEtiquetasTicket}
+                          disabled={cargandoEtiquetas || asignandoEtiqueta}
+                          sx={{
+                            textTransform: "none",
+                            fontWeight: 800,
+                          }}
+                        >
+                          {cargandoEtiquetas
+                            ? "Cargando..."
+                            : "Actualizar etiquetas"}
+                        </Button>
+                      </Stack>
+
+                      <Box>
+                        <Typography
+                          variant="caption"
+                          color="text.secondary"
+                          fontWeight={800}
+                          display="block"
+                          sx={{ mb: 0.75 }}
+                        >
+                          Asignadas
+                        </Typography>
+
+                        {cargandoEtiquetas ? (
+                          <Stack
+                            direction="row"
+                            spacing={1}
+                            alignItems="center"
+                          >
+                            <CircularProgress size={18} />
+                            <Typography variant="body2" color="text.secondary">
+                              Cargando etiquetas...
+                            </Typography>
+                          </Stack>
+                        ) : etiquetasAsignadas.length > 0 ? (
+                          <Stack
+                            direction="row"
+                            spacing={0.8}
+                            useFlexGap
+                            flexWrap="wrap"
+                          >
+                            {etiquetasAsignadas.map((etiqueta) => (
+                              <Chip
+                                key={etiqueta.id}
+                                label={etiqueta.nombre}
+                                onDelete={() => quitarEtiqueta(etiqueta)}
+                                color={etiqueta.estado ? "primary" : "default"}
+                                variant={
+                                  etiqueta.estado ? "filled" : "outlined"
+                                }
+                                sx={{
+                                  fontWeight: 800,
+                                  maxWidth: "100%",
+                                  "& .MuiChip-label": {
+                                    overflow: "hidden",
+                                    textOverflow: "ellipsis",
+                                  },
+                                }}
+                              />
+                            ))}
+                          </Stack>
+                        ) : (
+                          <Typography variant="body2" color="text.secondary">
+                            Este ticket todavía no tiene etiquetas asignadas.
+                          </Typography>
+                        )}
+                      </Box>
+
+                      <Stack
+                        direction="column"
+                        spacing={1.25}
+                        alignItems="stretch"
+                        sx={{ width: "100%", minWidth: 0 }}
+                      >
+                        <FormControl
+                          size="small"
+                          fullWidth
+                          disabled={
+                            cargandoEtiquetas ||
+                            asignandoEtiqueta ||
+                            etiquetasParaAsignar.length === 0
+                          }
+                        >
+                          <InputLabel id="etiqueta-select-label">
+                            Etiqueta
+                          </InputLabel>
+
+                          <Select
+                            labelId="etiqueta-select-label"
+                            label="Etiqueta"
+                            value={etiquetaSeleccionadaId}
+                            onChange={(event) =>
+                              setEtiquetaSeleccionadaId(event.target.value)
+                            }
+                          >
+                            <MenuItem value="">
+                              <em>Selecciona una etiqueta</em>
+                            </MenuItem>
+
+                            {etiquetasParaAsignar.map((etiqueta) => (
+                              <MenuItem
+                                key={etiqueta.id}
+                                value={String(etiqueta.id)}
+                              >
+                                {etiqueta.nombre}
+                              </MenuItem>
+                            ))}
+                          </Select>
+                        </FormControl>
+
+                        <Button
+                          variant="contained"
+                          onClick={asignarEtiqueta}
+                          disabled={
+                            cargandoEtiquetas ||
+                            asignandoEtiqueta ||
+                            !etiquetaSeleccionadaId
+                          }
+                          sx={{
+                            width: "100%",
+                            borderRadius: 2,
+                            textTransform: "none",
+                            fontWeight: 800,
+                            boxShadow: "none",
+                            bgcolor: "#2563eb",
+                            "&:hover": {
+                              bgcolor: "#1d4ed8",
+                              boxShadow: "none",
+                            },
+                          }}
+                        >
+                          {asignandoEtiqueta
+                            ? "Asignando..."
+                            : "Asignar etiqueta"}
+                        </Button>
+                      </Stack>
+
+                      {!cargandoEtiquetas &&
+                        etiquetasDisponibles.length === 0 && (
+                          <Alert severity="info">
+                            No hay etiquetas activas disponibles. Un
+                            administrador o supervisor debe crearlas desde el
+                            apartado Etiquetas.
+                          </Alert>
+                        )}
+
+                      {!cargandoEtiquetas &&
+                        etiquetasDisponibles.length > 0 &&
+                        etiquetasParaAsignar.length === 0 &&
+                        etiquetasAsignadas.length > 0 && (
+                          <Typography variant="caption" color="text.secondary">
+                            Todas las etiquetas activas disponibles ya están
+                            asignadas a este ticket.
+                          </Typography>
+                        )}
+                    </Stack>
+                  </Paper>
+                )}
+              </Box>
+            )}
+
+            {puedeGestionar && tabActivo === 1 && (
+              <Stack spacing={2}>
+                {ticketEsExterno && linkPublicoDisponible && (
+                  <Paper
+                    variant="outlined"
+                    sx={{ p: 1.5, borderRadius: 2.5, borderColor: "#dbeafe" }}
+                  >
+                    <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
+                      <Button
+                        variant="contained"
+                        startIcon={<OpenInNewIcon />}
+                        onClick={abrirVistaPublica}
+                        sx={{
+                          textTransform: "none",
+                          fontWeight: 800,
+                          boxShadow: "none",
+                        }}
+                      >
+                        Vista pública
+                      </Button>
+                      <Button
+                        variant="outlined"
+                        startIcon={<ContentCopyIcon />}
+                        onClick={copiarLinkPublico}
+                        sx={{ textTransform: "none", fontWeight: 800 }}
+                      >
+                        Copiar link
+                      </Button>
+                    </Stack>
+                  </Paper>
+                )}
+
+                <TicketSharedAccessPanel ticketId={id} />
+              </Stack>
+            )}
+          </Box>
+        </Paper>
+
         <Box
           sx={{
-            position: { xs: "sticky", md: "static" },
-            bottom: { xs: 0, md: "auto" },
-            zIndex: 5,
-            bgcolor: "#f5f6fa",
-            pt: { xs: 1, md: 0 },
-            pb: { xs: 1, md: 0 },
+            gridArea: "chat",
+            minWidth: 0,
+            position: { lg: "sticky" },
+            top: { lg: 16 },
+            height: { lg: "calc(100vh - 110px)" },
+            display: "flex",
+            flexDirection: "column",
           }}
         >
-          <ChatInput
-            text={text}
-            setText={setText}
-            archivos={archivos}
-            setArchivos={setArchivos}
-            puedeGestionar={puedeGestionar}
-            defaultTipoMensaje={tipoMensajePredeterminado}
-            enviando={enviando}
-            enviarMensaje={enviarMensaje}
-          />
+          {/* <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1.25, px: 0.5 }}>
+            <ForumOutlinedIcon sx={{ color: "#2563eb" }} />
+            <Box>
+              <Typography fontWeight={900} color="#0f172a">Conversación</Typography>
+              <Typography variant="caption" color="text.secondary">
+                {messages.length} {messages.length === 1 ? "mensaje" : "mensajes"} en el seguimiento
+              </Typography>
+            </Box>
+          </Stack> */}
+
+          <Paper
+            ref={chatContainerRef}
+            sx={{
+              height: {
+                xs: "58dvh",
+                sm: 460,
+                md: 560,
+                lg: "auto",
+              },
+              flex: { lg: 1 },
+              minHeight: {
+                xs: 360,
+                md: 480,
+              },
+              overflowY: "auto",
+              p: { xs: 1, sm: 1.5, md: 2 },
+              mb: 2,
+              borderRadius: 3,
+              border: "1px solid #e5e7eb",
+              boxShadow: 1,
+              bgcolor: "#efeae2",
+              backgroundImage:
+                "radial-gradient(rgba(17, 24, 39, 0.06) 1px, transparent 1px)",
+              backgroundSize: "18px 18px",
+            }}
+          >
+            <ChatMessages
+              messages={messages}
+              chatRef={chatRef}
+              esMensajeSistema={esMensajeSistema}
+              esMio={esMio}
+              inicial={inicial}
+              abrirArchivo={abrirArchivo}
+              getArchivoUrl={getArchivoUrl}
+              puedeEliminarMensaje={puedeEliminarMensaje}
+              eliminarMensaje={eliminarMensaje}
+            />
+          </Paper>
+
+          {ticketCerrado ? (
+            <Alert
+              severity="info"
+              variant="outlined"
+              sx={{
+                mb: 2,
+                borderRadius: 2,
+                bgcolor: "#f8fafc",
+                borderColor: "#94a3b8",
+                color: "#334155",
+                alignItems: "center",
+                "& .MuiAlert-icon": {
+                  color: "#475569",
+                },
+              }}
+            >
+              <Typography
+                component="div"
+                sx={{
+                  fontSize: 14,
+                  lineHeight: 1.6,
+                }}
+              >
+                <strong>Este ticket está cerrado.</strong> Para continuar, un
+                administrador o supervisor debe cambiarlo a{" "}
+                <strong>En proceso</strong>.
+              </Typography>
+            </Alert>
+          ) : puedeMensajear ? (
+            <Box
+              sx={{
+                position: { xs: "sticky", md: "static" },
+                bottom: { xs: 0, md: "auto" },
+                zIndex: 5,
+                bgcolor: "#f5f6fa",
+                pt: { xs: 1, md: 0 },
+                pb: { xs: 1, md: 0 },
+              }}
+            >
+              <ChatInput
+                text={text}
+                setText={setText}
+                archivos={archivos}
+                setArchivos={setArchivos}
+                puedeGestionar={puedeGestionar}
+                defaultTipoMensaje={tipoMensajePredeterminado}
+                enviando={enviando}
+                enviarMensaje={enviarMensaje}
+              />
+            </Box>
+          ) : null}
         </Box>
-      ) : null}
+      </Box>
 
       <AttachmentPreview
         previewOpen={previewOpen}
