@@ -4,6 +4,8 @@ import { useNavigate } from "react-router-dom";
 import axiosCliente from "../../../services/axiosCliente";
 import NuevoTicketModal from "../components/NuevoTicketModal";
 import UserAvatar from "../../../components/UserAvatar";
+import { useAuth } from "../../../auth/context/AuthContext";
+import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
 import AddIcon from "@mui/icons-material/Add";
 import TuneIcon from "@mui/icons-material/Tune";
 import RestartAltIcon from "@mui/icons-material/RestartAlt";
@@ -18,6 +20,7 @@ import {
   CircularProgress,
   Divider,
   Grid,
+  IconButton,
   MenuItem,
   Paper,
   Stack,
@@ -37,6 +40,49 @@ const API_ORIGIN = "https://api.thebusinessticket.com";
 
 function MisTickets() {
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const roles = user?.company_role || user?.role
+    ? [user.company_role || user.role] : user?.roles || [];
+  const puedeEditar = roles.some((rol) =>
+    ["admin", "administrador", "supervisor"].includes(String(typeof rol === "string" ? rol : rol?.name).trim().toLowerCase()));
+  const [ticketEdicion, setTicketEdicion] = useState(null);
+  const [cargandoEdicion, setCargandoEdicion] = useState(false);
+  const [aviso, setAviso] = useState("");
+  const editarTicket = async (event, ticket) => {
+    event.stopPropagation();
+    if (!puedeEditar || cargandoEdicion) return;
+    setCargandoEdicion(true); setError(""); setAviso("");
+    try {
+      const res = await axiosCliente.get(`/tickets/${ticket.id}`);
+      setTicketEdicion(res.data.data || res.data);
+    } catch (error) {
+      setError(error.response?.data?.message || "No se pudo cargar el ticket para editar.");
+    } finally { setCargandoEdicion(false); }
+  };
+  const botonEditar = (ticket, compacto = false) => puedeEditar && (compacto ? (
+    <Tooltip title="Editar ticket">
+      <span>
+        <IconButton
+          size="small"
+          color="primary"
+          disabled={cargandoEdicion}
+          onClick={(event) => editarTicket(event, ticket)}
+          onKeyDown={(event) => event.stopPropagation()}
+          aria-label={`Editar ticket ${ticket.folio || ticket.id}`}
+          sx={{ width: 28, height: 28 }}
+        >
+          <EditOutlinedIcon sx={{ fontSize: 18 }} />
+        </IconButton>
+      </span>
+    </Tooltip>
+  ) : (
+    <Button size="small" startIcon={<EditOutlinedIcon />} disabled={cargandoEdicion}
+      onClick={(event) => editarTicket(event, ticket)}
+      onKeyDown={(event) => event.stopPropagation()}
+      aria-label={`Editar ticket ${ticket.folio || ticket.id}`}>
+      Editar
+    </Button>
+  ));
 
   const [tickets, setTickets] = useState([]);
   const [catalogoPrioridades, setCatalogoPrioridades] = useState([]);
@@ -68,8 +114,8 @@ function MisTickets() {
     etiquetaFiltro,
   ]);
 
-  const cargarTickets = async () => {
-    setLoading(true);
+  const cargarTickets = async ({ silencioso = false } = {}) => {
+    if (!silencioso) setLoading(true);
 
     try {
       setError("");
@@ -121,7 +167,7 @@ function MisTickets() {
         error.response?.data?.message || "No se pudieron cargar los tickets",
       );
     } finally {
-      setLoading(false);
+      if (!silencioso) setLoading(false);
     }
   };
 
@@ -1111,6 +1157,7 @@ function MisTickets() {
                                 <Typography variant="caption" color="text.secondary">
                                   {formatoFechaCreacion(ticket)}
                                 </Typography>
+                                {botonEditar(ticket, true)}
                               </Stack>
 
                               <Typography
@@ -1281,6 +1328,7 @@ function MisTickets() {
                   }}
                 >
                   <Stack spacing={1.4}>
+                    {botonEditar(ticket)}
                     <Stack direction="row" spacing={1.4} alignItems="center">
                       <LogoSistema ticket={ticket} size={48} />
 
@@ -1496,6 +1544,16 @@ function MisTickets() {
         )}
       </Paper>
 
+      {aviso && <Alert severity="success" onClose={() => setAviso("")}>{aviso}</Alert>}
+      <NuevoTicketModal
+        key={ticketEdicion?.id || "editar"}
+        open={Boolean(ticketEdicion)} ticket={ticketEdicion}
+        onClose={() => setTicketEdicion(null)}
+        onUpdated={() => {
+          setAviso("Ticket actualizado correctamente.");
+          cargarTickets({ silencioso: true });
+        }}
+      />
       <NuevoTicketModal
         open={openNuevoTicket}
         onClose={() => setOpenNuevoTicket(false)}

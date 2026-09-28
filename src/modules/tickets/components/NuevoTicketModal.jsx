@@ -86,7 +86,30 @@ const etiquetaCliente = (cliente) => {
   return email ? `${nombre} — ${email}` : nombre;
 };
 
-function NuevoTicketModal({ open, onClose, onCreated }) {
+const fechaVigenciaInput = (ticket) => {
+  // due_date representa un día de calendario, no un instante UTC.
+  const fecha = String(ticket.due_date || "").trim();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(fecha)) return fecha;
+  const partes = fecha.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+  if (partes) return `${partes[3]}-${partes[2]}-${partes[1]}`;
+  if (!ticket.due_at) return "";
+  const instante = new Date(ticket.due_at);
+  if (Number.isNaN(instante.getTime())) return "";
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/Mexico_City", year: "numeric", month: "2-digit", day: "2-digit",
+  }).format(instante);
+};
+
+const datosEdicion = (ticket) => ({
+  titulo: ticket.titulo || "", descripcion: ticket.descripcion || "",
+  system_id: String(ticket.system_id ?? ticket.system?.id ?? ticket.sistema?.id ?? ""),
+  category_id: String(ticket.category_id ?? ticket.category?.id ?? ticket.categoria?.id ?? ""),
+  priority_id: String(ticket.priority_id ?? ticket.priority?.id ?? ticket.prioridad?.id ?? ""),
+  due_date: fechaVigenciaInput(ticket),
+});
+
+function NuevoTicketModal({ open, onClose, onCreated, ticket = null, onUpdated }) {
+  const esEdicion = Boolean(ticket?.id);
   const { user } = useAuth();
   const theme = useTheme();
   const esMovil = useMediaQuery(theme.breakpoints.down("sm"));
@@ -106,7 +129,8 @@ function NuevoTicketModal({ open, onClose, onCreated }) {
         .filter(Boolean);
 
   const esCliente = rolesUsuario.includes("client");
-  const puedeAsignar = !esCliente;
+  const puedeAsignar = !esCliente && !esEdicion;
+  const puedeEditar = rolesUsuario.some((rol) => ["admin", "supervisor"].includes(rol));
 
   const [formulario, setFormulario] = useState({
     titulo: "",
@@ -135,12 +159,12 @@ function NuevoTicketModal({ open, onClose, onCreated }) {
     if (open) {
       setFormulario((prev) => ({
         ...prev,
-        due_date: prev.due_date || obtenerFechaVigenciaDefault(),
+        ...(esEdicion ? datosEdicion(ticket) : { due_date: prev.due_date || obtenerFechaVigenciaDefault() }),
       }));
 
       cargarCatalogos();
     }
-  }, [open]);
+  }, [open, ticket]);
 
   const cargarCatalogos = async () => {
     setCargandoCatalogos(true);
@@ -156,12 +180,12 @@ function NuevoTicketModal({ open, onClose, onCreated }) {
 
       setSistemas(
         normalizar(resS)
-          .filter((sistema) => Number(sistema.estado) === 1)
+          .filter((sistema) => Number(sistema.estado) === 1 || (esEdicion && String(sistema.id) === datosEdicion(ticket).system_id))
           .sort((a, b) => Number(a.orden || 999) - Number(b.orden || 999)),
       );
 
       setCategorias(
-        normalizar(resC).filter((categoria) => Number(categoria.estado) === 1),
+        normalizar(resC).filter((categoria) => Number(categoria.estado) === 1 || (esEdicion && String(categoria.id) === datosEdicion(ticket).category_id)),
       );
 
       setPrioridades(normalizar(resP));
@@ -282,10 +306,12 @@ function NuevoTicketModal({ open, onClose, onCreated }) {
     return `${(kb / 1024).toFixed(1)} MB`;
   };
 
-  const crearTicket = async (e) => {
+  const guardarTicket = async (e) => {
     e.preventDefault();
 
     setError("");
+
+    if (cargando || cargandoCatalogos || (esEdicion && !puedeEditar)) return;
 
     if (puedeAsignar && !formulario.client_id) {
       setError("Selecciona el cliente al que va dirigido el ticket.");
@@ -307,12 +333,12 @@ function NuevoTicketModal({ open, onClose, onCreated }) {
       return;
     }
 
-    if (!formulario.due_date) {
+    if (!esEdicion && !formulario.due_date) {
       setError("Selecciona la fecha de vigencia del ticket.");
       return;
     }
 
-    if (formulario.due_date < obtenerFechaHoy()) {
+    if (formulario.due_date && (!esEdicion || formulario.due_date !== datosEdicion(ticket).due_date) && formulario.due_date < obtenerFechaHoy()) {
       setError("La fecha de vigencia no puede ser anterior a hoy.");
       return;
     }
@@ -327,9 +353,23 @@ function NuevoTicketModal({ open, onClose, onCreated }) {
       return;
     }
 
+    if (formulario.titulo.length > 200) {
+      setError("El asunto no puede superar los 200 caracteres."); return;
+    }
     setCargando(true);
-
     try {
+      if (esEdicion) {
+        const originales = datosEdicion(ticket);
+        const payload = Object.fromEntries(Object.keys(originales)
+          .filter((campo) => formulario[campo] !== originales[campo])
+          .map((campo) => [campo, campo === "due_date" ? formulario[campo] || null : formulario[campo]]));
+        if (!Object.keys(payload).length) {
+          setError("No hay cambios para guardar."); return;
+        }
+        await axiosCliente.patch(`/tickets/${ticket.id}`, payload);
+        cerrar(); onUpdated?.(); return;
+      }
+
       const formData = new FormData();
 
       formData.append("titulo", formulario.titulo);
@@ -371,7 +411,7 @@ function NuevoTicketModal({ open, onClose, onCreated }) {
         setError(Object.values(errores).flat().join(" "));
       } else {
         setError(
-          error.response?.data?.message || "No se pudo crear el ticket.",
+          error.response?.data?.message || (esEdicion ? "No se pudo actualizar el ticket." : "No se pudo crear el ticket."),
         );
       }
     } finally {
@@ -420,7 +460,7 @@ function NuevoTicketModal({ open, onClose, onCreated }) {
                 lineHeight: 1.2,
               }}
             >
-              Crear ticket
+              {esEdicion ? "Editar ticket" : "Crear ticket"}
             </Typography>
 
             <Typography
@@ -432,7 +472,7 @@ function NuevoTicketModal({ open, onClose, onCreated }) {
                 lineHeight: 1.35,
               }}
             >
-              Completa la información para registrar un nuevo ticket de soporte.
+              {esEdicion ? "Actualiza la información del ticket de soporte." : "Completa la información para registrar un nuevo ticket de soporte."}
             </Typography>
             </Box>
           </Stack>
@@ -472,7 +512,7 @@ function NuevoTicketModal({ open, onClose, onCreated }) {
       <Box
         component="form"
         noValidate
-        onSubmit={crearTicket}
+        onSubmit={guardarTicket}
         onChange={() => error && setError("")}
         sx={{
           display: "flex",
@@ -737,9 +777,9 @@ function NuevoTicketModal({ open, onClose, onCreated }) {
                     name="due_date"
                     value={formulario.due_date}
                     onChange={cambiarValor}
-                    required
+                    required={!esEdicion}
                     disabled={cargando || cargandoCatalogos}
-                    helperText="Por defecto: 15 días naturales contando hoy como día 1."
+                    helperText={esEdicion ? "Deja la fecha vacía para quitar la vigencia." : "Por defecto: 15 días naturales contando hoy como día 1."}
                     slotProps={{
                       htmlInput: {
                         min: obtenerFechaHoy(),
@@ -802,7 +842,7 @@ function NuevoTicketModal({ open, onClose, onCreated }) {
               </Stack>
             </Paper>
 
-            <Paper
+            {!esEdicion && <Paper
               variant="outlined"
               sx={{
                 p: { xs: 1.5, sm: 2 },
@@ -909,7 +949,7 @@ function NuevoTicketModal({ open, onClose, onCreated }) {
                   </Stack>
                 )}
               </Stack>
-            </Paper>
+            </Paper>}
           </Stack>
         </DialogContent>
 
@@ -952,7 +992,7 @@ function NuevoTicketModal({ open, onClose, onCreated }) {
               maxWidth: { xs: "100%", sm: 150 },
             }}
           >
-            {cargando ? "Creando..." : "Crear ticket"}
+            {cargando ? "Guardando..." : esEdicion ? "Guardar cambios" : "Crear ticket"}
           </Button>
         </DialogActions>
       </Box>
