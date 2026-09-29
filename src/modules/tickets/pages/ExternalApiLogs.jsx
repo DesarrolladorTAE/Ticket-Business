@@ -29,15 +29,6 @@ import {
 
 import axiosCliente from "../../../services/axiosCliente";
 
-const sistemasIniciales = [
-  { id: "", nombre: "Todos" },
-  { id: 8, nombre: "TAECONTA" },
-  { id: 9, nombre: "Mi Tienda en Línea MX" },
-  { id: 10, nombre: "Clic Menu" },
-  { id: 11, nombre: "Telorecargo" },
-  { id: 12, nombre: "Tecnologías Administrativas ELAD" },
-];
-
 const getStatusInfo = (statusCode) => {
   const code = Number(statusCode);
 
@@ -333,6 +324,8 @@ export default function ExternalApiLogs() {
   const isMobile = useMediaQuery(theme.breakpoints.down("md"));
 
   const [logs, setLogs] = useState([]);
+  const [sistemas, setSistemas] = useState([]);
+  const [loadingSistemas, setLoadingSistemas] = useState(false);
 
   const [summary, setSummary] = useState({
     total: 0,
@@ -452,6 +445,27 @@ export default function ExternalApiLogs() {
     cargarResumen();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filters.system_id, filters.date_from, filters.date_to]);
+
+  useEffect(() => {
+    const cargarSistemas = async () => {
+      setLoadingSistemas(true);
+
+      try {
+        const { data } = await axiosCliente.get("/systems/options");
+        setSistemas(Array.isArray(data?.data) ? data.data : []);
+      } catch (err) {
+        setSistemas([]);
+        setError(
+          err?.response?.data?.message ||
+            "No se pudieron cargar los sistemas."
+        );
+      } finally {
+        setLoadingSistemas(false);
+      }
+    };
+
+    cargarSistemas();
+  }, []);
 
   const actualizarFiltro = (campo, valor) => {
     setPagination((prev) => ({
@@ -631,9 +645,22 @@ export default function ExternalApiLogs() {
               size="small"
               value={filters.system_id}
               onChange={(e) => actualizarFiltro("system_id", e.target.value)}
+              disabled={loadingSistemas}
+              slotProps={{
+                select: {
+                  MenuProps: {
+                    slotProps: {
+                      paper: {
+                        sx: { maxHeight: 320, overflowY: "auto" },
+                      },
+                    },
+                  },
+                },
+              }}
             >
-              {sistemasIniciales.map((sistema) => (
-                <MenuItem key={sistema.id || "all"} value={sistema.id}>
+              <MenuItem value="">Todos</MenuItem>
+              {sistemas.map((sistema) => (
+                <MenuItem key={sistema.id} value={sistema.id}>
                   {sistema.nombre}
                 </MenuItem>
               ))}

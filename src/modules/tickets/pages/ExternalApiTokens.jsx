@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 
 import {
   Alert,
+  Autocomplete,
   Box,
   Button,
   Card,
@@ -31,17 +32,6 @@ import {
 } from "@mui/material";
 
 import axiosCliente from "../../../services/axiosCliente";
-
-const sistemasIniciales = [
-  { id: "", nombre: "Todos" },
-  { id: 8, nombre: "TAECONTA" },
-  { id: 9, nombre: "Mi Tienda en Línea MX" },
-  { id: 10, nombre: "Clic Menu" },
-  { id: 11, nombre: "Telorecargo" },
-  { id: 12, nombre: "Tecnologías Administrativas ELAD" },
-];
-
-const sistemasParaCrear = sistemasIniciales.filter((sistema) => sistema.id !== "");
 
 const formatFecha = (value) => {
   if (!value) return "—";
@@ -174,6 +164,8 @@ export default function ExternalApiTokens() {
   const isMobile = useMediaQuery(theme.breakpoints.down("md"));
 
   const [tokens, setTokens] = useState([]);
+  const [sistemas, setSistemas] = useState([]);
+  const [loadingSistemas, setLoadingSistemas] = useState(false);
   const [pagination, setPagination] = useState({
     current_page: 1,
     per_page: 20,
@@ -188,7 +180,7 @@ export default function ExternalApiTokens() {
   });
 
   const [form, setForm] = useState({
-    system_id: 10,
+    system_id: "",
     name: "",
     expires_at: "",
   });
@@ -250,6 +242,26 @@ export default function ExternalApiTokens() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [params]);
 
+  useEffect(() => {
+    const cargarSistemas = async () => {
+      setLoadingSistemas(true);
+
+      try {
+        const { data } = await axiosCliente.get("/systems/options");
+        setSistemas(data?.data || []);
+      } catch (err) {
+        setError(
+          err?.response?.data?.message ||
+            "No se pudieron cargar los sistemas."
+        );
+      } finally {
+        setLoadingSistemas(false);
+      }
+    };
+
+    cargarSistemas();
+  }, []);
+
   const actualizarFiltro = (campo, valor) => {
     setPagination((prev) => ({
       ...prev,
@@ -278,7 +290,7 @@ export default function ExternalApiTokens() {
   const abrirModalCrear = () => {
     setGeneratedToken(null);
     setForm({
-      system_id: 10,
+      system_id: "",
       name: "",
       expires_at: "",
     });
@@ -289,7 +301,7 @@ export default function ExternalApiTokens() {
     setModalOpen(false);
     setGeneratedToken(null);
     setForm({
-      system_id: 10,
+      system_id: "",
       name: "",
       expires_at: "",
     });
@@ -498,20 +510,34 @@ export default function ExternalApiTokens() {
               placeholder="Sistema, nombre o prefijo..."
             />
 
-            <TextField
+            <Autocomplete
               fullWidth
-              select
-              label="Sistema"
               size="small"
-              value={filters.system_id}
-              onChange={(e) => actualizarFiltro("system_id", e.target.value)}
-            >
-              {sistemasIniciales.map((sistema) => (
-                <MenuItem key={sistema.id || "all"} value={sistema.id}>
-                  {sistema.nombre}
-                </MenuItem>
-              ))}
-            </TextField>
+              sx={{ minWidth: 0 }}
+              options={[{ id: "", nombre: "Todos" }, ...sistemas]}
+              getOptionLabel={(sistema) => sistema.nombre}
+              getOptionKey={(sistema) => sistema.id}
+              isOptionEqualToValue={(option, value) => option.id === value.id}
+              value={sistemas.find((sistema) => sistema.id === filters.system_id) || null}
+              onChange={(_, sistema) => actualizarFiltro("system_id", sistema?.id ?? "")}
+              disabled={loadingSistemas}
+              noOptionsText="No se encontraron sistemas"
+              clearText="Limpiar"
+              openText="Ver sistemas"
+              closeText="Cerrar"
+              slotProps={{
+                listbox: {
+                  sx: {
+                    maxHeight: "min(280px, 40vh)",
+                    overflowY: "auto",
+                    "& .MuiAutocomplete-option": { overflowWrap: "anywhere" },
+                  },
+                },
+              }}
+              renderInput={(params) => (
+                <TextField {...params} label="Sistema" placeholder="Todos" />
+              )}
+            />
 
             <TextField
               fullWidth
@@ -795,25 +821,38 @@ export default function ExternalApiTokens() {
               esta ventana.
             </Alert>
 
-            <TextField
+            <Autocomplete
               fullWidth
-              select
-              label="Sistema"
-              value={form.system_id}
-              onChange={(e) =>
+              sx={{ minWidth: 0 }}
+              options={sistemas}
+              getOptionLabel={(sistema) => sistema.nombre}
+              getOptionKey={(sistema) => sistema.id}
+              isOptionEqualToValue={(option, value) => option.id === value.id}
+              value={sistemas.find((sistema) => sistema.id === form.system_id) || null}
+              onChange={(_, sistema) =>
                 setForm((prev) => ({
                   ...prev,
-                  system_id: Number(e.target.value),
+                  system_id: sistema ? Number(sistema.id) : "",
                 }))
               }
-              disabled={Boolean(generatedToken)}
-            >
-              {sistemasParaCrear.map((sistema) => (
-                <MenuItem key={sistema.id} value={sistema.id}>
-                  {sistema.nombre}
-                </MenuItem>
-              ))}
-            </TextField>
+              disabled={Boolean(generatedToken) || loadingSistemas}
+              noOptionsText="No se encontraron sistemas"
+              clearText="Limpiar"
+              openText="Ver sistemas"
+              closeText="Cerrar"
+              slotProps={{
+                listbox: {
+                  sx: {
+                    maxHeight: "min(280px, 40vh)",
+                    overflowY: "auto",
+                    "& .MuiAutocomplete-option": { overflowWrap: "anywhere" },
+                  },
+                },
+              }}
+              renderInput={(params) => (
+                <TextField {...params} label="Sistema" placeholder="Buscar sistema..." />
+              )}
+            />
 
             <TextField
               fullWidth
@@ -825,7 +864,7 @@ export default function ExternalApiTokens() {
                   name: e.target.value,
                 }))
               }
-              placeholder="Ej. Clic Menu producción"
+              placeholder="Ej. Integración de producción"
               disabled={Boolean(generatedToken)}
             />
 
