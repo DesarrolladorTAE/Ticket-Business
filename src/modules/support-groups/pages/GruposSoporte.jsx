@@ -59,7 +59,7 @@ function GruposSoporte() {
   const puedeGestionar = isAdmin || isSupervisor;
 
   const [grupos, setGrupos] = useState([]);
-  const [agentes, setAgentes] = useState([]);
+  const [miembros, setMiembros] = useState([]);
   const [categoriasDisponibles, setCategoriasDisponibles] = useState([]);
   const [categoriasActivas, setCategoriasActivas] = useState([]);
 
@@ -124,18 +124,20 @@ function GruposSoporte() {
     setGrupos(normalizarRespuesta(resGrupos));
   };
 
-  const obtenerAgentes = async () => {
+  const obtenerMiembros = async () => {
     try {
-      const resAgentes = await axiosCliente.get("/agents");
-      setAgentes(normalizarRespuesta(resAgentes));
+      const res = await axiosCliente.get("/support-members");
+
+      setMiembros(normalizarRespuesta(res));
       setWarning("");
     } catch (error) {
-      console.log("ERROR AGENTES:", error.response?.data || error);
-      setAgentes([]);
+      console.log("ERROR MIEMBROS:", error.response?.data || error);
+
+      setMiembros([]);
 
       if (puedeGestionar) {
         setWarning(
-          "Los grupos se cargaron correctamente, pero no se pudo cargar la lista de agentes disponibles.",
+          "Los grupos se cargaron correctamente, pero no se pudo cargar la lista de miembros disponibles.",
         );
       }
     }
@@ -171,7 +173,7 @@ function GruposSoporte() {
       await obtenerGrupos();
 
       if (puedeGestionar) {
-        await obtenerAgentes();
+        await obtenerMiembros();
         await obtenerCategoriasDisponibles();
       }
     } catch (error) {
@@ -907,7 +909,7 @@ function GruposSoporte() {
 
                               <Chip
                                 size="small"
-                                label={`${grupo.agents?.length || 0} agentes`}
+                                label={`${grupo.agents?.length || 0} miembros`}
                                 color="primary"
                                 sx={{ fontWeight: 800 }}
                               />
@@ -1013,7 +1015,7 @@ function GruposSoporte() {
                                 mb={1.2}
                                 sx={{ fontSize: 14 }}
                               >
-                                Agregar agente
+                                Agregar miembro
                               </Typography>
 
                               <Grid container spacing={1.5} alignItems="center">
@@ -1022,7 +1024,7 @@ function GruposSoporte() {
                                     select
                                     fullWidth
                                     size="small"
-                                    label="Selecciona un agente"
+                                    label="Selecciona un miembro"
                                     value={agenteSeleccionado[grupo.id] || ""}
                                     onChange={(e) =>
                                       cambiarAgenteGrupo(
@@ -1030,18 +1032,22 @@ function GruposSoporte() {
                                         e.target.value,
                                       )
                                     }
-                                    disabled={agentes.length === 0}
+                                    disabled={miembros.length === 0}
                                   >
                                     <MenuItem value="">
-                                      Selecciona un agente
+                                      Selecciona un miembro
                                     </MenuItem>
 
-                                    {agentes.map((agente) => (
+                                    {miembros.map((miembro) => (
                                       <MenuItem
-                                        key={agente.id}
-                                        value={agente.id}
+                                        key={miembro.id}
+                                        value={miembro.id}
                                       >
-                                        {nombreAgente(agente)}
+                                        {nombreAgente(miembro)}
+                                        {normalizarRol(miembro.role) ===
+                                        "supervisor"
+                                          ? " (Supervisor)"
+                                          : " (Agente)"}
                                       </MenuItem>
                                     ))}
                                   </TextField>
@@ -1052,7 +1058,7 @@ function GruposSoporte() {
                                     fullWidth
                                     variant="outlined"
                                     onClick={() => agregarAgente(grupo.id)}
-                                    disabled={agentes.length === 0}
+                                    disabled={miembros.length === 0}
                                     sx={{
                                       borderRadius: 2,
                                       textTransform: "none",
@@ -1076,7 +1082,7 @@ function GruposSoporte() {
                             mb={1}
                             sx={{ fontSize: 14 }}
                           >
-                            Agentes del grupo
+                            Miembros del grupo
                           </Typography>
 
                           {grupo.agents && grupo.agents.length > 0 ? (
@@ -1190,8 +1196,8 @@ function GruposSoporte() {
                                 variant="body2"
                                 color="text.secondary"
                               >
-                                Este grupo no tiene agentes asignados.
-                              </Typography>
+                                Este grupo no tiene miembros asignados.
+                              </Typography>s
                             </Box>
                           )}
                         </Box>
